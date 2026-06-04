@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Obfuscator>
+  <Var name="InPath" value=".\bin\Release\netstandard2.1" />
+  <Var name="OutPath" value=".\obfuscated" />
+
+  <!-- 跳过第三方 DLL -->
+  <Module file="$(InPath)\Newtonsoft.Json.dll" Skip="true" />
+  <Module file="$(InPath)\NLog.dll" Skip="true" />
+  <Module file="$(InPath)\SqlSugarCore.dll" Skip="true" />
+  <Module file="$(InPath)\HslCommunication.dll" Skip="true" />
+  <Module file="$(InPath)\MQTTnet.dll" Skip="true" />
+  <Module file="$(InPath)\Fleck.dll" Skip="true" />
+  <Module file="$(InPath)\Scriban.dll" Skip="true" />
+  <Module file="$(InPath)\ZL.PFLite.dll" Skip="true" />
+  <Module file="$(InPath)\ZL.PlcBase.dll" Skip="true" />
+  <Module file="$(InPath)\ZL.Tag.dll" Skip="true" />
+  <Module file="$(InPath)\RulesEngine.dll" Skip="true" />
+
+  <!-- 混淆每个 ZL 库 -->
+  <Module file="$(InPath)\ZL.Biz.Execute.dll" />
+  <Module file="$(InPath)\ZL.DB.Acc.dll" />
+  <Module file="$(InPath)\ZL.Dao.Edge.dll" />
+  <Module file="$(InPath)\ZL.Dao.IotDevice.dll" />
+  <Module file="$(InPath)\ZL.DataConvert.dll" />
+  <Module file="$(InPath)\ZL.EdgeService.dll" />
+  <Module file="$(InPath)\ZL.Iot.Interface.dll" />
+  <Module file="$(InPath)\ZL.Iot.Plugin.dll" />
+</Obfuscator>
