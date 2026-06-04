@@ -1,0 +1,60 @@
+{
+  "$schema": "(参考 tmom/tools/ZL.Pipeline.Cli/schemas/pipeline-schema.json)",
+  "version": "1.0",
+  "projects": [
+    {
+      "name": "ZL.Biz.Execute",
+      "csproj": "ZL.Biz.Execute/ZL.Biz.Execute.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.DB.Acc",
+      "csproj": "ZL.DB.Acc/ZL.DB.Acc.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Dao.Edge",
+      "csproj": "ZL.Dao.Edge/ZL.Dao.Edge.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Dao.IotDevice",
+      "csproj": "ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.DataConvert",
+      "csproj": "ZL.DataConvert/ZL.DataConvert.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.EdgeService",
+      "csproj": "ZL.EdgeService/ZL.EdgeService.csproj",
+      "obfuscate": true,
+      "includeDependencies": []
+    },
+    {
+      "name": "ZL.Iot.Interface",
+      "csproj": "ZL.Iot.Interface/ZL.Iot.Interface.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Iot.Plugin",
+      "csproj": "ZL.Iot.Plugin/ZL.Iot.Plugin.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Iot.Runner.Generator",
+      "csproj": "ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Iot.Runner",
+      "csproj": "ZL.Iot.Runner/ZL.Iot.Runner.csproj",
+      "obfuscate": true
+    }
+  ],
+  "nugetSource": "https://api.nuget.org/v3/index.json",
+  "publishTimeout": 120,
+  "dryRun": false
+}
