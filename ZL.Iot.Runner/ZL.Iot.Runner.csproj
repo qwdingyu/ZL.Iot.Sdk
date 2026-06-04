@@ -18,9 +18,9 @@
         <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
         <ProjectReference Include="..\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
         <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
-        <ProjectReference Include="..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj" />
+        <PackageReference Include="ZL.PlcBase" />
         <!-- PFLite（DeviceConfig/SharedTagValueCache 等基础工具） -->
-        <ProjectReference Include="..\..\..\ZL.PlcBase\ZL.PFLite\ZL.PFLite.csproj" />
+        <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 
     <!-- LoggerFactory / AddConsole 所需包 -->
