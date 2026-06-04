@@ -11,9 +11,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="NLog" Version="6.0.7" />
-        <PackageReference Include="SqlSugarCore" Version="5.1.4.146" />
+        <PackageReference Include="Newtonsoft.Json" />
+        <PackageReference Include="NLog" />
+        <PackageReference Include="SqlSugarCore" />
     </ItemGroup>
 
     <ItemGroup>

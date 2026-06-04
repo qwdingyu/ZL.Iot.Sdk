@@ -75,8 +75,12 @@ namespace ZL.Iot.Runner.Runtime
         {
             _executors = executors ?? new List<ExecutorProfile>();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _scriptEngine = scriptEngine ?? new ScribanScriptEngine();
-            _ruleEngine = new RulesEngineAdapter();
+            _scriptEngine = scriptEngine ?? new ScribanScriptEngine(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ScribanScriptEngine>.Instance
+            );
+            _ruleEngine = new RulesEngineAdapter(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<RulesEngineAdapter>.Instance
+            );
         }
 
         /// <summary>
