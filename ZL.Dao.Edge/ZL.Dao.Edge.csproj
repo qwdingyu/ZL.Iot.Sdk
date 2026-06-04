@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Dao.Edge</AssemblyName>
+        <RootNamespace>ZL.Dao.Edge</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="NLog" Version="6.0.7" />
+        <PackageReference Include="SqlSugarCore" Version="5.1.4.146" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+        <ProjectReference Include="..\ZL.DataConvert\ZL.DataConvert.csproj" />
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+    </ItemGroup>
+
+</Project>

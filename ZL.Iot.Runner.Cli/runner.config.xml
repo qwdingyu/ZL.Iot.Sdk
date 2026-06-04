@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ZL.Iot.Runner XML 配置示例（兼容老项目 ZL.DeviceLib 的 TagItem 格式）
+  使用方法：dotnet run ../../ZL.Iot.Runner.Cli runner.config.xml
+-->
+<RunnerConfig>
+  <Runner>
+    <Name>MyDeviceCollector_Xml</Name>
+    <LogLevel>Information</LogLevel>
+    <DataStorage>
+      <Type>Sqlite</Type>
+      <ConnectionString>Data Source=./data/iot_runner.db</ConnectionString>
+    </DataStorage>
+  </Runner>
+  <Devices>
+    <Device>
+      <Code>plc_line1_op10_xml</Code>
+      <Protocol>SiemensS7</Protocol>
+      <Ip>127.0.0.1</Ip>
+      <Port>102</Port>
+      <Rack>0</Rack>
+      <Slot>1</Slot>
+      <ConnectTimeout>5000</ConnectTimeout>
+      <ReadInterval>200</ReadInterval>
+      <Tags>
+        <TagProfile>
+          <Id>Heartbeat</Id>
+          <Description>PLC 心跳信号</Description>
+          <Address>DB1000.DBX0.0</Address>
+          <DataType>bool</DataType>
+          <Length>1</Length>
+          <Enable>true</Enable>
+          <TagType>HB</TagType>
+          <ScanRate>500</ScanRate>
+        </TagProfile>
+        <TagProfile>
+          <Id>TrayInPlace</Id>
+          <Description>托盘在位信号</Description>
+          <Address>DB1000.DBX0.2</Address>
+          <DataType>bool</DataType>
+          <Length>1</Length>
+          <Enable>true</Enable>
+          <TagType>M</TagType>
+          <ScanRate>200</ScanRate>
+        </TagProfile>
+        <TagProfile>
+          <Id>ProductCode</Id>
+          <Description>产品条码</Description>
+          <Address>DB1000.DBB10</Address>
+          <DataType>string</DataType>
+          <Length>50</Length>
+          <StringEncoding>ASCII</StringEncoding>
+          <Enable>true</Enable>
+          <TagType />
+          <ScanRate>1000</ScanRate>
+        </TagProfile>
+      </Tags>
+      <Executors>
+        <ExecutorProfile>
+          <BizCode>TrayInPlaceAlert</BizCode>
+          <TagId>TrayInPlace</TagId>
+          <JudgeType>1</JudgeType>
+          <JudgeExp>1</JudgeExp>
+          <ExeType>M</ExeType>
+          <Script>INSERT INTO alerts (tag, value, time) VALUES ('{{TagId}}', {{Value}}, '{{Time}}')</Script>
+          <ExeOrder>1</ExeOrder>
+          <Enable>true</Enable>
+        </ExecutorProfile>
+        <ExecutorProfile>
+          <BizCode>ProductCodeLog</BizCode>
+          <TagId>ProductCode</TagId>
+          <JudgeType>3</JudgeType>
+          <JudgeExp></JudgeExp>
+          <ExeType>M</ExeType>
+          <Script>INSERT INTO product_log (code, time) VALUES ('{{Value}}', '{{Time}}')</Script>
+          <ExeOrder>2</ExeOrder>
+          <Enable>true</Enable>
+        </ExecutorProfile>
+      </Executors>
+    </Device>
+  </Devices>
+</RunnerConfig>

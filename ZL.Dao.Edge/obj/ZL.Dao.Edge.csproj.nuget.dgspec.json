@@ -1,0 +1,665 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Dao.Edge/ZL.Dao.Edge.csproj": {}
+  },
+  "projects": {
+    "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Dao.Edge/ZL.Dao.Edge.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Dao.Edge/ZL.Dao.Edge.csproj",
+        "projectName": "ZL.Dao.Edge",
+        "projectPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Dao.Edge/ZL.Dao.Edge.csproj",
+        "packagesPath": "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages",
+        "outputPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Dao.Edge/obj/",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "CentralPackageTransitivePinningEnabled": true,
+        "configFilePaths": [
+          "/Users/dingyuwang/0-X/tmom/NuGet.Config",
+          "/Users/dingyuwang/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.1"
+        ],
+        "sources": {
+          "/Users/dingyuwang/0-X/tmom/.nuget/local-feed": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.1": {
+            "targetAlias": "netstandard2.1",
+            "projectReferences": {
+              "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj": {
+                "projectPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj"
+              },
+              "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/ZL.DB.Acc.csproj": {
+                "projectPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/ZL.DB.Acc.csproj"
+              },
+              "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj": {
+                "projectPath": "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "dependencies": {
+            "Microsoft.SourceLink.GitHub": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[6.0.7, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.4, )"
+            },
+            "SqlSugarCore": {
+              "target": "Package",
+              "version": "[5.1.4.146, )"
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.2",
+            "Fleck": "1.2.0",
+            "HslCommunication": "10.6.1",
+            "Microsoft.AspNetCore.SignalR.Client": "8.0.7",
+            "Microsoft.AspNetCore.SystemWebAdapters": "2.2.1",
+            "Microsoft.CSharp": "4.7.0",
+            "Microsoft.Data.Sqlite": "8.0.11",
+            "Microsoft.Extensions.Configuration": "8.0.0",
+            "Microsoft.Extensions.Configuration.Binder": "8.0.2",
+            "Microsoft.Extensions.Configuration.Json": "8.0.0",
+            "Microsoft.Extensions.DependencyInjection": "8.0.1",
+            "Microsoft.Extensions.Logging": "8.0.0",
+            "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+            "Microsoft.Extensions.Logging.Console": "8.0.0",
+            "Microsoft.Extensions.Logging.Debug": "8.0.0",
+            "Microsoft.NET.Test.Sdk": "17.12.0",
+            "Microsoft.SourceLink.GitHub": "8.0.0",
+            "Microsoft.Win32.Registry": "5.0.0",
+            "Moq": "4.20.72",
+            "MQTTnet": "4.3.7.1207",
+            "MySql.Data": "9.2.0",
+            "Newtonsoft.Json": "13.0.4",
+            "NLog": "6.0.7",
+            "NLog.Extensions.Logging": "6.0.7",
+            "Oracle.ManagedDataAccess.Core": "23.7.0",
+            "RulesEngine": "6.0.0",
+            "S7NetPlus": "0.20.0",
+            "Scriban": "7.1.0",
+            "SqlKata": "3.2.3",
+            "SqlSugarCore": "5.1.4.146",
+            "System.Configuration.ConfigurationManager": "10.0.1",
+            "System.Data.DataSetExtensions": "4.5.0",
+            "System.Data.OleDb": "8.0.0",
+            "System.Data.SqlClient": "4.8.6",
+            "System.Data.SQLite.Core": "1.0.119",
+            "System.Diagnostics.Process": "4.3.0",
+            "System.Management": "10.0.1",
+            "System.Runtime.Caching": "10.0.1",
+            "System.ServiceProcess.ServiceController": "8.0.0",
+            "System.Text.Json": "9.0.14",
+            "System.Threading.Channels": "8.0.0",
+            "System.Threading.Tasks.Extensions": "4.6.3",
+            "xunit": "2.9.2",
+            "xunit.runner.visualstudio": "2.8.2"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "NETStandard.Library": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj",
+        "projectName": "ZL.DataConvert",
+        "projectPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj",
+        "packagesPath": "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages",
+        "outputPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/obj/",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "CentralPackageTransitivePinningEnabled": true,
+        "configFilePaths": [
+          "/Users/dingyuwang/0-X/tmom/NuGet.Config",
+          "/Users/dingyuwang/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.1"
+        ],
+        "sources": {
+          "/Users/dingyuwang/0-X/tmom/.nuget/local-feed": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.1": {
+            "targetAlias": "netstandard2.1",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "dependencies": {
+            "Microsoft.SourceLink.GitHub": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.2",
+            "Fleck": "1.2.0",
+            "HslCommunication": "10.6.1",
+            "Microsoft.AspNetCore.SignalR.Client": "8.0.7",
+            "Microsoft.AspNetCore.SystemWebAdapters": "2.2.1",
+            "Microsoft.CSharp": "4.7.0",
+            "Microsoft.Data.Sqlite": "8.0.11",
+            "Microsoft.Extensions.Configuration": "8.0.0",
+            "Microsoft.Extensions.Configuration.Binder": "8.0.2",
+            "Microsoft.Extensions.Configuration.Json": "8.0.0",
+            "Microsoft.Extensions.DependencyInjection": "8.0.1",
+            "Microsoft.Extensions.Logging": "8.0.0",
+            "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+            "Microsoft.Extensions.Logging.Console": "8.0.0",
+            "Microsoft.Extensions.Logging.Debug": "8.0.0",
+            "Microsoft.NET.Test.Sdk": "17.12.0",
+            "Microsoft.SourceLink.GitHub": "8.0.0",
+            "Microsoft.Win32.Registry": "5.0.0",
+            "Moq": "4.20.72",
+            "MQTTnet": "4.3.7.1207",
+            "MySql.Data": "9.2.0",
+            "Newtonsoft.Json": "13.0.4",
+            "NLog": "6.0.7",
+            "NLog.Extensions.Logging": "6.0.7",
+            "Oracle.ManagedDataAccess.Core": "23.7.0",
+            "RulesEngine": "6.0.0",
+            "S7NetPlus": "0.20.0",
+            "Scriban": "7.1.0",
+            "SqlKata": "3.2.3",
+            "SqlSugarCore": "5.1.4.146",
+            "System.Configuration.ConfigurationManager": "10.0.1",
+            "System.Data.DataSetExtensions": "4.5.0",
+            "System.Data.OleDb": "8.0.0",
+            "System.Data.SqlClient": "4.8.6",
+            "System.Data.SQLite.Core": "1.0.119",
+            "System.Diagnostics.Process": "4.3.0",
+            "System.Management": "10.0.1",
+            "System.Runtime.Caching": "10.0.1",
+            "System.ServiceProcess.ServiceController": "8.0.0",
+            "System.Text.Json": "9.0.14",
+            "System.Threading.Channels": "8.0.0",
+            "System.Threading.Tasks.Extensions": "4.6.3",
+            "xunit": "2.9.2",
+            "xunit.runner.visualstudio": "2.8.2"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "NETStandard.Library": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/ZL.DB.Acc.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/ZL.DB.Acc.csproj",
+        "projectName": "ZL.DB.Acc",
+        "projectPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/ZL.DB.Acc.csproj",
+        "packagesPath": "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages",
+        "outputPath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DB.Acc/obj/",
+        "projectStyle": "PackageReference",
+        "centralPackageVersionsManagementEnabled": true,
+        "CentralPackageTransitivePinningEnabled": true,
+        "configFilePaths": [
+          "/Users/dingyuwang/0-X/tmom/NuGet.Config",
+          "/Users/dingyuwang/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.1"
+        ],
+        "sources": {
+          "/Users/dingyuwang/0-X/tmom/.nuget/local-feed": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.1": {
+            "targetAlias": "netstandard2.1",
+            "projectReferences": {
+              "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj": {
+                "projectPath": "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "netstandard2.1": {
+          "targetAlias": "netstandard2.1",
+          "dependencies": {
+            "Microsoft.SourceLink.GitHub": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "MySql.Data": {
+              "target": "Package",
+              "version": "[9.2.0, )",
+              "versionCentrallyManaged": true
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[6.0.7, )",
+              "versionCentrallyManaged": true
+            },
+            "Oracle.ManagedDataAccess.Core": {
+              "target": "Package",
+              "version": "[23.7.0, )",
+              "versionCentrallyManaged": true
+            },
+            "SqlSugarCore": {
+              "target": "Package",
+              "version": "[5.1.4.146, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Configuration.ConfigurationManager": {
+              "target": "Package",
+              "version": "[10.0.1, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Data.OleDb": {
+              "target": "Package",
+              "version": "[8.0.0, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Data.SQLite.Core": {
+              "target": "Package",
+              "version": "[1.0.119, )",
+              "versionCentrallyManaged": true
+            },
+            "System.Data.SqlClient": {
+              "target": "Package",
+              "version": "[4.8.6, )",
+              "versionCentrallyManaged": true
+            }
+          },
+          "centralPackageVersions": {
+            "coverlet.collector": "6.0.2",
+            "Fleck": "1.2.0",
+            "HslCommunication": "10.6.1",
+            "Microsoft.AspNetCore.SignalR.Client": "8.0.7",
+            "Microsoft.AspNetCore.SystemWebAdapters": "2.2.1",
+            "Microsoft.CSharp": "4.7.0",
+            "Microsoft.Data.Sqlite": "8.0.11",
+            "Microsoft.Extensions.Configuration": "8.0.0",
+            "Microsoft.Extensions.Configuration.Binder": "8.0.2",
+            "Microsoft.Extensions.Configuration.Json": "8.0.0",
+            "Microsoft.Extensions.DependencyInjection": "8.0.1",
+            "Microsoft.Extensions.Logging": "8.0.0",
+            "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+            "Microsoft.Extensions.Logging.Console": "8.0.0",
+            "Microsoft.Extensions.Logging.Debug": "8.0.0",
+            "Microsoft.NET.Test.Sdk": "17.12.0",
+            "Microsoft.SourceLink.GitHub": "8.0.0",
+            "Microsoft.Win32.Registry": "5.0.0",
+            "Moq": "4.20.72",
+            "MQTTnet": "4.3.7.1207",
+            "MySql.Data": "9.2.0",
+            "Newtonsoft.Json": "13.0.4",
+            "NLog": "6.0.7",
+            "NLog.Extensions.Logging": "6.0.7",
+            "Oracle.ManagedDataAccess.Core": "23.7.0",
+            "RulesEngine": "6.0.0",
+            "S7NetPlus": "0.20.0",
+            "Scriban": "7.1.0",
+            "SqlKata": "3.2.3",
+            "SqlSugarCore": "5.1.4.146",
+            "System.Configuration.ConfigurationManager": "10.0.1",
+            "System.Data.DataSetExtensions": "4.5.0",
+            "System.Data.OleDb": "8.0.0",
+            "System.Data.SqlClient": "4.8.6",
+            "System.Data.SQLite.Core": "1.0.119",
+            "System.Diagnostics.Process": "4.3.0",
+            "System.Management": "10.0.1",
+            "System.Runtime.Caching": "10.0.1",
+            "System.ServiceProcess.ServiceController": "8.0.0",
+            "System.Text.Json": "9.0.14",
+            "System.Threading.Channels": "8.0.0",
+            "System.Threading.Tasks.Extensions": "4.6.3",
+            "xunit": "2.9.2",
+            "xunit.runner.visualstudio": "2.8.2"
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "NETStandard.Library": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj",
+        "projectName": "ZL.PFLite",
+        "projectPath": "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj",
+        "packagesPath": "/Users/dingyuwang/.nuget/packages/",
+        "outputPath": "/Users/dingyuwang/0-X/ZL.PlcBase/ZL.PFLite/obj/",
+        "projectStyle": "PackageReference",
+        "crossTargeting": true,
+        "configFilePaths": [
+          "/Users/dingyuwang/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net48",
+          "net8.0",
+          "netstandard2.0"
+        ],
+        "sources": {
+          "/tmp/local-nuget-feed": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          },
+          "net48": {
+            "targetAlias": "net48",
+            "projectReferences": {}
+          },
+          "netstandard2.0": {
+            "targetAlias": "netstandard2.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.SystemWebAdapters": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "Microsoft.Win32.Registry": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[6.0.7, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.4, )"
+            },
+            "System.Configuration.ConfigurationManager": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Data.DataSetExtensions": {
+              "target": "Package",
+              "version": "[4.5.0, )"
+            },
+            "System.Diagnostics.Process": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Memory": {
+              "target": "Package",
+              "version": "[4.6.3, )"
+            },
+            "System.Runtime.Caching": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.ServiceProcess.ServiceController": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/PortableRuntimeIdentifierGraph.json"
+        },
+        "net48": {
+          "targetAlias": "net48",
+          "dependencies": {
+            "Microsoft.AspNetCore.SystemWebAdapters": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            },
+            "Microsoft.Win32.Registry": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[6.0.7, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.4, )"
+            },
+            "System.Configuration.ConfigurationManager": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Data.DataSetExtensions": {
+              "target": "Package",
+              "version": "[4.5.0, )"
+            },
+            "System.Diagnostics.Process": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Memory": {
+              "target": "Package",
+              "version": "[4.6.3, )"
+            },
+            "System.Runtime.Caching": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.ServiceProcess.ServiceController": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/RuntimeIdentifierGraph.json"
+        },
+        "netstandard2.0": {
+          "targetAlias": "netstandard2.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.SystemWebAdapters": {
+              "target": "Package",
+              "version": "[2.2.1, )"
+            },
+            "Microsoft.Win32.Registry": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            },
+            "NETStandard.Library": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.0.3, )",
+              "autoReferenced": true
+            },
+            "NLog": {
+              "target": "Package",
+              "version": "[6.0.7, )"
+            },
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.4, )"
+            },
+            "System.Configuration.ConfigurationManager": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Data.DataSetExtensions": {
+              "target": "Package",
+              "version": "[4.5.0, )"
+            },
+            "System.Diagnostics.Process": {
+              "target": "Package",
+              "version": "[4.3.0, )"
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.Memory": {
+              "target": "Package",
+              "version": "[4.6.3, )"
+            },
+            "System.Runtime.Caching": {
+              "target": "Package",
+              "version": "[10.0.1, )"
+            },
+            "System.ServiceProcess.ServiceController": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/10.0.101/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

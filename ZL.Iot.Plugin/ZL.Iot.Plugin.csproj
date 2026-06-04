@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Iot.Plugin</AssemblyName>
+        <RootNamespace>ZL.Iot.Plugin</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="NLog" Version="6.0.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
+        <ProjectReference Include="..\ZL.Dao.IotDevice\ZL.Dao.IotDevice.csproj" />
+        <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.PlcBase/ZL.PlcBase.csproj" />
+    </ItemGroup>
+
+</Project>

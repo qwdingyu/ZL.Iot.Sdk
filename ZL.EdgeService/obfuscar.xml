@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Obfuscator>
+  <!--输入路径-->
+  <Var name="InPath" value="." />
+  <!--输出路径:加密混淆过的路径-->
+  <Var name="OutPath" value=".\Obfuscator_Output" />
+  <!--混淆代码的参数-->
+  <Var name="RenameProperties" value="false" />
+  <Var name="RenameEvents" value="false" />
+  <Var name="RenameFields" value="false" />
+  <Var name="ReuseNames" value="false" />
+  <Var name="HideStrings" value="false" />
+  <Var name="KeepPublicApi" value="false" />
+  <Var name="HidePrivateApi" value="true" />
+  
+  <!--<Var name="KeyFile" value=".\test.snk" />-->
+  <!--要混淆的模块-->
+  <Module file="$(InPath)\ZL.EdgeService.dll" />
+</Obfuscator>

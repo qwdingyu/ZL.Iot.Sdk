@@ -1,0 +1,208 @@
+using System;
+using System.Windows.Forms;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+using ZL.Iot.Runner;
+using ZL.Iot.Runner.Configuration;
+using ZL.Iot.Runner.Runtime;
+
+namespace {{ namespace }};
+
+/// <summary>
+/// 主窗体：包含设备状态表格、执行器面板、日志查看器和运行控制
+/// </summary>
+public partial class MainForm : Form
+{
+    private DeviceRunner? _runner;
+    private readonly CancellationTokenSource _cts = new();
+
+    public TagGridView? TagGrid { get; private set; }
+    public ExecutorPanel? ExecutorPanel { get; private set; }
+    private RichTextBox? LogViewer { get; set; }
+    private Label? StatusLabel { get; set; }
+    private Button? StartButton { get; set; }
+    private Button? StopButton { get; set; }
+    private readonly System.Windows.Forms.Timer _refreshTimer = new();
+
+    public MainForm()
+    {
+        InitializeComponent();
+        LoadRunner();
+    }
+
+    private void InitializeComponent()
+    {
+        Text = "{{ project_name }} - IoT Runner";
+        Size = new System.Drawing.Size(1200, 800);
+        MinimumSize = new System.Drawing.Size(800, 600);
+        FormClosing += MainForm_FormClosing;
+
+        // 主分割面板（上下）
+        var mainSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            SplitterDistance = 350
+        };
+
+        // 上半部分：左右分栏（设备状态 + 执行器面板）
+        var topSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterDistance = 700
+        };
+
+        TagGrid = new TagGridView();
+        topSplit.Panel1.Controls.Add(TagGrid);
+
+        ExecutorPanel = new ExecutorPanel();
+        topSplit.Panel2.Controls.Add(ExecutorPanel);
+
+        mainSplit.Panel1.Controls.Add(topSplit);
+
+        // 下半部分：日志查看器
+        LogViewer = new RichTextBox
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            Font = new Font("Consolas", 9f),
+            BackColor = System.Drawing.Color.Black,
+            ForeColor = System.Drawing.Color.LightGray
+        };
+        mainSplit.Panel2.Controls.Add(LogViewer);
+
+        // 底部状态栏
+        var statusPanel = new Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 35,
+            BackColor = System.Drawing.Color.FromArgb(240, 240, 240)
+        };
+
+        StartButton = new Button { Text = "启动", Width = 70, Location = new System.Drawing.Point(10, 5) };
+        StartButton.Click += StartButton_Click;
+        statusPanel.Controls.Add(StartButton);
+
+        StopButton = new Button { Text = "停止", Width = 70, Location = new System.Drawing.Point(90, 5), Enabled = false };
+        StopButton.Click += StopButton_Click;
+        statusPanel.Controls.Add(StopButton);
+
+        StatusLabel = new Label { Text = "状态: 就绪", AutoSize = true, Location = new System.Drawing.Point(180, 8) };
+        statusPanel.Controls.Add(StatusLabel);
+
+        Controls.Add(mainSplit);
+        Controls.Add(statusPanel);
+
+        // 定时刷新（2 秒）— 注意：启动时不自动运行，由 StartButton_Click 控制
+        _refreshTimer.Interval = 2000;
+        _refreshTimer.Tick += RefreshTimer_Tick;
+    }
+
+    private void LoadRunner()
+    {
+        try
+        {
+            var configPath = "./runner.config.json";
+            var config = ConfigLoader.Load(configPath);
+
+            var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+            _runner = new DeviceRunner(config, loggerFactory);
+
+            // 加载执行器信息
+            if (ExecutorPanel != null)
+            {
+                ExecutorPanel.LoadExecutors(config);
+            }
+
+            AppendLog("[INFO] 配置加载完成");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"[ERROR] 配置加载失败: {ex.Message}");
+        }
+    }
+
+    private void RefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_runner?.IsRunning == true && TagGrid != null)
+        {
+            try { TagGrid.RefreshData(_runner); }
+            catch { /* 刷新失败不阻塞 UI 线程 */ }
+        }
+    }
+
+    private void StartButton_Click(object? sender, EventArgs e)
+    {
+        if (_runner == null)
+        {
+            AppendLog("[ERROR] Runner 未初始化");
+            return;
+        }
+
+        StartButton!.Enabled = false;
+        StopButton!.Enabled = true;
+        StatusLabel!.Text = "状态: 运行中";
+        _refreshTimer.Start();
+
+        Task.Run(() =>
+        {
+            try
+            {
+                _runner.Run(_cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // 正常退出
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"[ERROR] 运行异常: {ex.Message}");
+            }
+        });
+
+        AppendLog("[INFO] Runner 已启动");
+    }
+
+    private void StopButton_Click(object? sender, EventArgs e)
+    {
+        StartButton!.Enabled = true;
+        StopButton!.Enabled = false;
+        StatusLabel!.Text = "状态: 停止";
+        _refreshTimer.Stop();
+        _cts.Cancel();
+        AppendLog("[INFO] 停止指令已发送");
+    }
+
+    private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
+    {
+        _cts.Cancel();
+        _refreshTimer.Stop();
+        LogManager.Shutdown();
+    }
+
+    private void AppendLog(string message)
+    {
+        if (InvokeRequired)
+        {
+            BeginInvoke(new Action<string>(AppendLog), message);
+            return;
+        }
+
+        var timestamped = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+        LogViewer?.AppendText(timestamped + Environment.NewLine);
+
+        // 限制日志行数（防止内存溢出）
+        if (LogViewer != null && LogViewer.Lines.Length > 5000)
+        {
+            var lines = LogViewer.Lines;
+            LogViewer.Clear();
+            LogViewer.Lines = lines[lines.Length - 2000..];
+        }
+
+        LogViewer?.ScrollToCaret();
+    }
+}

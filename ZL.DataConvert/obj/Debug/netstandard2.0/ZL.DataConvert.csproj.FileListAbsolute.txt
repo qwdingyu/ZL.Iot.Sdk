@@ -1,0 +1,10 @@
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/bin/Debug/netstandard2.0/ZL.DataConvert.deps.json
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/bin/Debug/netstandard2.0/ZL.DataConvert.dll
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/bin/Debug/netstandard2.0/ZL.DataConvert.pdb
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.csproj.AssemblyReference.cache
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.GeneratedMSBuildEditorConfig.editorconfig
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.AssemblyInfoInputs.cache
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.AssemblyInfo.cs
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.csproj.CoreCompileInputs.cache
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.dll
+/Users/dingyuwang/0-X/Avalonia.GetStartedApp/tmom/iot-sdk/ZL.DataConvert/obj/Debug/netstandard2.0/ZL.DataConvert.pdb

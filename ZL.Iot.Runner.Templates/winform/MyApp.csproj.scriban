@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>{{ namespace }}</RootNamespace>
+    <AssemblyName>{{ project_name }}</AssemblyName>
+    <Version>{{ version }}</Version>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- WinForms 版使用框架依赖发布（减小体积，目标机器通常有 .NET Runtime） -->
+    <PublishSingleFile>false</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <UseAppHost>true</UseAppHost>
+    <RuntimeIdentifier>{{ runtime_identifier }}</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Runner 核心库（NuGet 引用，用户无需 clone monorepo） -->
+    <PackageReference Include="ZL.Iot.Runner.Lib" Version="{{ runner_version }}" />
+    <!-- NLog 结构化日志 -->
+    <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 配置文件需标记为 Content 以便正确输出 -->
+    <Content Include="runner.config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

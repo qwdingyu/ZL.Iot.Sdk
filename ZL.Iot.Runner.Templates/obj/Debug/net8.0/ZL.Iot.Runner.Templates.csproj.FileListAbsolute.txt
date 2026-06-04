@@ -1,0 +1,12 @@
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/bin/Debug/net8.0/ZL.Iot.Runner.Templates.deps.json
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/bin/Debug/net8.0/ZL.Iot.Runner.Templates.dll
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/bin/Debug/net8.0/ZL.Iot.Runner.Templates.pdb
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/bin/Debug/net8.0/.xml
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.GeneratedMSBuildEditorConfig.editorconfig
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.AssemblyInfoInputs.cache
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.AssemblyInfo.cs
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.csproj.CoreCompileInputs.cache
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.dll
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/refint/ZL.Iot.Runner.Templates.dll
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ZL.Iot.Runner.Templates.pdb
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Templates/obj/Debug/net8.0/ref/ZL.Iot.Runner.Templates.dll

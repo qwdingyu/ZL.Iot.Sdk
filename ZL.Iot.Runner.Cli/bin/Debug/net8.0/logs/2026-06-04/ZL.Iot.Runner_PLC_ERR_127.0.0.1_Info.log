@@ -1,0 +1,45 @@
+2026-06-04 08:23:19.9601 Info 警告: 当前无标签(路径:)，初始化仍继续（测试场景：标签可能在 Initialize 后添加）
+2026-06-04 08:23:20.3022 Info 此工位未配置监控(TagType=M)的设备地址,无法触发DataChange事件!
+2026-06-04 08:23:20.3027 Info 此工位未配置心跳信号,无法向PLC中写入心跳!
+2026-06-04 08:23:20.3027 Info 初始化成功，加载了0个标签
+2026-06-04 08:23:20.9701 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102
+2026-06-04 08:23:37.9444 Info 警告: 当前无标签(路径:)，初始化仍继续（测试场景：标签可能在 Initialize 后添加）
+2026-06-04 08:23:38.3387 Info 此工位未配置监控(TagType=M)的设备地址,无法触发DataChange事件!
+2026-06-04 08:23:38.3403 Info 此工位未配置心跳信号,无法向PLC中写入心跳!
+2026-06-04 08:23:38.3403 Info 初始化成功，加载了0个标签
+2026-06-04 08:23:38.7934 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102
+2026-06-04 08:23:39.9054 Info TrayInPlace - TrayInPlace - 托盘在位信号 - DB1000.DBX0.2 - bool - 1 -  - ASCII - True - M -  -  - 
+2026-06-04 08:23:39.9074 Info ManualAuto - ManualAuto - 手动/自动模式 - DB1000.DBX0.1 - bool - 1 -  - ASCII - True - M -  -  - 
+2026-06-04 08:23:39.9074 Info ProductCode - ProductCode - 产品条码 - DB1000.DBB10 - string - 50 -  - ASCII - True -  -  -  - 
+2026-06-04 08:23:39.9074 Info Heartbeat - Heartbeat - PLC 心跳信号 - DB1000.DBX0.0 - bool - 1 -  - ASCII - True - HB -  -  - 
+2026-06-04 08:23:39.9074 Info Temperature - Temperature - 温度传感器 - DB100.DBD0 - float - 1 -  - ASCII - True - D -  -  - 
+2026-06-04 08:23:39.9079 Info 初始化成功，加载了5个标签
+2026-06-04 08:23:40.2409 Info   -> ScanRate Group [1000ms]: 1 blocks
+2026-06-04 08:23:40.2409 Info   -> ScanRate Group [200ms]: 1 blocks
+2026-06-04 08:23:40.2423 Info [SimpleEngine] 已启动扫描波次: scanRate=1000ms, planKey=1000
+2026-06-04 08:23:40.2423 Info [SimpleEngine] 已启动扫描波次: scanRate=200ms, planKey=200
+2026-06-04 08:23:40.3516 Info [] 设备断开，尝试重连...
+2026-06-04 08:23:40.4546 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102
+2026-06-04 08:23:42.5357 Info [] 设备断开，尝试重连...
+2026-06-04 08:23:42.6392 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102
+2026-06-04 08:29:00.1105 Info 警告: 当前无标签(路径:)，初始化仍继续（测试场景：标签可能在 Initialize 后添加）
+2026-06-04 08:29:01.4518 Info 此工位未配置监控(TagType=M)的设备地址,无法触发DataChange事件!
+2026-06-04 08:29:01.4521 Info 此工位未配置心跳信号,无法向PLC中写入心跳!
+2026-06-04 08:29:01.4521 Info 初始化成功，加载了0个标签
+2026-06-04 08:29:11.9076 Info 警告: 当前无标签(路径:)，初始化仍继续（测试场景：标签可能在 Initialize 后添加）
+2026-06-04 08:29:12.4757 Info 此工位未配置监控(TagType=M)的设备地址,无法触发DataChange事件!
+2026-06-04 08:29:12.4762 Info 此工位未配置心跳信号,无法向PLC中写入心跳!
+2026-06-04 08:29:12.4762 Info 初始化成功，加载了0个标签
+2026-06-04 08:29:13.1097 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102
+2026-06-04 08:29:14.5032 Info [] 设备断开，尝试重连...
+2026-06-04 08:29:15.5672 Info TrayInPlace - TrayInPlace - 托盘在位信号 - DB1000.DBX0.2 - bool - 1 -  - ASCII - True - M -  -  - 
+2026-06-04 08:29:15.5673 Info ManualAuto - ManualAuto - 手动/自动模式 - DB1000.DBX0.1 - bool - 1 -  - ASCII - True - M -  -  - 
+2026-06-04 08:29:15.5673 Info ProductCode - ProductCode - 产品条码 - DB1000.DBB10 - string - 50 -  - ASCII - True -  -  -  - 
+2026-06-04 08:29:15.5673 Info Heartbeat - Heartbeat - PLC 心跳信号 - DB1000.DBX0.0 - bool - 1 -  - ASCII - True - HB -  -  - 
+2026-06-04 08:29:15.5673 Info Temperature - Temperature - 温度传感器 - DB100.DBD0 - float - 1 -  - ASCII - True - D -  -  - 
+2026-06-04 08:29:15.5673 Info 初始化成功，加载了5个标签
+2026-06-04 08:29:16.5576 Info   -> ScanRate Group [1000ms]: 1 blocks
+2026-06-04 08:29:16.5576 Info   -> ScanRate Group [200ms]: 1 blocks
+2026-06-04 08:29:16.5598 Info [SimpleEngine] 已启动扫描波次: scanRate=1000ms, planKey=1000
+2026-06-04 08:29:16.5598 Info [SimpleEngine] 已启动扫描波次: scanRate=200ms, planKey=200
+2026-06-04 08:29:16.6620 Info HSL connect failed. Protocol=siemens-s7, Ip=127.0.0.1, Reason=Socket Connect 127.0.0.1:102 Exception -> Connection refused 127.0.0.1:102

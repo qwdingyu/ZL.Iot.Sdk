@@ -1,0 +1,5 @@
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Cli/obj/Release/net8.0/osx-arm64/ZL.Iot.Runner.Cli.csproj.AssemblyReference.cache
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Cli/obj/Release/net8.0/osx-arm64/ZL.Iot.Runner.Cli.GeneratedMSBuildEditorConfig.editorconfig
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Cli/obj/Release/net8.0/osx-arm64/ZL.Iot.Runner.Cli.AssemblyInfoInputs.cache
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Cli/obj/Release/net8.0/osx-arm64/ZL.Iot.Runner.Cli.AssemblyInfo.cs
+/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.Iot.Runner.Cli/obj/Release/net8.0/osx-arm64/ZL.Iot.Runner.Cli.csproj.CoreCompileInputs.cache

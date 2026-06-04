@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>ZL.Iot.Runner.Templates</AssemblyName>
+    <RootNamespace>ZL.Iot.Runner.Templates</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- 禁用 SDK 默认的 EmbeddedResource 自动包含，手动指定模板目录 -->
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+  </PropertyGroup>
+
+  <!--
+    模板文件不是 .cs，而是 .scriban / .json / .service 等资源文件。
+    全部作为 EmbeddedResource 编译进 DLL，由 Generator 在运行时读取。
+    显式列出每个文件，避免 glob 模式在部分 MSBuild 版本中不匹配。
+  -->
+  <ItemGroup>
+    <!-- Console -->
+    <EmbeddedResource Include="console/MyApp.csproj.scriban" />
+    <EmbeddedResource Include="console/ProgramCs.scriban" />
+    <EmbeddedResource Include="console/NLog.config.scriban" />
+    <!-- Windows Service -->
+    <EmbeddedResource Include="windows-service/MyApp.csproj.scriban" />
+    <EmbeddedResource Include="windows-service/ProgramCs.scriban" />
+    <EmbeddedResource Include="windows-service/NLog.config.scriban" />
+    <EmbeddedResource Include="windows-service/install.bat.scriban" />
+    <EmbeddedResource Include="windows-service/uninstall.bat.scriban" />
+    <!-- Linux Systemd -->
+    <EmbeddedResource Include="linux-systemd/MyApp.csproj.scriban" />
+    <EmbeddedResource Include="linux-systemd/ProgramCs.scriban" />
+    <EmbeddedResource Include="linux-systemd/NLog.config.scriban" />
+    <EmbeddedResource Include="linux-systemd/installSh.scriban" />
+    <EmbeddedResource Include="linux-systemd/uninstallSh.scriban" />
+    <EmbeddedResource Include="linux-systemd/runner.service.scriban" />
+    <!-- WinForm -->
+    <EmbeddedResource Include="winform/MyApp.csproj.scriban" />
+    <EmbeddedResource Include="winform/ProgramCs.scriban" />
+    <EmbeddedResource Include="winform/NLog.config.scriban" />
+    <EmbeddedResource Include="winform/MainFormCs.scriban" />
+    <EmbeddedResource Include="winform/TagGridViewCs.scriban" />
+    <EmbeddedResource Include="winform/ExecutorPanelCs.scriban" />
+    <!-- Web (预留) -->
+    <EmbeddedResource Include="web/*" />
+  </ItemGroup>
+
+</Project>

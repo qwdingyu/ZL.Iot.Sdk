@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.DB.Acc</AssemblyName>
+        <RootNamespace>ZL.DB.Acc</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+    </PropertyGroup>
+
+    <!-- NuGet 包依赖 -->
+    <ItemGroup>
+        <PackageReference Include="SqlSugarCore" />
+        <PackageReference Include="MySql.Data" />
+        <PackageReference Include="Oracle.ManagedDataAccess.Core" />
+        <PackageReference Include="System.Data.SQLite.Core" />
+        <PackageReference Include="System.Data.SqlClient" />
+        <PackageReference Include="System.Data.OleDb" />
+        <PackageReference Include="System.Configuration.ConfigurationManager" />
+        <PackageReference Include="NLog" />
+    </ItemGroup>
+
+    <!-- 引用已迁移的 ZL.PFLite 项目 -->
+    <ItemGroup>
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- NLog 配置 - {{ project_name }} Runner -->
+<nlog xmlns="http://www.nlog-project.org/schemas/NLog.xsd"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      autoReload="true"
+      throwExceptions="false">
+
+  <targets>
+    <!-- 控制台输出 -->
+    <target name="console" xsi:type="ColoredConsole"
+            layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=ToString}" />
+
+    <!-- 文件日志（按日期滚动） -->
+    <target name="file" xsi:type="File"
+            fileName="${currentdir}/logs/{{ project_name }}-${shortdate}.log"
+            layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=ToString}"
+            maxArchiveFiles="30"
+            archiveEvery="Day" />
+
+    <!-- 错误日志（单独文件） -->
+    <target name="errorfile" xsi:type="File"
+            fileName="${currentdir}/logs/{{ project_name }}-error-${shortdate}.log"
+            layout="${longdate}|${level:uppercase=true}|${logger}|${message} ${exception:format=ToString}"
+            maxArchiveFiles="90"
+            archiveEvery="Day" />
+  </targets>
+
+  <rules>
+    <logger name="*" minlevel="Info" writeTo="console" />
+    <logger name="*" minlevel="Info" writeTo="file" />
+    <logger name="*" minlevel="Error" writeTo="errorfile" />
+  </rules>
+</nlog>

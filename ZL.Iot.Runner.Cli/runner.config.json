@@ -1,0 +1,108 @@
+{
+  "runner": {
+    "name": "MyDeviceCollector",
+    "logLevel": "Information",
+    "dataStorage": {
+      "type": "Sqlite",
+      "connectionString": "Data Source=./data/iot_runner.db"
+    }
+  },
+  "devices": [
+    {
+      "code": "plc_line1_op10",
+      "protocol": "SiemensS7",
+      "ip": "127.0.0.1",
+      "port": 102,
+      "rack": 0,
+      "slot": 1,
+      "connectTimeout": 5000,
+      "readInterval": 200,
+      "tags": [
+        {
+          "id": "Heartbeat",
+          "description": "PLC 心跳信号",
+          "address": "DB1000.DBX0.0",
+          "dataType": "bool",
+          "length": 1,
+          "enable": true,
+          "tagType": "HB",
+          "scanRate": 500
+        },
+        {
+          "id": "TrayInPlace",
+          "description": "托盘在位信号",
+          "address": "DB1000.DBX0.2",
+          "dataType": "bool",
+          "length": 1,
+          "enable": true,
+          "tagType": "M",
+          "scanRate": 200
+        },
+        {
+          "id": "ManualAuto",
+          "description": "手动/自动模式",
+          "address": "DB1000.DBX0.1",
+          "dataType": "bool",
+          "length": 1,
+          "enable": true,
+          "tagType": "M",
+          "scanRate": 200
+        },
+        {
+          "id": "ProductCode",
+          "description": "产品条码",
+          "address": "DB1000.DBB10",
+          "dataType": "string",
+          "length": 50,
+          "stringEncoding": "ASCII",
+          "enable": true,
+          "tagType": "",
+          "scanRate": 1000
+        },
+        {
+          "id": "Temperature",
+          "description": "温度传感器",
+          "address": "DB100.DBD0",
+          "dataType": "float",
+          "length": 1,
+          "enable": true,
+          "tagType": "D",
+          "scanRate": 1000,
+          "deadband": 0.1
+        }
+      ],
+      "executors": [
+        {
+          "bizCode": "TrayInPlaceAlert",
+          "tagId": "TrayInPlace",
+          "judgeType": "1",
+          "judgeExp": "1",
+          "exeType": "M",
+          "script": "INSERT INTO alerts (tag, value, time) VALUES ('{{TagId}}', {{Value}}, '{{Time}}')",
+          "exeOrder": 1,
+          "enable": true
+        },
+        {
+          "bizCode": "OverTemperatureAlert",
+          "tagId": "Temperature",
+          "judgeType": "4",
+          "judgeExp": "100",
+          "exeType": "M",
+          "script": "INSERT INTO temperature_alerts (value, time) VALUES ({{Value}}, '{{Time}}')",
+          "exeOrder": 2,
+          "enable": true
+        },
+        {
+          "bizCode": "ProductCodeLog",
+          "tagId": "ProductCode",
+          "judgeType": "3",
+          "judgeExp": "",
+          "exeType": "M",
+          "script": "INSERT INTO product_log (code, time) VALUES ('{{Value}}', '{{Time}}')",
+          "exeOrder": 3,
+          "enable": true
+        }
+      ]
+    }
+  ]
+}

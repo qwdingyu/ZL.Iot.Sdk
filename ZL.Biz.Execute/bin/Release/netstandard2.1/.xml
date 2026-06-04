@@ -1,0 +1,381 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ZL.Biz.Execute</name>
+    </assembly>
+    <members>
+        <member name="T:ZL.Biz.Execute.Actions.ITypedActionExecutor">
+            <summary>
+            强类型动作执行器接口
+            <para>P2: 新功能优先使用强类型动作，而非动态 SQL</para>
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.ActionExecutionContext">
+            <summary>
+            动作执行上下文
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.TypedActionResult">
+            <summary>
+            动作执行结果
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.InsertRowActionExecutor">
+            <summary>
+            插入行动作执行器
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.UpdateRowActionExecutor">
+            <summary>
+            更新行动作执行器
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.WriteTagActionExecutor">
+            <summary>
+            写标签动作执行器
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Actions.TypedActionRegistry">
+            <summary>
+            强类型动作执行器注册中心
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.BizCfgExecutor">
+            <summary>
+            通用业务配置执行器实现 (Industrial Grade)
+            深度集成 IBizStorageProvider 实现数据库无关性
+            增加脚本预热 (Pre-compilation) 能力以提升执行响应速度
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Biz.BizCfgExecutor.PreheatInternalAsync(System.String,System.Collections.Generic.List{ZL.Dao.IotDevice.iot_exe})">
+            <summary>
+            内部预热逻辑：触发 ScriptEngine 和 RuleEngine 的编译缓存
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.MirrorSyncService">
+            <summary>
+            高可靠性配置镜像同步服务实现
+            针对工业生产环境加固：
+            1. 支持 GZip 压缩荷载，应对大规模配置同步
+            2. 增强型 Schema 全量探测与自愈
+            3. 与 BizCfgExecutor 缓存联动，确保热更新实时生效
+            4. 严格表名安全校验
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.RulesEngineAdapter">
+            <summary>
+            自定义规则引擎适配器 (Edge compatible)
+            <para>P4: 优先使用 ConditionTreeEvaluator 进行安全求值</para>
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Biz.RulesEngineAdapter.TryParseSimpleExpression(System.String)">
+            <summary>
+            P4: 尝试将简单表达式解析为 ConditionTree
+            支持格式: "FieldName Operator Value" 例如 "Temperature > 100"
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.ScribanScriptEngine">
+            <summary>
+            Scriban 脚本引擎适配器 (Edge compatible)
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.SqliteBizStorageProvider">
+            <summary>
+            SQLite 存储提供者实现（边缘侧专用）
+            深度优化：支持与云端 SqlSugarBizStorageProvider 对等的数据映射逻辑
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Biz.SqliteExecutor">
+            <summary>
+            加固版 SQLite 数据库执行器
+            针对工业环境优化：解决事务死锁、WAL 并发模式、存储寿命保护 (Vacuum)
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Conditions.ConditionTree">
+             <summary>
+             条件树模型（受限 DSL）
+             <para>替代自由表达式，提供安全、可验证的条件判断能力</para>
+             </summary>
+             <remarks>
+             P2 阶段实现：
+             - 规则表达式从自由输入改成受限 DSL 或标准 JSON 条件树
+             - 支持安全的条件判断，防止代码注入风险
+             - 可序列化为 JSON 存储
+            
+             设计原则：
+             - 只支持预定义的操作符
+             - 只支持简单的比较和逻辑运算
+             - 不支持任意代码执行
+             </remarks>
+        </member>
+        <member name="P:ZL.Biz.Execute.Conditions.ConditionTree.Type">
+            <summary>
+            条件类型
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.Conditions.ConditionTree.Left">
+            <summary>
+            左操作数（字段名或值）
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.Conditions.ConditionTree.Operator">
+            <summary>
+            操作符
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.Conditions.ConditionTree.Right">
+            <summary>
+            右操作数（值或字段名）
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.Conditions.ConditionTree.Children">
+            <summary>
+            子条件列表（用于 And/Or 逻辑组合）
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Conditions.ConditionTree.Compare(System.String,ZL.Biz.Execute.Conditions.ConditionOperator,System.Object)">
+            <summary>
+            创建比较条件
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Conditions.ConditionTree.And(ZL.Biz.Execute.Conditions.ConditionTree[])">
+            <summary>
+            创建 AND 组合条件
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Conditions.ConditionTree.Or(ZL.Biz.Execute.Conditions.ConditionTree[])">
+            <summary>
+            创建 OR 组合条件
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Conditions.ConditionTree.Not(ZL.Biz.Execute.Conditions.ConditionTree)">
+            <summary>
+            创建 NOT 条件
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Conditions.ConditionType">
+            <summary>
+            条件类型枚举
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionType.Comparison">
+            <summary>
+            比较条件（字段与值比较）
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionType.And">
+            <summary>
+            逻辑 AND（所有子条件都为真）
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionType.Or">
+            <summary>
+            逻辑 OR（任一子条件为真）
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionType.Not">
+            <summary>
+            逻辑 NOT（子条件取反）
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Conditions.ConditionOperator">
+            <summary>
+            条件操作符枚举（受限集合）
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.Equals">
+            <summary>等于 (=)</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.NotEquals">
+            <summary>不等于 (!=)</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.GreaterThan">
+            <summary>大于 (>)</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.GreaterThanOrEqual">
+            <summary>大于等于 (>=)</summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "F:ZL.Biz.Execute.Conditions.ConditionOperator.LessThan" -->
+        <!-- Badly formed XML comment ignored for member "F:ZL.Biz.Execute.Conditions.ConditionOperator.LessThanOrEqual" -->
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.Contains">
+            <summary>包含（字符串）</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.StartsWith">
+            <summary>开头是（字符串）</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.EndsWith">
+            <summary>结尾是（字符串）</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.IsNull">
+            <summary>为空</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.IsNotNull">
+            <summary>不为空</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.In">
+            <summary>在集合中</summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Conditions.ConditionOperator.Between">
+            <summary>在范围内</summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Conditions.ConditionTreeEvaluator">
+            <summary>
+            条件树求值器（安全实现）
+            <para>替代 DataTable.Compute 的不安全表达式计算</para>
+            </summary>
+            <remarks>
+            P2 阶段实现：
+            - 提供安全的条件判断，防止代码注入风险
+            - 只支持预定义的操作符和类型安全的比较
+            - 支持条件树的递归求值
+            </remarks>
+        </member>
+        <member name="M:ZL.Biz.Execute.Conditions.ConditionTreeEvaluator.Evaluate(ZL.Biz.Execute.Conditions.ConditionTree,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            求值条件树
+            </summary>
+            <param name="condition">条件树</param>
+            <param name="facts">事实数据字典</param>
+            <returns>条件是否满足</returns>
+        </member>
+        <member name="F:ZL.Biz.Execute.BizSupportDto.ExeTypeSupport">
+            <summary>
+            exe模式可支持的类型
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.BulkInfo">
+            <summary>
+            批量插入辅助类
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.BulkInfo.Split">
+            <summary>
+            是否为分区表插入模式
+            由于sqlsugar .net freamwork 版本不支持 分区表，所以暂时没有使用
+            </summary>
+        </member>
+        <member name="P:ZL.Biz.Execute.BulkInfo.SelectDicList">
+            <summary>
+            批量执行时的原始数据字典列表
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Sql.SqlExecutionMode">
+            <summary>
+            SQL 执行模式
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Sql.SqlExecutionMode.Safe">
+            <summary>
+            安全模式（默认）- 仅允许参数化查询
+            </summary>
+        </member>
+        <member name="F:ZL.Biz.Execute.Sql.SqlExecutionMode.Compatibility">
+            <summary>
+            兼容模式 - 允许动态 SQL（需要显式启用）
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Sql.SqlBuildOptions">
+            <summary>
+            SQL 构建选项
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Sql.SqlBuildResult">
+            <summary>
+            SQL 构建结果
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.Sql.SafeSqlBuilder">
+            <summary>
+            安全 SQL 构建器 - P2.2 实现
+            默认使用参数化查询，动态 SQL 作为兼容模式
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.IsValidIdentifier(System.String)">
+            <summary>
+            验证标识符是否合法（字母、数字、下划线，以字母或下划线开头）
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.BuildSelect(System.String,System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.Dictionary{System.String,System.Object},System.String,System.Boolean)">
+            <summary>
+            构建 SELECT 查询（安全参数化）
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.BuildInsert(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            构建 INSERT 语句
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.BuildUpdate(System.String,System.Collections.Generic.Dictionary{System.String,System.Object},System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            构建 UPDATE 语句
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.BuildDelete(System.String,System.Collections.Generic.Dictionary{System.String,System.Object})">
+            <summary>
+            构建 DELETE 语句
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.Sql.SafeSqlBuilder.BuildRaw(System.String)">
+            <summary>
+            兼容模式：执行原始 SQL（仅当 ExecutionMode = Compatibility 时允许）
+            </summary>
+        </member>
+        <member name="T:ZL.Biz.Execute.SqlSecurityHelper">
+            <summary>
+            SQL 安全辅助类
+            用于防止 SQL 注入攻击
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.ContainsDangerousSql(System.String)">
+            <summary>
+            检查字符串是否包含危险 SQL 关键字
+            </summary>
+            <param name="input">输入字符串</param>
+            <returns>是否安全</returns>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.GetDangerousKeywords(System.String)">
+            <summary>
+            获取危险关键字列表（用于日志）
+            </summary>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.EscapeSqlString(System.String)">
+            <summary>
+            转义单引号（用于 SQL 字符串）
+            </summary>
+            <param name="input">输入字符串</param>
+            <returns>转义后的字符串</returns>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.EscapeLikeString(System.String)">
+            <summary>
+            转义 LIKE 语句的特殊字符
+            </summary>
+            <param name="input">输入字符串</param>
+            <returns>转义后的字符串</returns>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.RemoveSqlComments(System.String)">
+            <summary>
+            移除 SQL 注释
+            </summary>
+            <param name="input">输入字符串</param>
+            <returns>移除注释后的字符串</returns>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.IsExpressionSafe(System.String,System.Collections.Generic.HashSet{System.String})">
+            <summary>
+            验证表达式是否安全（用于 DataTable.Compute）
+            </summary>
+            <param name="expression">表达式字符串</param>
+            <param name="allowedFunctions">允许的函数列表</param>
+            <returns>是否安全</returns>
+        </member>
+        <member name="M:ZL.Biz.Execute.SqlSecurityHelper.ValidateAndEscape(System.String,System.String,System.Boolean)">
+            <summary>
+            验证并转义参数值
+            </summary>
+            <param name="paramName">参数名</param>
+            <param name="paramValue">参数值</param>
+            <param name="isNumeric">是否应为数字</param>
+            <returns>安全处理后的值</returns>
+            <exception cref="T:System.ArgumentException">当参数包含危险内容时抛出</exception>
+        </member>
+    </members>
+</doc>

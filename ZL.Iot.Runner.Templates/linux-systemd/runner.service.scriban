@@ -1,0 +1,32 @@
+[Unit]
+Description={{ project_name }} IoT Runner Service
+After=network.target
+
+[Service]
+Type=simple
+User=runner
+Group=runner
+WorkingDirectory=/opt/{{ project_name }}
+ExecStart=/opt/{{ project_name }}/{{ project_name }}
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ project_name }}
+
+# 环境变量
+Environment=HEALTH_CHECK_PORT=5000
+Environment=DOTNET_gcServer=1
+Environment=DOTNET_TieredCompilation=0
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/{{ project_name }}/logs
+# ProtectSystem=full 允许读取 /opt 下的可执行文件和配置文件
+# ReadWritePaths 仅开放 logs 目录用于写入日志
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

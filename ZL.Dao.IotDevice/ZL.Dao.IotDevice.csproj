@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Dao.IotDevice</AssemblyName>
+        <RootNamespace>ZL.Dao.IotDevice</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <!-- 屏蔽历史 DAO 中已确认不影响运行的未使用异常变量/私有字段告警。 -->
+        <NoWarn>$(NoWarn);CS0168;CS0169;0168;0169</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+    </ItemGroup>
+
+</Project>

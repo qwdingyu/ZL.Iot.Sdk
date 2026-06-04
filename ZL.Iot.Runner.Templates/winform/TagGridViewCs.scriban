@@ -1,0 +1,110 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Windows.Forms;
+using ZL.Iot.Runner.Runtime;
+
+namespace {{ namespace }};
+
+/// <summary>
+/// 标签实时数据表格：显示所有设备的状态信息
+/// </summary>
+public class TagGridView : UserControl
+{
+    private DataGridView _grid;
+    private DataTable _dataTable;
+
+    public TagGridView()
+    {
+        Dock = DockStyle.Fill;
+
+        _dataTable = new DataTable("Devices");
+        _dataTable.Columns.Add("设备", typeof(string));
+        _dataTable.Columns.Add("协议", typeof(string));
+        _dataTable.Columns.Add("IP:端口", typeof(string));
+        _dataTable.Columns.Add("标签数", typeof(int));
+        _dataTable.Columns.Add("已连接", typeof(string));
+        _dataTable.Columns.Add("采集次数", typeof(long));
+        _dataTable.Columns.Add("最后采集", typeof(string));
+
+        _grid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            DataSource = _dataTable,
+            ReadOnly = true,
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            BackgroundColor = System.Drawing.Color.White,
+            BorderStyle = BorderStyle.Fixed3D,
+            RowHeadersVisible = false
+        };
+
+        _grid.Columns["设备"].FillWeight = 20;
+        _grid.Columns["协议"].FillWeight = 15;
+        _grid.Columns["IP:端口"].FillWeight = 20;
+        _grid.Columns["标签数"].FillWeight = 10;
+        _grid.Columns["已连接"].FillWeight = 10;
+        _grid.Columns["采集次数"].FillWeight = 15;
+        _grid.Columns["最后采集"].FillWeight = 20;
+
+        _grid.CellPainting += Grid_CellPainting;
+
+        Controls.Add(_grid);
+    }
+
+    /// <summary>
+    /// 刷新数据：从 DeviceRunner.GetAllStatus() 读取最新设备状态
+    /// </summary>
+    public void RefreshData(DeviceRunner runner)
+    {
+        try
+        {
+            var statuses = runner.GetAllStatus();
+            var existingRows = _dataTable.Rows.Cast<DataRow>().ToList();
+
+            // 清除旧行
+            foreach (var row in existingRows)
+            {
+                _dataTable.Rows.Remove(row);
+            }
+
+            // 添加新数据
+            foreach (var kvp in statuses)
+            {
+                var status = kvp.Value;
+                _dataTable.Rows.Add(
+                    status.Code,
+                    status.Protocol,
+                    $"{status.Ip}:{status.Port}",
+                    status.TagCount,
+                    status.IsConnected ? "● 已连接" : "○ 未连接",
+                    status.CollectedCount,
+                    status.LastCollectTime.ToString("HH:mm:ss")
+                );
+            }
+        }
+        catch
+        {
+            // 刷新失败不抛异常，避免 UI 崩溃
+        }
+    }
+
+    private void Grid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+    {
+        if (e.ColumnIndex == _grid.Columns["已连接"].Index && e.RowIndex >= 0)
+        {
+            var text = e.Value?.ToString() ?? "";
+            var brush = text.Contains("已连接")
+                ? new SolidBrush(System.Drawing.Color.Green)
+                : new SolidBrush(System.Drawing.Color.Red);
+
+            e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+            e.Graphics.DrawString(text, e.CellStyle.Font, brush,
+                e.CellBounds.X + 2, e.CellBounds.Y + 2);
+            e.Handled = true;
+        }
+    }
+}

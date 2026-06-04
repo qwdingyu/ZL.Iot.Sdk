@@ -1,0 +1,67 @@
+#!/bin/bash
+# ============================================
+# {{ project_name }} Linux systemd 安装脚本
+# ============================================
+# 使用方法: sudo bash install.sh [/安装目录]
+# 默认安装目录: /opt/{{ project_name }}
+
+set -e
+
+INSTALL_DIR="${1:-/opt/{{ project_name }}}"
+SERVICE_NAME="{{ project_name }}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SERVICE_FILE="${SCRIPT_DIR}/{{ project_name }}.service"
+
+echo "============================================"
+echo "{{ project_name }} Linux 服务安装"
+echo "============================================"
+echo "安装目录: ${INSTALL_DIR}"
+echo ""
+
+# 检查是否以 root 运行
+if [ "$EUID" -ne 0 ]; then
+    echo "[错误] 请使用 sudo 运行此脚本"
+    exit 1
+fi
+
+# 创建运行用户
+if ! id -u runner &>/dev/null; then
+    echo "[信息] 创建运行用户 runner..."
+    useradd -r -s /bin/false -d "${INSTALL_DIR}" runner
+fi
+
+# 创建安装目录
+echo "[信息] 准备安装目录..."
+mkdir -p "${INSTALL_DIR}/logs"
+
+# 如果当前目录有可执行文件，复制到安装目录
+if [ -f "${SCRIPT_DIR}/{{ project_name }}" ]; then
+    echo "[信息] 复制应用程序文件到 ${INSTALL_DIR}..."
+    cp -f "${SCRIPT_DIR}/{{ project_name }}" "${INSTALL_DIR}/"
+    cp -f "${SCRIPT_DIR}/runner.config.json" "${INSTALL_DIR}/" 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/NLog.config" "${INSTALL_DIR}/" 2>/dev/null || true
+fi
+
+chown -R runner:runner "${INSTALL_DIR}"
+
+# 复制 systemd 单元文件
+echo "[信息] 安装 systemd 单元文件..."
+cp "${SERVICE_FILE}" /etc/systemd/system/${SERVICE_NAME}.service
+chmod 644 /etc/systemd/system/${SERVICE_NAME}.service
+
+# 重新加载 systemd
+systemctl daemon-reload
+
+# 启用并启动服务
+echo "[信息] 启用并启动服务..."
+systemctl enable ${SERVICE_NAME}.service
+systemctl start ${SERVICE_NAME}.service
+
+echo ""
+echo "[成功] {{ project_name }} 服务已安装并启动"
+echo ""
+echo "查看状态: systemctl status ${SERVICE_NAME}"
+echo "查看日志: journalctl -u ${SERVICE_NAME} -f"
+echo "停止服务: sudo systemctl stop ${SERVICE_NAME}"
+echo "卸载服务: sudo bash uninstall.sh"
+echo "健康检查: curl http://localhost:5000/health"

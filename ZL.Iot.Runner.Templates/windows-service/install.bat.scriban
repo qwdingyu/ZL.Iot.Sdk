@@ -1,0 +1,24 @@
+@echo off
+echo ============================================
+echo {{ project_name }} Windows 服务安装脚本
+echo ============================================
+echo.
+
+sc.exe create "{{ project_name }}" binPath= "%~dp0{{ project_name }}.exe" start= auto DisplayName= "{{ project_name }} IoT Runner"
+
+if %ERRORLEVEL% EQU 0 (
+    echo.
+    echo [成功] 服务 "{{ project_name }}" 已安装
+    echo.
+    echo 启动服务: sc start {{ project_name }}
+    echo 停止服务: sc stop {{ project_name }}
+    echo 卸载服务: 运行 uninstall.bat
+    echo.
+    echo 健康检查: http://localhost:5000/health
+) else (
+    echo.
+    echo [失败] 服务安装失败，请以管理员身份运行此脚本
+)
+
+echo.
+pause

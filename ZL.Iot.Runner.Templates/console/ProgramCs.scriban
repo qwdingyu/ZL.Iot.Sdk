@@ -1,0 +1,40 @@
+using ZL.Iot.Runner;
+using ZL.Iot.Runner.Configuration;
+using ZL.Iot.Runner.Runtime;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+
+namespace {{ namespace }};
+
+public static class Program
+{
+    public static int Main(string[] args)
+    {
+        var configPath = args.Length > 0 ? args[0] : "./runner.config.json";
+        var config = ConfigLoader.Load(configPath);
+
+        // 使用 NLog 作为日志提供者（生产级结构化日志）
+        var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+        var runner = new DeviceRunner(config, loggerFactory);
+
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (s, e) => { e.Cancel = true; cts.Cancel(); };
+
+        // 优雅退出：收到信号后等待当前采集周期完成
+        try
+        {
+            runner.Run(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常退出
+        }
+        finally
+        {
+            LogManager.Shutdown();
+        }
+
+        return 0;
+    }
+}

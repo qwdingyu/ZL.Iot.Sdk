@@ -1,0 +1,87 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+using ZL.Iot.Runner;
+using ZL.Iot.Runner.Configuration;
+using ZL.Iot.Runner.Runtime;
+
+namespace {{ namespace }};
+
+public static class Program
+{
+    public static void Main(string[] args)
+    {
+        var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+        var logger = loggerFactory.CreateLogger<Program>();
+
+        var builder = Host.CreateApplicationBuilder(args);
+
+        // 注册 Runner 为后台服务
+        builder.Services.AddHostedService<RunnerBackgroundService>();
+
+        // 健康检查 HTTP 端点（默认端口 5000，可通过环境变量 HEALTH_CHECK_PORT 修改）
+        var healthCheckPort = Environment.GetEnvironmentVariable("HEALTH_CHECK_PORT") ?? "5000";
+        if (int.TryParse(healthCheckPort, out var port) && port > 0)
+        {
+            builder.Services.AddHealthChecks();
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ListenAnyIP(port);
+            });
+        }
+
+        var app = builder.Build();
+        app.MapHealthChecks("/health");
+
+        logger.LogInformation("{{ project_name }} Linux 服务启动中...");
+        app.Run();
+    }
+}
+
+/// <summary>
+/// 后台服务：加载配置并运行 DeviceRunner
+/// </summary>
+public class RunnerBackgroundService : BackgroundService
+{
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly ILogger<RunnerBackgroundService> _logger;
+    private DeviceRunner? _runner;
+
+    public RunnerBackgroundService(ILoggerFactory loggerFactory, ILogger<RunnerBackgroundService> logger)
+    {
+        _loggerFactory = loggerFactory;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            // 加载配置
+            var configPath = "./runner.config.json";
+            var config = ConfigLoader.Load(configPath);
+            _runner = new DeviceRunner(config, _loggerFactory);
+
+            _logger.LogInformation("{{ project_name }} 服务已启动，设备数: {DeviceCount}",
+                config.Devices?.Count ?? 0);
+
+            // 运行采集循环（阻塞直到取消）
+            await Task.Run(() => _runner.Run(stoppingToken), stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("服务正常停止");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "服务运行异常");
+            throw;
+        }
+        finally
+        {
+            LogManager.Shutdown();
+        }
+    }
+}

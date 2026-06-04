@@ -1,0 +1,36 @@
+#!/bin/bash
+# ============================================
+# {{ project_name }} Linux systemd 卸载脚本
+# ============================================
+# 使用方法: sudo bash uninstall.sh
+
+set -e
+
+INSTALL_DIR="${1:-/opt/{{ project_name }}}"
+SERVICE_NAME="{{ project_name }}"
+
+echo "============================================"
+echo "{{ project_name }} Linux 服务卸载"
+echo "============================================"
+
+# 检查是否以 root 运行
+if [ "$EUID" -ne 0 ]; then
+    echo "[错误] 请使用 sudo 运行此脚本"
+    exit 1
+fi
+
+# 停止并禁用服务
+echo "[信息] 停止服务..."
+systemctl stop ${SERVICE_NAME}.service 2>/dev/null || true
+systemctl disable ${SERVICE_NAME}.service 2>/dev/null || true
+
+# 删除 systemd 单元文件
+echo "[信息] 删除 systemd 单元文件..."
+rm -f /etc/systemd/system/${SERVICE_NAME}.service
+systemctl daemon-reload
+
+echo ""
+echo "[成功] {{ project_name }} 服务已卸载"
+echo ""
+echo "注意: 安装目录 ${INSTALL_DIR} 未被删除"
+echo "如需删除: sudo rm -rf ${INSTALL_DIR}"

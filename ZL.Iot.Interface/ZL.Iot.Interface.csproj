@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Iot.Interface</AssemblyName>
+        <RootNamespace>ZL.Iot.Interface</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <!-- NuGet 包依赖 -->
+    <ItemGroup>
+<PackageReference Include="Newtonsoft.Json" />
+<PackageReference Include="NLog" />
+<PackageReference Include="Fleck" />
+    </ItemGroup>
+
+    <!-- 引用仓库内的 ZL.PFLite 和 ZL.Tag 项目 -->
+    <ItemGroup>
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.Tag/ZL.Tag.csproj" />
+    </ItemGroup>
+
+</Project>

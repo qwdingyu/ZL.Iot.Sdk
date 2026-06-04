@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "hg+cjiyNknw=",
+  "success": true,
+  "projectFilePath": "/Users/dingyuwang/0-X/tmom/iot-sdk/ZL.DataConvert/ZL.DataConvert.csproj",
+  "expectedPackageFiles": [
+    "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages/microsoft.build.tasks.git/8.0.0/microsoft.build.tasks.git.8.0.0.nupkg.sha512",
+    "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages/microsoft.sourcelink.common/8.0.0/microsoft.sourcelink.common.8.0.0.nupkg.sha512",
+    "/Users/dingyuwang/0-X/tmom/$(MSBuildThisFileDirectory).nuget/packages/microsoft.sourcelink.github/8.0.0/microsoft.sourcelink.github.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

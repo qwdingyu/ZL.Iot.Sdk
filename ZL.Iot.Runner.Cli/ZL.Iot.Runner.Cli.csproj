@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <AssemblyName>ZL.Iot.Runner.Cli</AssemblyName>
+        <RootNamespace>ZL.Iot.Runner.Cli</RootNamespace>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!-- 默认配置：可执行文件与依赖同目录，便于发布单文件 -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <PackageId>ZL.Iot.Runner.Cli</PackageId>
+    </PropertyGroup>
+
+    <!--
+        平台说明：
+        - Debug 本机开发不指定 RID，按当前平台编译
+        - 发布时通过 -r win-x64 / -r linux-x64 / -r osx-x64 等参数指定目标 RID
+    -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' == ''">
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- 核心类库 -->
+        <ProjectReference Include="..\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
+    </ItemGroup>
+
+</Project>

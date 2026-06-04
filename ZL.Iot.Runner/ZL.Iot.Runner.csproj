@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <AssemblyName>ZL.Iot.Runner</AssemblyName>
+        <RootNamespace>ZL.Iot.Runner</RootNamespace>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!-- 解决 CLI 引用时与 AssemblyName 同名导致的 NuGet 歧义 -->
+        <PackageId>ZL.Iot.Runner.Lib</PackageId>
+    </PropertyGroup>
+
+    <!-- 复用已有类库，不重复造轮子 -->
+    <ItemGroup>
+        <!-- 脚本引擎+规则引擎+SQL执行器（已在 ZL.Biz.Execute 中实现） -->
+        <ProjectReference Include="..\ZL.Biz.Execute\ZL.Biz.Execute.csproj" />
+        <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
+        <ProjectReference Include="..\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
+        <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
+        <ProjectReference Include="..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj" />
+        <!-- PFLite（DeviceConfig/SharedTagValueCache 等基础工具） -->
+        <ProjectReference Include="..\..\..\ZL.PlcBase\ZL.PFLite\ZL.PFLite.csproj" />
+    </ItemGroup>
+
+    <!-- LoggerFactory / AddConsole 所需包 -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    </ItemGroup>
+
+</Project>

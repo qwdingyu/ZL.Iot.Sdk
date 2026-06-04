@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Biz.Execute</AssemblyName>
+        <RootNamespace>ZL.Biz.Execute</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <NoWarn>$(NoWarn);NU1701;NU1603</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+<PackageReference Include="Newtonsoft.Json" />
+<PackageReference Include="NLog" />
+<PackageReference Include="Scriban" />
+<PackageReference Include="SqlKata" />
+<PackageReference Include="RulesEngine" />
+<PackageReference Include="Microsoft.Data.Sqlite" />
+<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+<PackageReference Include="SqlSugarCore" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.Dao.IotDevice\ZL.Dao.IotDevice.csproj" />
+        <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+        <ProjectReference Include="..\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
+        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+    </ItemGroup>
+
+</Project>

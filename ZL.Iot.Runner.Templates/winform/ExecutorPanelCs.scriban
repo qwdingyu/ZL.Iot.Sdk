@@ -1,0 +1,145 @@
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
+using ZL.Iot.Runner.Configuration;
+
+namespace {{ namespace }};
+
+/// <summary>
+/// 执行器控制面板：显示配置中的执行器列表（信息展示）
+/// </summary>
+public class ExecutorPanel : UserControl
+{
+    private FlowLayoutPanel _panel;
+
+    public ExecutorPanel()
+    {
+        Dock = DockStyle.Fill;
+        Padding = new Padding(8);
+
+        _panel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown
+        };
+
+        var headerLabel = new Label
+        {
+            Text = "执行器配置",
+            Font = new Font(Font.FontFamily, 11f, FontStyle.Bold),
+            AutoSize = true,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+
+        var container = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            LayoutStyle = TableLayoutPanelLayoutStyle.Fill
+        };
+        container.RowCount = 2;
+        container.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+        container.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        container.Controls.Add(headerLabel, 0, 0);
+        container.Controls.Add(_panel, 0, 1);
+
+        Controls.Add(container);
+    }
+
+    /// <summary>
+    /// 从 RunnerConfig 加载执行器列表（信息展示）
+    /// </summary>
+    public void LoadExecutors(RunnerConfig config)
+    {
+        _panel.Controls.Clear();
+
+        int totalCount = 0;
+        foreach (var device in config.Devices ?? new List<DeviceProfile>())
+        {
+            foreach (var exe in device.Executors ?? new List<ExecutorProfile>())
+            {
+                if (!exe.Enable) continue;
+                totalCount++;
+
+                var item = new UserControl
+                {
+                    MinimumSize = new System.Drawing.Size(280, 36),
+                    Dock = DockStyle.Top
+                };
+
+                var layout = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    ColumnCount = 3,
+                    RowCount = 1,
+                    BackColor = System.Drawing.Color.FromArgb(245, 245, 245),
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
+
+                var nameLabel = new Label
+                {
+                    Text = $"{device.Code}/{exe.BizCode}",
+                    AutoSize = true,
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(4, 4, 4, 4)
+                };
+
+                var typeLabel = new Label
+                {
+                    Text = $"触发: {exe.TagId}",
+                    AutoSize = true,
+                    Dock = DockStyle.Fill,
+                    ForeColor = System.Drawing.Color.DarkGray,
+                    Padding = new Padding(4, 4, 4, 4)
+                };
+
+                var conditionLabel = new Label
+                {
+                    Text = $"条件: {GetJudgeTypeText(exe.JudgeType)}",
+                    AutoSize = true,
+                    Dock = DockStyle.Fill,
+                    ForeColor = System.Drawing.Color.FromArgb(0, 100, 200),
+                    Padding = new Padding(4, 4, 4, 4)
+                };
+
+                layout.Controls.Add(nameLabel, 0, 0);
+                layout.Controls.Add(typeLabel, 1, 0);
+                layout.Controls.Add(conditionLabel, 2, 0);
+
+                item.Controls.Add(layout);
+                _panel.Controls.Add(item);
+            }
+        }
+
+        if (totalCount == 0)
+        {
+            var emptyLabel = new Label
+            {
+                Text = "暂无执行器配置",
+                ForeColor = System.Drawing.Color.Gray,
+                AutoSize = true
+            };
+            _panel.Controls.Add(emptyLabel);
+        }
+    }
+
+    private static string GetJudgeTypeText(string judgeType)
+    {
+        return judgeType switch
+        {
+            "0" => "任意触发",
+            "1" => "值==1",
+            "2" => "值==0",
+            "3" => "值变化",
+            "4" => "值>阈值",
+            "5" => "值<阈值",
+            "6" => "值>=阈值",
+            "7" => "值<=阈值",
+            "8" => "值!=阈值",
+            _ => $"条件:{judgeType}"
+        };
+    }
+}

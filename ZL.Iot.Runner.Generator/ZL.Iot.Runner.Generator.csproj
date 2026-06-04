@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <AssemblyName>ZL.Iot.Runner.Generator</AssemblyName>
+        <RootNamespace>ZL.Iot.Runner.Generator</RootNamespace>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <PackageId>ZL.Iot.Runner.Generator</PackageId>
+    </PropertyGroup>
+
+    <!-- 依赖 Runner 核心库（用于读取 RunnerConfig 模型） -->
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
+    </ItemGroup>
+
+    <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->
+    <ItemGroup>
+        <PackageReference Include="Scriban" />
+    </ItemGroup>
+
+    <!-- 模板项目作为 EmbeddedResource 编译进 Templates 程序集 -->
+    <ItemGroup>
+        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
+    </ItemGroup>
+
+</Project>
