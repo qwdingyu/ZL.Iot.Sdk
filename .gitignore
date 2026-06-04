@@ -1,0 +1,24 @@
+# Build artifacts
+bin/
+obj/
+*.user
+*.suo
+
+# NuGet
+packages/
+*.nupkg
+artifacts/
+obfuscated/
+
+# IDE
+.vs/
+.vscode/
+*.swp
+.DS_Store
+
+# AI tools
+__pycache__/
+*.pyc
+
+# OS
+Thumbs.db
