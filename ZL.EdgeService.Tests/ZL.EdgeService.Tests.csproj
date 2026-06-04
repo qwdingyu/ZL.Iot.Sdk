@@ -18,7 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\ZL.EdgeService\ZL.EdgeService.csproj" />
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.PlcBase/ZL.PlcBase.csproj" />
+        <PackageReference Include="ZL.PlcBase" />
         <ProjectReference Include="..\ZL.Dao.IotDevice\ZL.Dao.IotDevice.csproj" />
     </ItemGroup>
 

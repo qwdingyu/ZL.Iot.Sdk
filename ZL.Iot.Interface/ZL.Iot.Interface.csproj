@@ -20,8 +20,8 @@
 
     <!-- 引用仓库内的 ZL.PFLite 和 ZL.Tag 项目 -->
     <ItemGroup>
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.Tag/ZL.Tag.csproj" />
+        <PackageReference Include="ZL.PFLite" />
+        <PackageReference Include="ZL.Tag" />
     </ItemGroup>
 
 </Project>

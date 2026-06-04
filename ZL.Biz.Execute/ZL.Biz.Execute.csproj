@@ -29,7 +29,7 @@
         <ProjectReference Include="..\ZL.Dao.IotDevice\ZL.Dao.IotDevice.csproj" />
         <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
         <ProjectReference Include="..\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+        <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 
 </Project>

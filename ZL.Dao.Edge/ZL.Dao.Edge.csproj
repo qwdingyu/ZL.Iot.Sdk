@@ -19,7 +19,7 @@
     <ItemGroup>
         <ProjectReference Include="..\ZL.DB.Acc\ZL.DB.Acc.csproj" />
         <ProjectReference Include="..\ZL.DataConvert\ZL.DataConvert.csproj" />
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+        <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 
 </Project>

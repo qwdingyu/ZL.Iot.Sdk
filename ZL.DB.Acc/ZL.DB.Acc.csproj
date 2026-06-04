@@ -24,7 +24,7 @@
 
     <!-- 引用已迁移的 ZL.PFLite 项目 -->
     <ItemGroup>
-        <ProjectReference Include="../../../ZL.PlcBase/ZL.PFLite/ZL.PFLite.csproj" />
+        <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 
 </Project>
