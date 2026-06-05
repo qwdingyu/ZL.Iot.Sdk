@@ -6,6 +6,7 @@
 
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using ZL.Iot.Runner.Generator.Core.Models;
 
 namespace ZL.Iot.Runner.Generator.Core;
@@ -34,6 +35,7 @@ public class JobScheduler : IDisposable
     private readonly ConcurrentDictionary<string, DateTime> _userLastRequest;
     private readonly Task _workerTask;
     private readonly CancellationTokenSource _cts;
+    private readonly ILogger<JobScheduler> _logger;
     private readonly int _maxConcurrency;
     private readonly int _maxQueueLength;
     private readonly TimeSpan _jobTimeout;
@@ -63,12 +65,15 @@ public class JobScheduler : IDisposable
     /// <param name="maxQueueLength">队列最大长度，默认 50</param>
     /// <param name="jobTimeout">单任务超时，默认 120 秒</param>
     /// <param name="userRateLimitInterval">同一用户最小请求间隔，默认 10 秒</param>
+    /// <param name="logger">日志记录器（可为 null，兼容独立运行场景）</param>
     public JobScheduler(
         int maxConcurrency = 2,
         int maxQueueLength = 50,
         TimeSpan? jobTimeout = null,
-        TimeSpan? userRateLimitInterval = null)
+        TimeSpan? userRateLimitInterval = null,
+        ILogger<JobScheduler>? logger = null)
     {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _maxConcurrency = maxConcurrency;
         _maxQueueLength = maxQueueLength;
         _jobTimeout = jobTimeout ?? TimeSpan.FromSeconds(120);
@@ -85,8 +90,8 @@ public class JobScheduler : IDisposable
         _cts = new CancellationTokenSource();
         _workerTask = Task.Run(WorkerLoop);
 
-        Console.WriteLine($"[JobScheduler] 启动: 并发={maxConcurrency}, 队列={maxQueueLength}, " +
-                          $"超时={jobTimeout?.TotalSeconds ?? 120}s, 限流={userRateLimitInterval?.TotalSeconds ?? 10}s");
+        _logger.LogInformation("启动: 并发={MaxConcurrency}, 队列={MaxQueueLength}, 超时={JobTimeout}s, 限流={RateLimit}s",
+            maxConcurrency, maxQueueLength, jobTimeout?.TotalSeconds ?? 120, userRateLimitInterval?.TotalSeconds ?? 10);
     }
 
     /// <summary>
@@ -125,10 +130,26 @@ public class JobScheduler : IDisposable
         Interlocked.Increment(ref _queuedCount);
         _channel.Writer.TryWrite(job);
 
-        Console.WriteLine($"[JobScheduler] 任务入队: {job.Id} (用户={userId ?? "匿名"}, " +
-                          $"队列位置={job.QueuePosition}, 平台={request.Platform}, SKU={request.Sku})");
+        _logger.LogInformation("任务入队: {JobId} (用户={UserId}, 队列位置={QueuePosition}, 平台={Platform}, SKU={Sku})",
+            job.Id, userId ?? "匿名", job.QueuePosition, request.Platform, request.Sku);
 
         return (true, null, job);
+    }
+
+    /// <summary>
+    /// 提交生成任务（异步包装，供 ASP.NET Core 端点调用）
+    /// </summary>
+    /// <returns>任务 ID</returns>
+    /// <exception cref="InvalidOperationException">队列满或请求过于频繁时抛出</exception>
+    public async Task<Guid> EnqueueAsync(GenerateRequest request, string? userId, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var (success, error, job) = this.Enqueue(request, userId);
+        if (!success || job == null)
+            throw new InvalidOperationException(error);
+
+        return job.Id;
     }
 
     /// <summary>
@@ -142,7 +163,7 @@ public class JobScheduler : IDisposable
         if (job.Status != JobStatus.Queued && job.Status != JobStatus.Running) return false;
 
         job.SetCancelled();
-        Console.WriteLine($"[JobScheduler] 任务取消: {jobId}");
+        _logger.LogInformation("任务取消: {JobId}", jobId);
         return true;
     }
 
@@ -150,6 +171,14 @@ public class JobScheduler : IDisposable
     /// 获取任务状态
     /// </summary>
     public GenerateJob? GetJob(Guid jobId) => _store.Get(jobId);
+
+    /// <summary>
+    /// 按用户查询最近的任务列表
+    /// </summary>
+    public GenerateJob[] ListJobsByUser(string userId, int max = 20)
+    {
+        return _store.ListByUserId(userId, max);
+    }
 
     /// <summary>
     /// Worker 主循环：从 Channel 读取 → 等信号量 → 执行 → 释放
@@ -183,11 +212,11 @@ public class JobScheduler : IDisposable
 
                     Interlocked.Increment(ref _runningCount);
                     job.SetRunning();
-                    Console.WriteLine($"[JobScheduler] 开始执行: {job.Id} (并发={_runningCount}/{_maxConcurrency})");
+                    _logger.LogInformation("开始执行: {JobId} (并发={RunningCount}/{MaxConcurrency})", job.Id, _runningCount, _maxConcurrency);
 
                     await ProcessJobAsync(job);
 
-                    Console.WriteLine($"[JobScheduler] 执行完成: {job.Id} (状态={job.Status})");
+                    _logger.LogInformation("执行完成: {JobId} (状态={Status})", job.Id, job.Status);
                 }
                 finally
                 {
@@ -201,7 +230,7 @@ public class JobScheduler : IDisposable
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[JobScheduler] Worker 异常: {ex.Message}");
+                _logger.LogError(ex, "Worker 异常");
                 job.SetFailed($"系统内部错误: {ex.Message}");
             }
         }
