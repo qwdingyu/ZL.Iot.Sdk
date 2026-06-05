@@ -27,19 +27,15 @@
     <!-- ========== 输出配置 ========== -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DebugType>portable</DebugType>
-
-    <!-- ========== 默认所有项目 IsPackable=false ========== -->
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!-- 测试项目不打包 -->
-  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+  <!-- 只有测试项目和 CLI 不打包；库项目默认可打包（IsPackable 继承 true） -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests')) OR $(MSBuildProjectName.EndsWith('Cli'))">
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <!-- Cli 项目输出 Exe -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Cli'))">
-    <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 

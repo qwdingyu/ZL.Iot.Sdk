@@ -28,6 +28,11 @@
       "obfuscate": true
     },
     {
+      "name": "ZL.Scripting",
+      "csproj": "src/foundation/ZL.Scripting/ZL.Scripting.csproj",
+      "obfuscate": true
+    },
+    {
       "name": "ZL.DataConvert",
       "csproj": "src/platform/ZL.DataConvert/ZL.DataConvert.csproj",
       "obfuscate": true
