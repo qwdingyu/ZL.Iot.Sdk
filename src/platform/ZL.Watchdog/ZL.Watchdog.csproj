@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>ZL.Watchdog</AssemblyName>
+        <RootNamespace>ZL.Watchdog</RootNamespace>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Description>Generic watchdog service for monitoring and auto-restarting unhealthy components. Protocol-agnostic, reusable across any .NET project.</Description>
+        <PackageTags>watchdog;health-check;auto-restart;monitoring;iot</PackageTags>
+    </PropertyGroup>
+</Project>
