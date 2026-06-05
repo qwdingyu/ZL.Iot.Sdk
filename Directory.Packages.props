@@ -11,6 +11,8 @@
     <PackageVersion Include="ZL.Tag" Version="2.0.1" />
 
     <!-- 核心依赖 -->
+    <PackageVersion Include="System.IO.Ports" Version="8.0.0" />
+    <PackageVersion Include="DynamicExpresso.Core" Version="2.17.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
@@ -30,6 +32,13 @@
 
     <!-- 日志 -->
     <PackageVersion Include="NLog" Version="6.0.7" />
+    <PackageVersion Include="Serilog" Version="4.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="2.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Map" Version="2.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Seq" Version="8.0.0" />
 
     <!-- 数据库 -->
     <PackageVersion Include="SqlSugarCore" Version="5.1.4.146" />
@@ -55,5 +64,8 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+
+    <!-- 源码调试 -->
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
   </ItemGroup>
 </Project>

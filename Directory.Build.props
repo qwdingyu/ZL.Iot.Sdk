@@ -1,23 +1,50 @@
 <Project>
+  <!--
+    ZL.IoT SDK 全局 MSBuild 配置
+    参考 tmom/CLAUDE.md 规范（行业最佳实践）：
+    - 统一版本、作者、公司信息
+    - 统一编译选项（nullable、warnings、文档生成）
+    - 源码链接（支持调试）
+  -->
+
   <PropertyGroup>
+    <!-- ========== 项目元数据 ========== -->
+    <Company>UseThink</Company>
+    <Authors>UseThink IoT Team</Authors>
+    <Copyright>Copyright © UseThink 2024-2025</Copyright>
+    <Product>ZL IoT SDK</Product>
+    <RepositoryUrl>https://github.com/usethink/iot-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+
+    <!-- ========== 编译选项 ========== -->
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- ========== 输出配置 ========== -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DebugType>portable</DebugType>
+
+    <!-- ========== 默认所有项目 IsPackable=false ========== -->
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(IsTestProject)' != 'true'">
-    <IsPackable>true</IsPackable>
-  </PropertyGroup>
-
-  <!-- 测试项目的 IsPackable 保持 false -->
+  <!-- 测试项目不打包 -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- Cli 项目输出 Exe -->
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Cli'))">
     <IsPackable>false</IsPackable>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
+
+  <!-- ========== 源码链接（支持调试） ========== -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+  </ItemGroup>
 </Project>
