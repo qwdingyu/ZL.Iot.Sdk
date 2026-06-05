@@ -56,7 +56,7 @@
 
     <!-- 业务规则引擎 -->
     <PackageVersion Include="RulesEngine" Version="5.0.0" />
-    <PackageVersion Include="Scriban" Version="5.0.0" />
+    <PackageVersion Include="Scriban" Version="6.4.0" />
     <PackageVersion Include="SqlKata" Version="2.4.0" />
 
     <!-- 测试 -->

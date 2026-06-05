@@ -27,7 +27,7 @@ public static class Program
             });
             builder.SetMinimumLevel(LogLevel.Information);
         });
-        var logger = loggerFactory.CreateLogger<Program>();
+        var logger = loggerFactory.CreateLogger("ZL.Iot.Runner.Cli");
 
         logger.LogInformation("========================================");
         logger.LogInformation("ZL.Iot.Runner.Cli 启动（开发期演示入口）");

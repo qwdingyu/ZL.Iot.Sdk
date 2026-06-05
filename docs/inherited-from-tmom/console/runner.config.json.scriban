@@ -1,0 +1,17 @@
+{
+  "ApplicationName": "{{ AppName }}",
+  "Version": "{{ Version }}",
+  "HostType": "{{ HostType }}",
+  "RuntimeIdentifier": "{{ RuntimeIdentifier }}",
+  "GeneratedAt": "{{ Year }}-01-01T00:00:00Z",
+  "Devices": [
+    {{~ for device in Devices ~}}
+    {
+      "Name": "{{ device.Name }}",
+      "Type": "{{ device.Type }}",
+      "Ip": "{{ device.Ip }}",
+      "Port": {{ device.Port }}
+    }{{ if not loop.last }},{{~ end ~}}
+    {{~ end ~}}
+  ]
+}

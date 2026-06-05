@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>{{ AppName }}</AssemblyName>
+        <RootNamespace>{{ AppName }}</RootNamespace>
+        <Version>{{ Version }}</Version>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+
+        <!-- 发布配置 -->
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <UseAppHost>true</UseAppHost>
+        <RuntimeIdentifier>{{ RuntimeIdentifier }}</RuntimeIdentifier>
+
+        <!-- 屏蔽 NuGet 包兼容性警告 -->
+        <NoWarn>$(NoWarn);NU1701;CS0618</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- ZL.Iot Runner 运行时库（通过 NuGet 引用） -->
+        <PackageReference Include="ZL.Iot.Runner.Lib" Version="1.0.0" />
+        <PackageReference Include="ZL.PlcBase" Version="2.0.1" />
+        <PackageReference Include="ZL.PlcBase.Bridges" Version="2.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- 运行时依赖 -->
+        <PackageReference Include="HslCommunication" Version="10.6.1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+        <PackageReference Include="Serilog" Version="4.2.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+        <PackageReference Include="SqlSugarCore" Version="5.1.4.146" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11" />
+        <PackageReference Include="ncalc" Version="1.3.8" />
+    </ItemGroup>
+
+    <!-- 配置文件复制到输出目录 -->
+    <ItemGroup>
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="runner.config.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>
