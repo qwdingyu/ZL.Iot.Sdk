@@ -23,7 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ZL.Iot.Runner.Generator\ZL.Iot.Runner.Generator.csproj" />
+        <ProjectReference Include="..\..\src\application\ZL.Iot.Runner.Generator\ZL.Iot.Runner.Generator.csproj" />
     </ItemGroup>
 
 </Project>
