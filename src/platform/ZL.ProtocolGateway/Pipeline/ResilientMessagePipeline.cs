@@ -93,7 +93,7 @@ namespace ZL.ProtocolGateway
             {
                 if (_pendingMessageCount == 0 && (_messageQueue?.Reader.Count ?? 0) == 0)
                     return;
-                await Task.Delay(10);
+                await Task.Delay(50);
             }
         }
 
@@ -596,8 +596,19 @@ namespace ZL.ProtocolGateway
             BufferTrace(new MessageTraceEvent(traceId, "Enqueued", null, null, DateTimeOffset.UtcNow));
 
             // 快照集合，避免运行时修改导致 foreach 抛异常
-            var filters = _filters.ToArray();
-            var transformers = _transformers.ToArray();
+            // 0/1 个元素时避免 ToArray 分配（常见场景）
+            var filters = _filters.Count switch
+            {
+                0 => Array.Empty<Func<Message, Task<bool>>>(),
+                1 => new[] { _filters[0] },
+                _ => _filters.ToArray()
+            };
+            var transformers = _transformers.Count switch
+            {
+                0 => Array.Empty<Func<Message, Task<Message>>>(),
+                1 => new[] { _transformers[0] },
+                _ => _transformers.ToArray()
+            };
 
             // 1. 执行过滤器
             foreach (var filter in filters)
@@ -635,10 +646,9 @@ namespace ZL.ProtocolGateway
             }
 
             var sendTasks = new List<Task<GatewaySendResult>>();
-            var outputsSnapshot = _outputs.Values.ToArray();
             foreach (var outputName in matchedOutputs)
             {
-                var output = outputsSnapshot.FirstOrDefault(o => o.Name == outputName);
+                if (!_outputs.TryGetValue(outputName, out var output))
                 if (output == null)
                 {
                     results.Add(PipelineSendStrategy.CreateSkippedResult(traceId, outputName, currentMessage, "Output plugin not registered."));

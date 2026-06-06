@@ -35,7 +35,7 @@ namespace ZL.ProtocolGateway
         private readonly GatewayManagementApi _managementApi;
         private HttpListener? _listener;
         private Task? _listenTask;
-        private volatile bool _isRunning;
+        private long _isRunning; // 0 = false, 1 = true
 
         /// <summary>
         /// 监听地址，默认 http://+:5000/
@@ -45,7 +45,7 @@ namespace ZL.ProtocolGateway
         /// <summary>
         /// 服务是否正在运行。
         /// </summary>
-        public bool IsRunning => _isRunning;
+        public bool IsRunning => Interlocked.Read(ref _isRunning) == 1;
 
         public GatewayHealthCheckHttpService(GatewayManager manager, string? listenUrl = null)
         {
@@ -61,16 +61,16 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public async Task StartAsync()
         {
-            if (_isRunning) return;
+            if (Interlocked.Read(ref _isRunning) == 1) return;
 
             _listener = new HttpListener();
             _listener.Prefixes.Add(ListenUrl);
             _listener.Start();
-            _isRunning = true;
+            Interlocked.Exchange(ref _isRunning, 1);
 
             _listenTask = Task.Run(async () =>
             {
-                while (_isRunning && _listener.IsListening)
+                while (Interlocked.Read(ref _isRunning) == 1 && _listener.IsListening)
                 {
                     try
                     {
@@ -99,7 +99,7 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public async Task StopAsync()
         {
-            _isRunning = false;
+            _isRunning = 0;
             _listener?.Stop();
             _listener?.Close();
 
@@ -276,7 +276,7 @@ namespace ZL.ProtocolGateway
         {
             // P1 修复：避免 StopAsync().Wait() 同步死锁。
             // 同步 Dispose 仅停止监听器，不等待后台任务完成。
-            _isRunning = false;
+            _isRunning = 0;
             _listener?.Stop();
             _listener?.Close();
             _listener = null;

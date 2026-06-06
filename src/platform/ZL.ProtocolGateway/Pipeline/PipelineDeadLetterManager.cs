@@ -275,7 +275,7 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public void StartAutoRetry()
         {
-            if (_retryLoopTask != null) return;
+            if (Interlocked.CompareExchange(ref _retryLoopTask, Task.CompletedTask, null) != null) return;
 
             _retryCts = new CancellationTokenSource();
             _retryLoopTask = Task.Run(() => AutoRetryLoop(_retryCts.Token));
@@ -371,20 +371,15 @@ namespace ZL.ProtocolGateway
         /// </summary>
         private void RemoveFromQueue(DeadLetterMessage entry)
         {
-            lock (_queueLock)
+            var temp = new List<DeadLetterMessage>();
+            while (_queue.TryDequeue(out var item))
             {
-                var temp = new ConcurrentQueue<DeadLetterMessage>();
-                while (_queue.TryDequeue(out var item))
-                {
-                    if (item != entry)
-                    {
-                        temp.Enqueue(item);
-                    }
-                }
-                foreach (var item in temp)
-                {
-                    _queue.Enqueue(item);
-                }
+                if (item != entry)
+                    temp.Add(item);
+            }
+            foreach (var item in temp)
+            {
+                _queue.Enqueue(item);
             }
         }
 
