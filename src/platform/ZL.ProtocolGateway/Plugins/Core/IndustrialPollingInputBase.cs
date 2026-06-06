@@ -115,22 +115,27 @@ public abstract class IndustrialPollingInputBase : InputPluginBase
 
     /// <summary>
     /// 检查值是否发生变化。返回 true 表示值已变化（应转发）。
+    /// 使用 AddOrUpdate 将 compare-and-swap 合为一次原子操作，消除 TOCTOU。
     /// </summary>
     protected bool HasValueChanged(string address, object value)
     {
-        if (_lastValues.TryGetValue(address, out var last))
-        {
-            if (Equals(last.Value, value))
-                return false;
+        var now = DateTime.UtcNow;
+        bool changed = true;
+        var newValue = new PollValueEntry { Value = value, Timestamp = now };
 
-            // 值变化了，更新缓存
-            _lastValues[address] = new PollValueEntry { Value = value, Timestamp = DateTime.UtcNow };
-            return true;
-        }
+        _lastValues.AddOrUpdate(address,
+            _ => newValue,  // add: 首次看到，总是转发
+            (_, oldEntry) =>
+            {
+                if (Equals(oldEntry.Value, value))
+                {
+                    changed = false;
+                    return oldEntry;  // 值未变，保留旧条目
+                }
+                return newValue;      // 值变了，写入新条目
+            });
 
-        // 首次看到该地址，记录并转发
-        _lastValues.TryAdd(address, new PollValueEntry { Value = value, Timestamp = DateTime.UtcNow });
-        return true;
+        return changed;
     }
 
     /// <summary>
