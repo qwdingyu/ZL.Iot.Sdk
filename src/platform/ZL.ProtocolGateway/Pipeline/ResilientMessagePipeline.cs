@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using ZL.Collections.Collections;
 
 namespace ZL.ProtocolGateway
 {
@@ -81,13 +82,16 @@ namespace ZL.ProtocolGateway
         /// <summary>正在处理中的消息数（Interlocked 访问）</summary>
         private int _inFlightCount;
 
+        /// <summary>已从队列取出但尚未处理完成的消息数（等待 SemaphoreSlim 或正在处理）</summary>
+        private int _pendingMessageCount;
+
         /// <summary>等待所有消息处理完成（测试用）</summary>
         public async Task WaitForIdleAsync(int timeoutMs = 5000)
         {
             var deadline = DateTimeOffset.UtcNow.AddMilliseconds(timeoutMs);
             while (DateTimeOffset.UtcNow < deadline)
             {
-                if (_inFlightCount == 0 && (_messageQueue?.Reader.Count ?? 0) == 0)
+                if (_pendingMessageCount == 0 && (_messageQueue?.Reader.Count ?? 0) == 0)
                     return;
                 await Task.Delay(10);
             }
@@ -368,10 +372,16 @@ namespace ZL.ProtocolGateway
             try
             {
                 drainCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                while (_messageQueue.Reader.Count > 0 && !drainCts.Token.IsCancellationRequested)
+                // Wait for the loop to finish processing in-flight messages
+                while (_pendingMessageCount > 0 && !drainCts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(50, drainCts.Token);
                 }
+
+                // Drain any remaining messages from the channel before cancelling.
+                // The processing loop may be suspended on ReadAsync and not yet
+                // have dequeued the last message, so we must consume them here.
+                while (_messageQueue.Reader.TryRead(out _)) { }
 
                 ctsToCancel = _cts;
                 _cts = null;
@@ -507,6 +517,7 @@ namespace ZL.ProtocolGateway
                         try
                         {
                             pendingMessage = await _messageQueue.Reader.ReadAsync(ct);
+                            Interlocked.Increment(ref _pendingMessageCount);
                         }
                         catch (OperationCanceledException)
                         {
@@ -558,6 +569,7 @@ namespace ZL.ProtocolGateway
                         {
                             _concurrencyLimiter.Release();
                             Interlocked.Decrement(ref _inFlightCount);
+                            Interlocked.Decrement(ref _pendingMessageCount);
                         }
                     }
                 }
@@ -567,6 +579,7 @@ namespace ZL.ProtocolGateway
                 if (pendingMessage != null)
                 {
                     AddToDeadLetterQueue(pendingMessage, new OperationCanceledException("Pipeline shutting down; message was dequeued but not processed."));
+                    Interlocked.Decrement(ref _pendingMessageCount);
                 }
             }
         }
@@ -764,67 +777,13 @@ namespace ZL.ProtocolGateway
         }
     }
 
-    /// <summary>
-    /// 固定容量环形缓冲区 — 追加零分配（满时覆盖最旧项），读取返回最近 N 条（时间正序）。
-    /// 线程安全：Append 和 GetNewest 均通过 lock 保护。
-    /// </summary>
-    internal sealed class FixedSizeRingBuffer<T>
-    {
-        private readonly T[] _buffer;
-        private readonly int _capacity;
-        private int _head; // 下一个要覆盖的位置（最旧项）
-        private int _count;
-        private readonly object _lock = new();
-
-        public FixedSizeRingBuffer(int capacity)
-        {
-            if (capacity <= 0) throw new ArgumentOutOfRangeException(nameof(capacity));
-            _capacity = capacity;
-            _buffer = new T[capacity];
-        }
-
-        /// <summary>追加一项。满时自动覆盖最旧项，无分配。</summary>
-        public void Append(T item)
-        {
-            lock (_lock)
-            {
-                int idx = (_head + _count) % _capacity;
-                _buffer[idx] = item;
-                if (_count < _capacity)
-                    _count++;
-                else
-                    _head = (_head + 1) % _capacity;
-            }
-        }
-
-        /// <summary>获取最近 count 条（按时间正序）。返回新数组，调用方拥有所有权。</summary>
-        public IReadOnlyList<T> GetNewest(int count)
-        {
-            if (count <= 0) return Array.Empty<T>();
-
-            lock (_lock)
-            {
-                int take = Math.Min(count, _count);
-                if (take == 0) return Array.Empty<T>();
-
-                var result = new T[take];
-                // 最新项在 (_head + _count - 1) % _capacity，倒序拷贝再反转
-                for (int i = 0; i < take; i++)
-                {
-                    int idx = (_head + _count - 1 - i) % _capacity;
-                    result[take - 1 - i] = _buffer[idx];
-                }
-                return result;
-            }
-        }
-    }
-
     // ---- 以下类型已移至独立文件 ----
     // DeadLetterMessage       → Pipeline/DeadLetterMessage.cs
     // CircuitBreakerState     → Pipeline/CircuitBreaker.cs
     // CircuitBreaker          → Pipeline/CircuitBreaker.cs
     // CircuitBreakerStateChangedArgs → Pipeline/CircuitBreaker.cs
     // PipelineMetricsCollector → Pipeline/PipelineMetricsCollector.cs
+    // FixedSizeRingBuffer<T>  → ZL.Collections.Collections
     // PipelineMetricsSnapshot  → Pipeline/PipelineMetricsCollector.cs
     // RouteRule               → Pipeline/MessageRouter.cs
     // MessageRouter            → Pipeline/MessageRouter.cs

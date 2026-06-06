@@ -120,11 +120,11 @@ namespace ZL.ProtocolGateway
         }
 
         /// <summary>
-        /// 返回规则快照（无锁：直接返回 volatile 数组的只读副本）。
+        /// 返回规则快照（无锁：返回 volatile 数组的防御性副本，调用方无法篡改内部状态）。
         /// </summary>
         public IReadOnlyList<RouteRule> GetRules()
         {
-            return _rulesSnapshot;
+            return (IReadOnlyList<RouteRule>)new List<RouteRule>(_rulesSnapshot);
         }
 
         /// <summary>

@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.DataProcessing", "src\fo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.Connection", "src\foundation\ZL.Connection\ZL.Connection.csproj", "{9E3CBAA5-C986-4E41-973F-B491645CD40B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.Collections", "src\foundation\ZL.Collections\ZL.Collections.csproj", "{A1F2D83E-7B94-4C5E-8D61-3E2A9F10C47B}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "platform", "platform", "{4DF80442-A1E5-CC28-AE7B-27B5F9BFE52B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.DataConvert", "src\platform\ZL.DataConvert\ZL.DataConvert.csproj", "{D8CEB803-8634-4845-84BC-37100602A4C3}"
