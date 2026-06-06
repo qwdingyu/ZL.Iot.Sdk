@@ -93,12 +93,22 @@ namespace ZL.ProtocolGateway
         private void CleanupExpired(object? state)
         {
             var cutoff = DateTime.UtcNow - _window;
+            // 先收集所有过期 key，再批量删除，避免迭代中删除导致条目被跳过
+            var expiredKeys = new string[0];
             foreach (var kv in _seenMessages)
             {
                 if (kv.Value < cutoff)
                 {
-                    _seenMessages.TryRemove(kv.Key, out _);
+                    // 扩容并追加
+                    var arr = new string[expiredKeys.Length + 1];
+                    expiredKeys.CopyTo(arr, 0);
+                    arr[expiredKeys.Length] = kv.Key;
+                    expiredKeys = arr;
                 }
+            }
+            foreach (var key in expiredKeys)
+            {
+                _seenMessages.TryRemove(key, out _);
             }
         }
 
