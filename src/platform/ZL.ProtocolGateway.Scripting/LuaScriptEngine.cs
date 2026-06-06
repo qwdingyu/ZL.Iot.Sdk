@@ -202,12 +202,9 @@ namespace ZL.ProtocolGateway.Scripting
             if (!File.Exists(scriptPath))
                 throw new FileNotFoundException($"Lua script not found: {scriptPath}", scriptPath);
 
-            lock (_lock)
-            {
-                if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
-            }
-
-            return ExecuteScript(File.ReadAllText(scriptPath), context);
+            // Read file first, then execute under lock — avoids holding lock during I/O
+            string content = File.ReadAllText(scriptPath);
+            return ExecuteScript(content, context);
         }
 
         /// <summary>
