@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>json</CoverletOutputFormat>
+    <CoverletOutput>$(MSBuildProjectDirectory)/TestResults/coverage.json</CoverletOutput>
+    <ExcludeByFile>**/Tests/**</ExcludeByFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk"  />
+    <PackageReference Include="xunit"  />
+    <PackageReference Include="xunit.runner.visualstudio" >
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" >
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NSubstitute"  />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\platform\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj" />
+    <ProjectReference Include="..\..\src\platform\ZL.ProtocolGateway.Scripting\ZL.ProtocolGateway.Scripting.csproj" />
+    <ProjectReference Include="..\..\src\app\ZL.ProtocolGateway.Cli\ZL.ProtocolGateway.Cli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="examples\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

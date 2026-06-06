@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -11,17 +10,15 @@ namespace ZL.Scripting
     /// Lua 脚本引擎 — 基于 NLua（Lua 5.1）实现。
     /// 
     /// NLua RegisterFunction 规则：
-    /// - 静态方法重载 RegisterFunction(string, MethodBase)：
-    ///   Lua 调用时第一个参数为 Lua 实例
     /// - 实例方法重载 RegisterFunction(string, object, MethodBase)：
-    ///   object 参数作为 self，Lua 调用时第一个参数为 self
+    ///   object 参数作为 self，Lua 调用时不需要传 self，直接传业务参数
     /// 
     /// 我们使用每次执行时注册实例方法的方式，避免 ThreadLocal 复杂性。
     /// 
     /// 超时中断机制：
     /// 使用 Lua Debug Hook (LuaHookMask.Count) 在每 N 条指令后回调，
-    /// 检查 CancellationToken，若已取消则抛出 OperationCanceledException。
-    /// 这比 Task.Run + cts.Cancel() 更有效，因为后者无法中断同步阻塞的 DoString。
+    /// 检查 CancellationToken，若已取消则设置取消标志。
+    /// 配合 Task.Run + Task.Wait(ct) 双层防护，确保脚本可被可靠中断。
     /// </summary>
     public class LuaScriptEngine : IDisposable
     {
@@ -52,9 +49,13 @@ namespace ZL.Scripting
         }
 
         /// <summary>
-        /// 执行 Lua 脚本。返回结果对象数组。
+        /// 执行 Lua 脚本，传入上下文对象和绑定名映射。
+        /// 返回结果对象数组。
         /// </summary>
-        public object[] ExecuteScript(string script, LuaScriptContext context)
+        /// <param name="script">Lua 脚本内容</param>
+        /// <param name="context">上下文对象，其方法将通过 RegisterFunction 暴露给 Lua</param>
+        /// <param name="bindings">绑定配置，格式: ("lua_function_name", "CSharpMethodName"), ...</param>
+        public object[] ExecuteScript(string script, object context, params (string luaName, string methodName)[] bindings)
         {
             if (script == null) throw new ArgumentNullException(nameof(script));
             if (context == null) throw new ArgumentNullException(nameof(context));
@@ -62,7 +63,7 @@ namespace ZL.Scripting
             lock (_lock)
             {
                 if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
-                RegisterBindingsForContext(context);
+                RegisterBindings(context, bindings);
                 try
                 {
                     return _lua.DoString(script);
@@ -90,7 +91,7 @@ namespace ZL.Scripting
         /// - 取消后直接抛 OperationCanceledException，不等待后台线程结束。
         ///   后台线程上的独立 Lua 状态会在 GC 时自动回收。
         /// </summary>
-        public object[] ExecuteScript(string script, LuaScriptContext context, CancellationToken ct)
+        public object[] ExecuteScript(string script, object context, CancellationToken ct, params (string luaName, string methodName)[] bindings)
         {
             if (script == null) throw new ArgumentNullException(nameof(script));
             if (context == null) throw new ArgumentNullException(nameof(context));
@@ -100,7 +101,7 @@ namespace ZL.Scripting
                 lock (_lock)
                 {
                     if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
-                    RegisterBindingsForContext(context);
+                    RegisterBindings(context, bindings);
                     try { return _lua.DoString(script); }
                     catch (Exception ex)
                     {
@@ -124,7 +125,7 @@ namespace ZL.Scripting
                 try { execLua.LoadCLRPackage(); } catch { }
                 execLua.State.Encoding = System.Text.Encoding.UTF8;
 
-                RegisterBindingsForLuaContext(execLua, context);
+                RegisterBindingsInLua(execLua, context, bindings);
 
                 execLua.SetDebugHook(KeraLua.LuaHookMask.Count, HookInstructionCount);
                 execLua.DebugHook += (s, e) =>
@@ -184,26 +185,27 @@ namespace ZL.Scripting
         }
 
         /// <summary>
-        /// 向指定的 Lua 实例注册绑定（用于独立 Lua 状态）。
+        /// 执行 Lua 脚本（无上下文绑定）。
         /// </summary>
-        private void RegisterBindingsForLuaContext(Lua lua, LuaScriptContext ctx)
+        public object[] ExecuteScript(string script)
         {
-            for (int i = 0; i < _bindingNames.Length; i++)
-            {
-                lua.RegisterFunction(_bindingNames[i], ctx, _bindingMethods[i]);
-            }
+            if (script == null) throw new ArgumentNullException(nameof(script));
 
-            lua["__topic"] = ctx.Topic;
-            lua["__timestamp"] = ctx.Timestamp;
-            lua["__json"] = ctx.JsonContent ?? "";
-            lua["__text"] = ctx.TextContent ?? "";
-            lua["__hex"] = ctx.HexContent ?? "";
+            lock (_lock)
+            {
+                if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
+                try { return _lua.DoString(script); }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Lua script execution failed: {ex.Message}", ex);
+                }
+            }
         }
 
         /// <summary>
         /// 从文件加载并执行脚本
         /// </summary>
-        public object[] ExecuteFile(string scriptPath, LuaScriptContext context)
+        public object[] ExecuteFile(string scriptPath, object context, params (string luaName, string methodName)[] bindings)
         {
             if (!File.Exists(scriptPath))
                 throw new FileNotFoundException($"Lua script not found: {scriptPath}", scriptPath);
@@ -213,7 +215,7 @@ namespace ZL.Scripting
                 if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
             }
 
-            return ExecuteScript(File.ReadAllText(scriptPath), context);
+            return ExecuteScript(File.ReadAllText(scriptPath), context, bindings);
         }
 
         /// <summary>
@@ -230,6 +232,18 @@ namespace ZL.Scripting
             }
         }
 
+        /// <summary>
+        /// 设置 Lua 全局变量
+        /// </summary>
+        public void SetGlobal(string name, object value)
+        {
+            lock (_lock)
+            {
+                if (_disposed) throw new ObjectDisposedException(nameof(LuaScriptEngine));
+                _lua[name] = value;
+            }
+        }
+
         public void Dispose()
         {
             if (Interlocked.Exchange(ref _disposedInt, 1) != 0) return;
@@ -240,59 +254,25 @@ namespace ZL.Scripting
         private int _disposedInt; // 配合 Interlocked.Exchange 实现线程安全的单次 Dispose
 
         // ═══════════════════════════════════════════════════════════════
-        // 每次执行时注册绑定 — 使用实例方法模式
-        // RegisterFunction(string, object, MethodBase) 中 object 作为 self
-        // Lua 调用时不需要传 self，直接传业务参数
-        //
-        // MethodInfo 缓存为静态字段，避免每次执行时重复反射查找。
+        // 绑定注册
         // ═══════════════════════════════════════════════════════════════
 
-        private static readonly MethodInfo[] _bindingMethods =
-        [
-            GetM(nameof(LuaScriptContext.LogInfo)),
-            GetM(nameof(LuaScriptContext.LogWarn)),
-            GetM(nameof(LuaScriptContext.LogError)),
-            GetM(nameof(LuaScriptContext.GetMetadata)),
-            GetM(nameof(LuaScriptContext.SetMetadata)),
-            GetM(nameof(LuaScriptContext.AddWrite)),
-            GetM(nameof(LuaScriptContext.GetState)),
-            GetM(nameof(LuaScriptContext.SetState)),
-            GetM(nameof(LuaScriptContext.Clamp)),
-            GetM(nameof(LuaScriptContext.IsInDeadband)),
-            GetM(nameof(LuaScriptContext.GetTopic)),
-            GetM(nameof(LuaScriptContext.GetTimestamp)),
-            GetM(nameof(LuaScriptContext.GetJson)),
-            GetM(nameof(LuaScriptContext.GetText)),
-            GetM(nameof(LuaScriptContext.GetHex)),
-        ];
-
-        private static readonly string[] _bindingNames =
-        [
-            "log_info", "log_warn", "log_error",
-            "get_metadata", "set_metadata",
-            "add_write",
-            "get_state", "set_state",
-            "clamp", "in_deadband",
-            "get_topic", "get_timestamp", "get_json", "get_text", "get_hex",
-        ];
-
-        private static MethodInfo GetM(string name) =>
-            typeof(LuaScriptContext).GetMethod(name)
-            ?? throw new InvalidOperationException($"Method {name} not found on LuaScriptContext");
-
-        private void RegisterBindingsForContext(LuaScriptContext ctx)
+        private void RegisterBindings(object ctx, (string luaName, string methodName)[] bindings)
         {
-            for (int i = 0; i < _bindingNames.Length; i++)
-            {
-                _lua.RegisterFunction(_bindingNames[i], ctx, _bindingMethods[i]);
-            }
+            RegisterBindingsInLua(_lua, ctx, bindings);
+        }
 
-            // 同时也暴露为全局变量（向后兼容）
-            _lua["__topic"] = ctx.Topic;
-            _lua["__timestamp"] = ctx.Timestamp;
-            _lua["__json"] = ctx.JsonContent ?? "";
-            _lua["__text"] = ctx.TextContent ?? "";
-            _lua["__hex"] = ctx.HexContent ?? "";
+        private static void RegisterBindingsInLua(Lua lua, object ctx, (string luaName, string methodName)[] bindings)
+        {
+            if (bindings == null || bindings.Length == 0) return;
+
+            for (int i = 0; i < bindings.Length; i++)
+            {
+                var (luaName, methodName) = bindings[i];
+                var mi = ctx.GetType().GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException($"Method {methodName} not found on {ctx.GetType().Name}");
+                lua.RegisterFunction(luaName, ctx, mi);
+            }
         }
     }
 }

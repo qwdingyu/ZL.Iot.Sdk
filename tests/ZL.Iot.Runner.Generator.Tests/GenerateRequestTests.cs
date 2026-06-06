@@ -94,7 +94,7 @@ public class GenerateRequestTests
     public void Validate_BinaryWithUnsupportedRid_Throws()
     {
         var req = CreateValidRequest();
-        req.RuntimeIdentifier = "win-x86"; // 不在 AllowedRids 中
+        req.RuntimeIdentifier = "android-x64"; // 不在 AllowedRids 中
         var ex = Assert.Throws<ArgumentException>(() => req.Validate());
         Assert.Equal(nameof(GenerateRequest.RuntimeIdentifier), ex.ParamName);
         Assert.Contains("不支持", ex.Message);
@@ -134,5 +134,66 @@ public class GenerateRequestTests
         Assert.Contains("win-x64", GenerateRequest.AllowedRids);
         Assert.Contains("linux-x64", GenerateRequest.AllowedRids);
         Assert.Contains("osx-x64", GenerateRequest.AllowedRids);
+        Assert.Contains("win-x86", GenerateRequest.AllowedRids);
+        Assert.Contains("linux-arm64", GenerateRequest.AllowedRids);
+        Assert.Contains("linux-musl-x64", GenerateRequest.AllowedRids);
+        Assert.Contains("osx-arm64", GenerateRequest.AllowedRids);
+    }
+
+    [Fact]
+    public void Validate_WinFormWithLinuxRid_Throws()
+    {
+        var req = CreateValidRequest();
+        req.Platform = TargetPlatform.WinForm;
+        req.RuntimeIdentifier = "linux-x64";
+        var ex = Assert.Throws<ArgumentException>(() => req.Validate());
+        Assert.Contains("WinForm", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WindowsServiceWithLinuxRid_Throws()
+    {
+        var req = CreateValidRequest();
+        req.Platform = TargetPlatform.WindowsService;
+        req.RuntimeIdentifier = "linux-x64";
+        var ex = Assert.Throws<ArgumentException>(() => req.Validate());
+        Assert.Contains("Windows", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_LinuxSystemdWithWinRid_Throws()
+    {
+        var req = CreateValidRequest();
+        req.Platform = TargetPlatform.LinuxSystemd;
+        req.RuntimeIdentifier = "win-x64";
+        var ex = Assert.Throws<ArgumentException>(() => req.Validate());
+        Assert.Contains("Linux", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_WinFormWithWinRid_Succeeds()
+    {
+        var req = CreateValidRequest();
+        req.Platform = TargetPlatform.WinForm;
+        req.RuntimeIdentifier = "win-x64";
+        req.Validate();
+    }
+
+    [Fact]
+    public void Validate_LinuxSystemdWithLinuxRid_Succeeds()
+    {
+        var req = CreateValidRequest();
+        req.Platform = TargetPlatform.LinuxSystemd;
+        req.RuntimeIdentifier = "linux-arm64";
+        req.Validate();
+    }
+
+    [Fact]
+    public void Validate_SourceModeSkipsPlatformRidCheck()
+    {
+        var req = CreateValidRequest(sku: SkuMode.Source, rid: null);
+        req.Platform = TargetPlatform.WinForm;
+        // Source 模式不校验 Platform/RID 兼容性
+        req.Validate();
     }
 }

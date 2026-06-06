@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ProtocolGateway.Plugins;
+using ZL.ProtocolGateway.Plugins;
 
-namespace ZL.Scripting
+namespace ZL.ProtocolGateway.Scripting
 {
     /// <summary>
     /// Lua 脚本输出插件配置

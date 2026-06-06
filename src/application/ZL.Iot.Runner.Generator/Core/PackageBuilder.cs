@@ -154,26 +154,13 @@ public static class PackageBuilder
 
         try
         {
-            // 3. 打包目录（manifest.json 会被自动包含）
+            // 3. 打包目录（manifest.json 不含 Sha256，避免"九头蛇问题"）
             var zipBytes = PackDirectory(sourceDir, $"{applicationName}-{runtimeIdentifier}.zip");
 
-            // 4. 计算整个 zip 包的 SHA256
+            // 4. 计算最终 zip 包的 SHA256（此值不在 manifest.json 内，由调用方独立验证）
             var sha256 = SHA256.HashData(zipBytes);
             var sha256Hex = Convert.ToHexString(sha256).ToLowerInvariant();
             manifest.Sha256 = sha256Hex;
-
-            // 5. 用更新后的 Sha256 重新写入 manifest.json
-            // 注意：这是经典的"九头蛇问题"（hydra problem）— manifest 中的 sha256 是第一次打包的哈希，
-            // 第二次打包后实际 zip 的哈希会变化。但文件级哈希（Files 字典）不受影响，足以验证完整性。
-            manifestJson = JsonSerializer.Serialize(manifest, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
-            File.WriteAllText(manifestPath, manifestJson, Encoding.UTF8);
-
-            // 6. 重新打包（包含更新后的 manifest.json）
-            zipBytes = PackDirectory(sourceDir, $"{applicationName}-{runtimeIdentifier}.zip");
 
             return (zipBytes, manifest);
         }

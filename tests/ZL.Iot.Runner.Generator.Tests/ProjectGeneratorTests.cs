@@ -57,7 +57,7 @@ public class ProjectGeneratorTests
                             {
                                 BizCode = "E1",
                                 TagId = "T1",
-                                JudgeType = "1",
+                                JudgeType = 1,
                                 JudgeExp = "1",
                                 ExeType = "M",
                                 Script = "SELECT 1",
@@ -213,7 +213,10 @@ public class ProjectGeneratorTests
         Assert.Contains("install.bat", readme);
         Assert.Contains("sc start TestRunner", readme);
         Assert.Contains("sc stop TestRunner", readme);
-        Assert.Contains("健康检查", readme);
+        Assert.Contains("uninstall.bat", readme);
+        Assert.Contains("NLog", readme);
+        Assert.DoesNotContain("健康检查", readme);
+        Assert.DoesNotContain("localhost:5000", readme);
     }
 
     [Fact]
@@ -227,7 +230,9 @@ public class ProjectGeneratorTests
         Assert.Contains("sudo bash install.sh", readme);
         Assert.Contains("systemctl status TestRunner", readme);
         Assert.Contains("journalctl", readme);
-        Assert.Contains("curl http://localhost:5000/health", readme);
+        Assert.Contains("sudo bash uninstall.sh", readme);
+        Assert.DoesNotContain("curl http://localhost:5000/health", readme);
+        Assert.DoesNotContain("健康检查", readme);
     }
 
     [Fact]

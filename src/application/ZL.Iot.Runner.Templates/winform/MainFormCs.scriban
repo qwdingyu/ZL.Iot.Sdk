@@ -106,7 +106,7 @@ public partial class MainForm : Form
     {
         try
         {
-            var configPath = "./runner.config.json";
+            var configPath = "./runner.config.{{ format }}";
             var config = ConfigLoader.Load(configPath);
 
             var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));

@@ -176,6 +176,17 @@ namespace ZL.Iot.Runner.Configuration
                     throw new InvalidOperationException($"配置验证失败：第 {i + 1} 个设备的 Code 不能为空");
                 if (string.IsNullOrWhiteSpace(device.Protocol))
                     throw new InvalidOperationException($"配置验证失败：设备 [{device.Code}] 的 Protocol 不能为空");
+                // 协议白名单校验
+                var validProtocols = new[]
+                {
+                    "SiemensS7", "SiemensS7200Smart", "ModbusTcp", "MitsubishiMC",
+                    "OmronFinsTcp", "BacnetIp", "ModbusRtu", "MelsecA", "MelsecQnA",
+                    "OmronFinsSerial", "Bacnet", "KepwareOPC", "OPCUA"
+                };
+                if (!validProtocols.Contains(device.Protocol, StringComparer.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(
+                        $"配置验证失败：设备 [{device.Code}] 的 Protocol [{device.Protocol}] 不在支持的协议列表中。" +
+                        $"支持的协议: {string.Join(", ", validProtocols)}");
                 if (string.IsNullOrWhiteSpace(device.Ip))
                     throw new InvalidOperationException($"配置验证失败：设备 [{device.Code}] 的 Ip 不能为空");
 

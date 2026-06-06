@@ -11,7 +11,7 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        var configPath = args.Length > 0 ? args[0] : "./runner.config.json";
+        var configPath = args.Length > 0 ? args[0] : "./runner.config.{{ format }}";
         var config = ConfigLoader.Load(configPath);
 
         // 使用 NLog 作为日志提供者（生产级结构化日志）

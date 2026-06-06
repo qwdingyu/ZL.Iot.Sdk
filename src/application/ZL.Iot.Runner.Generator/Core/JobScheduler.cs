@@ -42,6 +42,7 @@ public class JobScheduler : IDisposable
     private readonly TimeSpan _userRateLimitInterval;
     private volatile int _runningCount;
     private volatile int _queuedCount;
+    private readonly Func<GenerateRequest, CancellationToken, Func<string, int, Task>?, Task<GenerateResult>>? _generatorFactory;
 
     /// <summary>
     /// 最大并发数
@@ -61,25 +62,43 @@ public class JobScheduler : IDisposable
     /// <summary>
     /// 创建调度器
     /// </summary>
+    /// <param name="store">共享任务存储（由 DI 注入，确保与端点层使用同一实例）</param>
     /// <param name="maxConcurrency">最大并发构建数，默认 2</param>
     /// <param name="maxQueueLength">队列最大长度，默认 50</param>
     /// <param name="jobTimeout">单任务超时，默认 120 秒</param>
-    /// <param name="userRateLimitInterval">同一用户最小请求间隔，默认 10 秒</param>
-    /// <param name="logger">日志记录器（可为 null，兼容独立运行场景）</param>
+    /// <param name="userRateLimitInterval">同一用户最小请求间隔，默认 5 秒</param>
+    /// <param name="logger">日志记录器</param>
     public JobScheduler(
+        JobStore store,
+        ILogger<JobScheduler> logger,
         int maxConcurrency = 2,
         int maxQueueLength = 50,
         TimeSpan? jobTimeout = null,
-        TimeSpan? userRateLimitInterval = null,
-        ILogger<JobScheduler>? logger = null)
+        TimeSpan? userRateLimitInterval = null)
+        : this(store, logger, maxConcurrency, maxQueueLength, jobTimeout, userRateLimitInterval, null)
     {
+    }
+
+    /// <summary>
+    /// 测试用构造函数：允许注入自定义的生成器回调
+    /// </summary>
+    internal JobScheduler(
+        JobStore store,
+        ILogger<JobScheduler> logger,
+        int maxConcurrency,
+        int maxQueueLength,
+        TimeSpan? jobTimeout,
+        TimeSpan? userRateLimitInterval,
+        Func<GenerateRequest, CancellationToken, Func<string, int, Task>?, Task<GenerateResult>>? generatorFactory)
+    {
+        _store = store ?? throw new ArgumentNullException(nameof(store));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _maxConcurrency = maxConcurrency;
         _maxQueueLength = maxQueueLength;
         _jobTimeout = jobTimeout ?? TimeSpan.FromSeconds(120);
-        _userRateLimitInterval = userRateLimitInterval ?? TimeSpan.FromSeconds(10);
+        _userRateLimitInterval = userRateLimitInterval ?? TimeSpan.FromSeconds(5);
+        _generatorFactory = generatorFactory;
 
-        _store = new JobStore();
         _semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
         _channel = Channel.CreateUnbounded<GenerateJob>(new UnboundedChannelOptions
         {
@@ -91,7 +110,7 @@ public class JobScheduler : IDisposable
         _workerTask = Task.Run(WorkerLoop);
 
         _logger.LogInformation("启动: 并发={MaxConcurrency}, 队列={MaxQueueLength}, 超时={JobTimeout}s, 限流={RateLimit}s",
-            maxConcurrency, maxQueueLength, jobTimeout?.TotalSeconds ?? 120, userRateLimitInterval?.TotalSeconds ?? 10);
+            maxConcurrency, maxQueueLength, jobTimeout?.TotalSeconds ?? 120, userRateLimitInterval?.TotalSeconds ?? 5);
     }
 
     /// <summary>
@@ -115,19 +134,19 @@ public class JobScheduler : IDisposable
             _userLastRequest[userId] = DateTime.UtcNow;
         }
 
-        // 2) 队列容量检查
-        var currentQueue = _queuedCount;
-        if (currentQueue >= _maxQueueLength)
+        // 2) 队列容量检查 — 使用 Interlocked.Increment + 超限回退，避免 TOCTOU 竞争
+        var newPosition = Interlocked.Increment(ref _queuedCount);
+        if (newPosition > _maxQueueLength)
         {
-            return (false, $"队列已满（当前 {currentQueue} 个任务等待中），请稍后重试", null);
+            Interlocked.Decrement(ref _queuedCount);
+            return (false, $"队列已满（当前 {_maxQueueLength} 个任务等待中），请稍后重试", null);
         }
 
         // 3) 创建任务并入队
         var job = GenerateJob.Create(request, userId);
-        job.QueuePosition = currentQueue + 1;
+        job.QueuePosition = newPosition;
         _store.Add(job);
 
-        Interlocked.Increment(ref _queuedCount);
         _channel.Writer.TryWrite(job);
 
         _logger.LogInformation("任务入队: {JobId} (用户={UserId}, 队列位置={QueuePosition}, 平台={Platform}, SKU={Sku})",
@@ -137,11 +156,11 @@ public class JobScheduler : IDisposable
     }
 
     /// <summary>
-    /// 提交生成任务（异步包装，供 ASP.NET Core 端点调用）
+    /// 提交生成任务（同步包装，供 ASP.NET Core 端点调用）
     /// </summary>
     /// <returns>任务 ID</returns>
     /// <exception cref="InvalidOperationException">队列满或请求过于频繁时抛出</exception>
-    public async Task<Guid> EnqueueAsync(GenerateRequest request, string? userId, CancellationToken ct = default)
+    public Task<Guid> EnqueueAsync(GenerateRequest request, string? userId, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
 
@@ -149,7 +168,7 @@ public class JobScheduler : IDisposable
         if (!success || job == null)
             throw new InvalidOperationException(error);
 
-        return job.Id;
+        return Task.FromResult(job.Id);
     }
 
     /// <summary>
@@ -160,10 +179,30 @@ public class JobScheduler : IDisposable
         var job = _store.Get(jobId);
         if (job == null) return false;
         if (!string.IsNullOrEmpty(userId) && job.UserId != userId) return false;
-        if (job.Status != JobStatus.Queued && job.Status != JobStatus.Running) return false;
 
-        job.SetCancelled();
-        _logger.LogInformation("任务取消: {JobId}", jobId);
+        // 原子状态转换：仅允许 Queued → Cancelled / Running → Cancelled
+        var expected = job.Status;
+        if (expected != JobStatus.Queued && expected != JobStatus.Running) return false;
+
+        // 立即中断运行中的 dotnet publish（如果正在执行）
+        job.CancelExecution();
+
+        // 使用 CompareExchange 避免多线程取消的竞争
+        if (Interlocked.CompareExchange(ref job._statusInt, (int)JobStatus.Cancelled, (int)expected) != (int)expected)
+            return false;
+
+        // 手动推进状态变更（不走 SetCancelled，避免重复调用 CompleteEvents）
+        job._phase = "cancelled";
+        job._completedAt = DateTime.UtcNow;
+        job._errorMessage = "用户取消";
+        job.EmitEvent(JobStatus.Cancelled, "任务已取消", phase: "cancelled");
+        job.CompleteEvents();
+
+        // 如果还在队列计数中，递减
+        if (expected == JobStatus.Queued)
+            Interlocked.Decrement(ref _queuedCount);
+
+        _logger.LogInformation("任务取消: {JobId} (原状态={PrevStatus})", jobId, expected);
         return true;
     }
 
@@ -242,12 +281,11 @@ public class JobScheduler : IDisposable
     private async Task ProcessJobAsync(GenerateJob job)
     {
         using var jobCts = new CancellationTokenSource();
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-            jobCts.Token, _cts.Token);
+
+        // 将执行 CTS 绑定到 job，使 CancelJob 可立即中断 dotnet publish
+        job.SetExecutionCts(jobCts);
 
         var timeoutTask = TimeoutAfterAsync(_jobTimeout, jobCts);
-
-        var generator = new ProjectGenerator();
 
         // 进度回调：将 ProjectGenerator 的阶段进度转发到 job 的事件 Channel
         async Task OnProgress(string phase, int percent)
@@ -255,14 +293,33 @@ public class JobScheduler : IDisposable
             job.EmitProgressEvent(phase, percent);
         }
 
-        var generateTask = generator.GenerateAsync(job.Request, jobCts.Token, OnProgress);
+        Task<GenerateResult> generateTask = _generatorFactory is not null
+            ? _generatorFactory(job.Request, jobCts.Token, OnProgress)
+            : new ProjectGenerator().GenerateAsync(job.Request, jobCts.Token, OnProgress);
 
         var completedTask = await Task.WhenAny(generateTask, timeoutTask);
 
         if (completedTask == timeoutTask)
         {
-            jobCts.Cancel();
-            job.SetTimedOut();
+            // 原子转换：仅当状态仍为 Running 时才标记超时（防止 CancelJob 已经设为 Cancelled）
+            if (Interlocked.CompareExchange(ref job._statusInt, (int)JobStatus.TimedOut, (int)JobStatus.Running) == (int)JobStatus.Running)
+            {
+                jobCts.Cancel();
+                job._phase = "timeout";
+                job._completedAt = DateTime.UtcNow;
+                job._errorMessage = $"生成超时（超过 {_jobTimeout.TotalSeconds:F0} 秒）";
+                job.EmitEvent(JobStatus.TimedOut, "生成超时", phase: "timeout");
+                job.CompleteEvents();
+            }
+            // 必须等待 generateTask 完成，确保 dotnet publish 子进程被正确清理，避免孤儿进程
+            try
+            {
+                await generateTask;
+            }
+            catch
+            {
+                // 取消/超时后 generateTask 可能抛异常，忽略
+            }
             return;
         }
 
@@ -284,8 +341,15 @@ public class JobScheduler : IDisposable
         }
         catch (OperationCanceledException)
         {
-            if (job.Status == JobStatus.TimedOut) return;
-            job.SetCancelled();
+            // 原子转换：仅当状态仍为 Running 时才标记取消（防止超时已标记）
+            if (Interlocked.CompareExchange(ref job._statusInt, (int)JobStatus.Cancelled, (int)JobStatus.Running) == (int)JobStatus.Running)
+            {
+                job._phase = "cancelled";
+                job._completedAt = DateTime.UtcNow;
+                job._errorMessage = "用户取消";
+                job.EmitEvent(JobStatus.Cancelled, "任务已取消", phase: "cancelled");
+                job.CompleteEvents();
+            }
         }
         catch (Exception ex)
         {
@@ -302,10 +366,14 @@ public class JobScheduler : IDisposable
 
     public void Dispose()
     {
-        _cts.Cancel();
-        _workerTask.Wait(TimeSpan.FromSeconds(10));
+        try { _cts.Cancel(); }
+        catch (ObjectDisposedException) { /* idempotent */ }
+        try { _workerTask.Wait(TimeSpan.FromSeconds(10)); }
+        catch (AggregateException) { }
+        catch (TaskCanceledException) { }
         _semaphore.Dispose();
-        _cts.Dispose();
-        _store.Dispose();
+        try { _cts.Dispose(); }
+        catch (ObjectDisposedException) { /* idempotent */ }
+        // 注意：_store 由 DI 容器管理生命周期，此处不 Dispose
     }
 }

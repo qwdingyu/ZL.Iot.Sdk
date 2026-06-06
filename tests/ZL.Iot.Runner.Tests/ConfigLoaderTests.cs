@@ -63,7 +63,7 @@ namespace ZL.Iot.Runner.Tests
                     { "id": "Tag1", "address": "DB1.DBD0", "dataType": "float", "enable": true, "tagType": "D" }
                   ],
                   "executors": [
-                    { "bizCode": "E1", "tagId": "Tag1", "judgeType": "1", "judgeExp": "1", "exeType": "M", "script": "SELECT 1", "exeOrder": 1, "enable": true }
+                    { "bizCode": "E1", "tagId": "Tag1", "judgeType": 1, "judgeExp": "1", "exeType": "M", "script": "SELECT 1", "exeOrder": 1, "enable": true }
                   ]
                 }
               ]
@@ -319,7 +319,7 @@ namespace ZL.Iot.Runner.Tests
               "devices": [{
                 "code": "p1", "protocol": "SiemensS7", "ip": "127.0.0.1", "port": 102,
                 "tags": [{ "id": "T1", "address": "DB1.DBD0", "dataType": "float", "enable": true }],
-                "executors": [{ "bizCode": "E1", "tagId": "NonExistent", "judgeType": "1", "exeType": "M", "script": "x", "enable": true }]
+                "executors": [{ "bizCode": "E1", "tagId": "NonExistent", "judgeType": 1, "exeType": "M", "script": "x", "enable": true }]
               }]
             }
             """;
@@ -336,7 +336,7 @@ namespace ZL.Iot.Runner.Tests
               "devices": [{
                 "code": "p1", "protocol": "SiemensS7", "ip": "127.0.0.1", "port": 102,
                 "tags": [{ "id": "T1", "address": "DB1.DBD0", "dataType": "float", "enable": false }],
-                "executors": [{ "bizCode": "E1", "tagId": "T1", "judgeType": "1", "exeType": "M", "script": "x", "enable": true }]
+                "executors": [{ "bizCode": "E1", "tagId": "T1", "judgeType": 1, "exeType": "M", "script": "x", "enable": true }]
               }]
             }
             """;
@@ -502,7 +502,7 @@ namespace ZL.Iot.Runner.Tests
                             {
                                 BizCode = "E1",
                                 TagId = "T2",
-                                JudgeType = "1",
+                                JudgeType = 1,
                                 JudgeExp = "1",
                                 ExeType = "M",
                                 Script = "INSERT INTO x VALUES ('{{TagId}}', {{Value}})",

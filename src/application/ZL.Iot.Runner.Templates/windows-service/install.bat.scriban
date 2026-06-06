@@ -14,7 +14,7 @@ if %ERRORLEVEL% EQU 0 (
     echo 停止服务: sc stop {{ project_name }}
     echo 卸载服务: 运行 uninstall.bat
     echo.
-    echo 健康检查: http://localhost:5000/health
+    echo 日志目录: %~dp0logs\
 ) else (
     echo.
     echo [失败] 服务安装失败，请以管理员身份运行此脚本

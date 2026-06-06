@@ -4,6 +4,7 @@
 //  Scriban 模板渲染器：读取 EmbeddedResource 模板 → 替换占位符 → 输出文本
 // ============================================================
 
+using System.Reflection;
 using Scriban;
 using Scriban.Runtime;
 using ZL.Iot.Runner.Generator.Core.Models;
@@ -42,7 +43,7 @@ public static class TemplateRenderer
     private static System.Reflection.Assembly? _templatesAssembly;
     private static readonly object _templatesLock = new();
 
-    private static System.Reflection.Assembly LoadTemplatesAssembly()
+    public static System.Reflection.Assembly LoadTemplatesAssembly()
     {
         if (_templatesAssembly != null) return _templatesAssembly;
 
@@ -101,13 +102,14 @@ public static class TemplateRenderer
 
         // 注入全局变量
         globals.Add("project_name", request.ProjectName);
-        globals.Add("namespace", ToPascalCase(request.ProjectName));
+        globals.Add("namespace", GetNamespace(request));
         globals.Add("version", request.Version);
         globals.Add("runner_version", GetRunnerVersion());
         globals.Add("generated_at", DateTime.UtcNow.ToString("O"));
         globals.Add("platform", GetPlatformDir(request.Platform));
         globals.Add("runtime_identifier", request.RuntimeIdentifier ?? "win-x64");
         globals.Add("host_type", GetHostType(request.Platform));
+        globals.Add("format", request.ConfigFormat == ConfigFormat.Xml ? "xml" : "json");
 
         context.PushGlobal(globals);
 
@@ -115,11 +117,37 @@ public static class TemplateRenderer
     }
 
     /// <summary>
-    /// 获取 Runner 当前版本号（硬编码，CI 发布时同步更新）
+    /// 获取命名空间：优先使用独立配置的 Namespace，否则从 ProjectName 派生
+    /// </summary>
+    private static string GetNamespace(GenerateRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.Namespace))
+            return request.Namespace.Trim();
+        return ToPascalCase(request.ProjectName);
+    }
+
+    /// <summary>
+    /// 获取 Runner 当前版本号（从程序集元数据读取）
     /// </summary>
     private static string GetRunnerVersion()
     {
-        // Phase 1 固定版本。后续改为从 ZL.Iot.Runner 程序集读取或 NuGet 包版本。
+        try
+        {
+            // 优先从 ZL.Iot.Runner 程序集读取 InformationalVersion（CI 构建时注入）
+            var runnerAssembly = typeof(ZL.Iot.Runner.Configuration.RunnerConfig).Assembly;
+            var attr = runnerAssembly.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
+            if (attr?.InformationalVersion != null)
+                return attr.InformationalVersion.Split('+')[0]; // 去掉 CI 元数据后缀
+
+            // 退而求其次：读取 AssemblyVersion
+            var version = runnerAssembly.GetName().Version;
+            if (version != null)
+                return version.ToString();
+        }
+        catch
+        {
+            // 所有读取失败时返回默认值
+        }
         return "1.0.0";
     }
 

@@ -136,14 +136,14 @@ namespace ZL.Iot.Runner.Runtime
         /// </summary>
         private bool EvaluateCondition(ExecutorProfile exe, object value)
         {
-            // JudgeType 为数字字符串（0-8），使用遗留兼容判断
-            if (int.TryParse(exe.JudgeType, out var judgeType))
+            // JudgeType 0-8：使用遗留兼容判断
+            if (exe.JudgeType is >= 0 and <= 8)
             {
-                return EvaluateLegacyJudgeType(judgeType, exe.JudgeExp, value);
+                return EvaluateLegacyJudgeType(exe.JudgeType, exe.JudgeExp, value);
             }
 
-            // JudgeType 不是数字，尝试作为 ConditionTree JSON 解析
-            return EvaluateRuleEngine(exe.JudgeType, exe.JudgeExp, value);
+            // JudgeType > 8：作为 ConditionTree JSON 索引解析
+            return EvaluateRuleEngine(exe.JudgeType.ToString(), exe.JudgeExp, value);
         }
 
         /// <summary>

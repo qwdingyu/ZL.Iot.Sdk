@@ -1,0 +1,18 @@
+{
+  "scenario": "serial-to-http",
+  "source": {
+    "mode": "inline",
+    "protocol": "Serial",
+    "contentType": "text",
+    "topic": "serial/input",
+    "payload": "SN123,10.5,20.3,15.7"
+  },
+  "output": {
+    "mode": "console",
+    "name": "ConsolePreview"
+  },
+  "serialToHttp": {
+    "stationNo": "ST-01",
+    "targetUrl": "https://example.com/api/upload"
+  }
+}

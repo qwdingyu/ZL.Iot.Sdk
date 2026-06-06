@@ -65,7 +65,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "INSERT x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "INSERT x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -85,7 +85,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "1", JudgeExp = "1", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 1, JudgeExp = "1", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -99,7 +99,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "2", JudgeExp = "0", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 2, JudgeExp = "0", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -112,7 +112,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "1", JudgeExp = "1", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 1, JudgeExp = "1", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -129,7 +129,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "3", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 3, Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -147,7 +147,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "4", JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 4, JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -161,7 +161,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "5", JudgeExp = "50", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 5, JudgeExp = "50", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -174,7 +174,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "6", JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 6, JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -188,7 +188,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "7", JudgeExp = "50", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 7, JudgeExp = "50", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -202,7 +202,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "8", JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 8, JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -215,7 +215,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "4", JudgeExp = "not_a_number", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 4, JudgeExp = "not_a_number", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -228,7 +228,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "4", JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 4, JudgeExp = "100", Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -245,7 +245,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "x", ExeOrder = 1, Enable = false }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "x", ExeOrder = 1, Enable = false }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -258,7 +258,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -271,7 +271,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "x", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "x", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -289,9 +289,9 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E3", TagId = "T1", JudgeType = "0", Script = "sql3", ExeOrder = 3, Enable = true },
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "sql1", ExeOrder = 1, Enable = true },
-                new() { BizCode = "E2", TagId = "T1", JudgeType = "0", Script = "sql2", ExeOrder = 2, Enable = true }
+                new() { BizCode = "E3", TagId = "T1", JudgeType = 0, Script = "sql3", ExeOrder = 3, Enable = true },
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "sql1", ExeOrder = 1, Enable = true },
+                new() { BizCode = "E2", TagId = "T1", JudgeType = 0, Script = "sql2", ExeOrder = 2, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -302,11 +302,11 @@ namespace ZL.Iot.Runner.Tests
         [Fact]
         public void OnTagChanged_ExceptionInOneExecutor_DoesNotAffectOthers()
         {
-            // JudgeType 为非数字时，会尝试解析为 JSON，可能抛异常
+            // JudgeType > 8 时，会尝试解析为 ConditionTree JSON，可能抛异常
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "valid_sql", ExeOrder = 1, Enable = true },
-                new() { BizCode = "E2", TagId = "T1", JudgeType = "not_a_number", JudgeExp = "not_valid_json{{{", Script = "sql2", ExeOrder = 2, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "valid_sql", ExeOrder = 1, Enable = true },
+                new() { BizCode = "E2", TagId = "T1", JudgeType = 99, JudgeExp = "not_valid_json{{{", Script = "sql2", ExeOrder = 2, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -324,7 +324,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "Temperature", JudgeType = "0", Script = "INSERT INTO log (tag, val, time) VALUES ('{{TagId}}', {{Value}}, '{{Time}}')", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "Temperature", JudgeType = 0, Script = "INSERT INTO log (tag, val, time) VALUES ('{{TagId}}', {{Value}}, '{{Time}}')", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -337,7 +337,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "INSERT INTO log VALUES ('?TagId?', #Value#, '@Time@')", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "INSERT INTO log VALUES ('?TagId?', #Value#, '@Time@')", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -349,7 +349,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 
@@ -361,7 +361,7 @@ namespace ZL.Iot.Runner.Tests
         {
             var exes = new List<ExecutorProfile>
             {
-                new() { BizCode = "E1", TagId = "T1", JudgeType = "0", Script = "SELECT 1", ExeOrder = 1, Enable = true }
+                new() { BizCode = "E1", TagId = "T1", JudgeType = 0, Script = "SELECT 1", ExeOrder = 1, Enable = true }
             };
             var executor = new TriggerExecutor(exes, _logger);
 

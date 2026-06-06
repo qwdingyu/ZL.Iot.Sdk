@@ -14,6 +14,8 @@ namespace ZL.Iot.Runner.GeneratorCli;
 
 public static class Program
 {
+    private const string ApiKeyHeader = "X-API-Key";
+    private static readonly string RequiredApiKey = GetApiKey();
     public static async Task<int> Main(string[] args)
     {
         if (args.Length > 0 && args[0].Equals("generate", StringComparison.OrdinalIgnoreCase))
@@ -71,6 +73,7 @@ public static class Program
         // POST /api/generator/generate — 提交生成任务（异步，立即返回 jobId）
         app.MapPost("/api/generator/generate", async Task<IResult> (HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             try
             {
                 using var jsonDoc = await JsonDocument.ParseAsync(httpRequest.Body);
@@ -121,8 +124,9 @@ public static class Program
         });
 
         // GET /api/generator/job/{jobId} — 查询任务状态
-        app.MapGet("/api/generator/job/{jobId:guid}", (Guid jobId, JobScheduler scheduler) =>
+        app.MapGet("/api/generator/job/{jobId:guid}", (Guid jobId, HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             var job = scheduler.GetJob(jobId);
             if (job == null)
                 return Results.NotFound(new { error = $"任务 {jobId} 不存在或已过期" });
@@ -144,8 +148,9 @@ public static class Program
         });
 
         // GET /api/generator/job/{jobId}/download — 下载生成结果
-        app.MapGet("/api/generator/job/{jobId:guid}/download", (Guid jobId, JobScheduler scheduler) =>
+        app.MapGet("/api/generator/job/{jobId:guid}/download", (Guid jobId, HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             var job = scheduler.GetJob(jobId);
             if (job == null)
                 return Results.NotFound(new { error = $"任务 {jobId} 不存在或已过期" });
@@ -165,6 +170,7 @@ public static class Program
         // POST /api/generator/job/{jobId}/cancel — 取消任务
         app.MapPost("/api/generator/job/{jobId:guid}/cancel", (Guid jobId, HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             var userId = httpRequest.Headers["X-User-Id"].ToString();
             var cancelled = scheduler.CancelJob(jobId, userId);
 
@@ -177,6 +183,7 @@ public static class Program
         // GET /api/generator/job/{jobId}/stream — SSE 实时状态推送
         app.MapGet("/api/generator/job/{jobId:guid}/stream", async Task<IResult> (Guid jobId, HttpContext httpContext, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpContext.Request) is { } unauthorized) return unauthorized;
             var response = httpContext.Response;
             var job = scheduler.GetJob(jobId);
             if (job == null)
@@ -260,12 +267,11 @@ public static class Program
         // GET /api/generator/jobs — 查询当前用户最近的任务列表
         app.MapGet("/api/generator/jobs", (HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             var userId = httpRequest.Headers["X-User-Id"].ToString();
             if (string.IsNullOrEmpty(userId))
                 return Results.BadRequest(new { error = "需要用户标识（X-User-Id header）" });
 
-            // 通过反射访问 JobStore（或通过 scheduler 暴露方法）
-            // 简化方案：直接在 scheduler 上暴露
             var jobs = GetJobsByUser(scheduler, userId);
 
             return Results.Ok(new
@@ -287,8 +293,9 @@ public static class Program
         });
 
         // GET /api/generator/stats — 调度器统计信息
-        app.MapGet("/api/generator/stats", (JobScheduler scheduler) =>
+        app.MapGet("/api/generator/stats", (HttpRequest httpRequest, JobScheduler scheduler) =>
         {
+            if (ValidateApiKey(httpRequest) is { } unauthorized) return unauthorized;
             return Results.Ok(new
             {
                 maxConcurrency = scheduler.MaxConcurrency,
@@ -316,16 +323,9 @@ public static class Program
         return 0;
     }
 
-    /// <summary>
-    /// 通过 JobScheduler 内部 JobStore 获取用户任务列表
-    /// 使用反射访问私有字段（避免公开内部实现细节）
-    /// </summary>
     private static GenerateJob[] GetJobsByUser(JobScheduler scheduler, string userId)
     {
-        var storeField = typeof(JobScheduler).GetField("_store",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var store = storeField?.GetValue(scheduler) as JobStore;
-        return store?.ListByUserId(userId) ?? Array.Empty<GenerateJob>();
+        return scheduler.ListJobsByUser(userId);
     }
 
     /// <summary>
@@ -413,5 +413,22 @@ public static class Program
             "source" => SkuMode.Source,
             _ => throw new ArgumentException($"不支持的 SKU 模式: {value}")
         };
+    }
+
+    private static string GetApiKey()
+    {
+        // 生产环境必须设置 ZL_GENERATOR_API_KEY 环境变量
+        return Environment.GetEnvironmentVariable("ZL_GENERATOR_API_KEY")
+            ?? "change-me-in-production";
+    }
+
+    private static IResult? ValidateApiKey(HttpRequest request)
+    {
+        var apiKey = request.Headers[ApiKeyHeader].ToString();
+        if (string.IsNullOrEmpty(apiKey) || apiKey != RequiredApiKey)
+        {
+            return Results.Json(new { error = "缺少或无效的 API Key，请通过 X-API-Key Header 提供" }, statusCode: 401);
+        }
+        return null;
     }
 }

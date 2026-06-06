@@ -74,18 +74,6 @@ namespace ZL.Iot.Runner.Runtime
         /// 创建多设备协调运行器
         /// </summary>
         /// <param name="config">Runner 配置（从配置文件加载）</param>
-        /// <param name="logger">日志记录器（从 DI 容器获取）</param>
-        public DeviceRunner(RunnerConfig config, ILogger<DeviceRunner> logger)
-        {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _logger = logger ?? LoggerFactory.Create(b => b.AddConsole()).CreateLogger<DeviceRunner>();
-            _loggerFactory = LoggerFactory.Create(b => b.AddConsole());
-        }
-
-        /// <summary>
-        /// 创建多设备协调运行器
-        /// </summary>
-        /// <param name="config">Runner 配置（从配置文件加载）</param>
         /// <param name="loggerFactory">日志工厂</param>
         public DeviceRunner(RunnerConfig config, ILoggerFactory loggerFactory)
         {

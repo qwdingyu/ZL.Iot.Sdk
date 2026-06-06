@@ -20,6 +20,11 @@
         <PackageReference Include="Scriban" />
     </ItemGroup>
 
+    <!-- 允许测试项目访问 internal 成员 -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="ZL.Iot.Runner.Generator.Tests" />
+    </ItemGroup>
+
     <!-- 模板项目作为 EmbeddedResource 编译进 Templates 程序集 -->
     <ItemGroup>
         <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />

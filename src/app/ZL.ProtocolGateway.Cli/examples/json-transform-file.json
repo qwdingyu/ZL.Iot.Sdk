@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "protocol-gateway-cli/v1",
+  "scenario": "json-transform-file",
+  "source": {
+    "mode": "inline",
+    "protocol": "JSON",
+    "contentType": "json",
+    "topic": "json/input",
+    "payload": "{\"device_id\":\"LINE-01\",\"measured_value\":12.34,\"unit\":\"bar\"}"
+  },
+  "output": {
+    "mode": "file",
+    "name": "FileOutput",
+    "filePath": "./protocol-gateway-json-output.json"
+  },
+  "jsonTransform": {
+    "fieldMappings": {
+      "device_id": "deviceId",
+      "measured_value": "value",
+      "unit": "unit"
+    }
+  }
+}

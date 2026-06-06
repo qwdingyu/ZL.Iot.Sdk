@@ -38,7 +38,7 @@ mkdir -p "${INSTALL_DIR}/logs"
 if [ -f "${SCRIPT_DIR}/{{ project_name }}" ]; then
     echo "[信息] 复制应用程序文件到 ${INSTALL_DIR}..."
     cp -f "${SCRIPT_DIR}/{{ project_name }}" "${INSTALL_DIR}/"
-    cp -f "${SCRIPT_DIR}/runner.config.json" "${INSTALL_DIR}/" 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/runner.config.{{ format }}" "${INSTALL_DIR}/" 2>/dev/null || true
     cp -f "${SCRIPT_DIR}/NLog.config" "${INSTALL_DIR}/" 2>/dev/null || true
 fi
 
@@ -64,4 +64,4 @@ echo "查看状态: systemctl status ${SERVICE_NAME}"
 echo "查看日志: journalctl -u ${SERVICE_NAME} -f"
 echo "停止服务: sudo systemctl stop ${SERVICE_NAME}"
 echo "卸载服务: sudo bash uninstall.sh"
-echo "健康检查: curl http://localhost:5000/health"
+echo "日志目录: ${INSTALL_DIR}/logs/"

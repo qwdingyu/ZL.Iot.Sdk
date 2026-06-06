@@ -82,7 +82,7 @@ namespace ZL.Iot.Runner.Tests
             var exe = new ExecutorProfile();
             Assert.Equal("", exe.BizCode);
             Assert.Equal("", exe.TagId);
-            Assert.Equal("0", exe.JudgeType);
+            Assert.Equal(0, exe.JudgeType);
             Assert.Equal("", exe.JudgeExp);
             Assert.Equal("M", exe.ExeType);
             Assert.Equal("", exe.Script);

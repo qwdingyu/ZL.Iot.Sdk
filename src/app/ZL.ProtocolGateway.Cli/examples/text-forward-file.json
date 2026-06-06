@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "protocol-gateway-cli/v1",
+  "scenario": "text-forward-file",
+  "source": {
+    "mode": "inline",
+    "protocol": "TCP",
+    "contentType": "text",
+    "topic": "tcp/input",
+    "payload": "D100=42"
+  },
+  "output": {
+    "mode": "file",
+    "name": "FileOutput",
+    "filePath": "./protocol-gateway-forward-output.log"
+  }
+}

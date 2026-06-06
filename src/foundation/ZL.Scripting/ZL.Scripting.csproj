@@ -6,17 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>ZL.Scripting</AssemblyName>
     <RootNamespace>ZL.Scripting</RootNamespace>
-    <Description>ZL IoT SDK — Lua 脚本引擎（基于 NLua），包含 ScriptContext、ScriptEngine 和脚本输出插件</Description>
-    <PackageTags>ZL;IoT;Lua;Scripting;NLua;Industrial</PackageTags>
-    <NoWarn>$(NoWarn);NU1603;NU1605</NoWarn>
+    <Description>ZL IoT SDK — Lua 脚本引擎（基于 NLua / Lua 5.1），支持超时中断和线程安全执行</Description>
+    <PackageTags>ZL;IoT;Lua;Scripting;NLua</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NLua" />
-  </ItemGroup>
-
-  <!-- ProtocolGateway 引用：优先用本地项目，后续改为 NuGet -->
-  <ItemGroup>
-    <ProjectReference Include="../../../../ZL.PlcSimulator/src/ProtocolGateway/src/ProtocolGateway/ProtocolGateway.csproj" Condition="Exists('../../../../ZL.PlcSimulator/src/ProtocolGateway/src/ProtocolGateway/ProtocolGateway.csproj')" />
   </ItemGroup>
 </Project>

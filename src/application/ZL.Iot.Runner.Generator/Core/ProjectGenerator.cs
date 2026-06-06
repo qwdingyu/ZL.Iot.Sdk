@@ -151,9 +151,22 @@ public class ProjectGenerator : IProjectGenerator
     /// </summary>
     private static async Task WriteConfigAsync(GenerateRequest request, string workDir, CancellationToken ct)
     {
-        var configJson = ConfigLoader.ToJson(request.Config, writeIndented: true);
-        var configPath = Path.Combine(workDir, "runner.config.json");
-        await File.WriteAllTextAsync(configPath, configJson, ct);
+        string configContent;
+        string configFileName;
+
+        if (request.ConfigFormat == ConfigFormat.Xml)
+        {
+            configContent = ConfigLoader.ToXml(request.Config);
+            configFileName = "runner.config.xml";
+        }
+        else
+        {
+            configContent = ConfigLoader.ToJson(request.Config, writeIndented: true);
+            configFileName = "runner.config.json";
+        }
+
+        var configPath = Path.Combine(workDir, configFileName);
+        await File.WriteAllTextAsync(configPath, configContent, ct);
     }
 
     /// <summary>
@@ -274,24 +287,27 @@ echo "Done. Output: bin/Release/"
                 break;
 
             case TargetPlatform.WindowsService:
+                sb.AppendLine("## 快速开始");
+                sb.AppendLine();
                 sb.AppendLine("```bat");
-                sb.AppendLine("# 安装服务（管理员）");
+                sb.AppendLine(":: 安装服务（管理员）");
                 sb.AppendLine("install.bat");
                 sb.AppendLine();
-                sb.AppendLine("# 启动/停止/卸载");
+                sb.AppendLine(":: 启动/停止");
                 sb.AppendLine($"sc start {request.ProjectName}");
                 sb.AppendLine($"sc stop {request.ProjectName}");
+                sb.AppendLine();
+                sb.AppendLine(":: 卸载服务");
                 sb.AppendLine("uninstall.bat");
                 sb.AppendLine("```");
                 sb.AppendLine();
-                sb.AppendLine("## 健康检查");
-                sb.AppendLine("http://localhost:5000/health");
-                sb.AppendLine();
                 sb.AppendLine("## 日志");
-                sb.AppendLine($"查看 Windows 事件查看器 → 应用程序日志，来源: {request.ProjectName}");
+                sb.AppendLine("NLog 日志输出到程序同目录下的 logs/ 文件夹。");
                 break;
 
             case TargetPlatform.LinuxSystemd:
+                sb.AppendLine("## 快速开始");
+                sb.AppendLine();
                 sb.AppendLine("```bash");
                 sb.AppendLine("# 安装服务（root）");
                 sb.AppendLine("sudo bash install.sh");
@@ -304,8 +320,8 @@ echo "Done. Output: bin/Release/"
                 sb.AppendLine("sudo bash uninstall.sh");
                 sb.AppendLine("```");
                 sb.AppendLine();
-                sb.AppendLine("## 健康检查");
-                sb.AppendLine("curl http://localhost:5000/health");
+                sb.AppendLine("## 日志");
+                sb.AppendLine($"NLog 日志输出到 /opt/{request.ProjectName}/logs/ 目录。");
                 break;
 
             case TargetPlatform.WinForm:
@@ -343,7 +359,7 @@ echo "Done. Output: bin/Release/"
     /// </summary>
     private static string[] GetTemplateFiles(string platformDir)
     {
-        var templatesAssembly = LoadTemplatesAssembly();
+        var templatesAssembly = TemplateRenderer.LoadTemplatesAssembly();
         if (templatesAssembly == null)
         {
             Console.Error.WriteLine("[Generator] WARNING: ZL.Iot.Runner.Templates assembly not found");
@@ -357,39 +373,6 @@ echo "Done. Output: bin/Release/"
             .Where(n => n.StartsWith(prefix, StringComparison.Ordinal))
             .Select(n => n[prefix.Length..])
             .ToArray();
-    }
-
-    /// <summary>
-    /// 加载 Templates 程序集。GetReferencedAssemblies + Assembly.Load 在运行时经常失败（public key token 不匹配），
-    /// 改用已加载程序集列表 + 文件路径兜底。
-    /// </summary>
-    private static System.Reflection.Assembly? _templatesAssembly;
-    private static readonly object _templatesLock = new();
-
-    private static System.Reflection.Assembly? LoadTemplatesAssembly()
-    {
-        if (_templatesAssembly != null) return _templatesAssembly;
-
-        lock (_templatesLock)
-        {
-            if (_templatesAssembly != null) return _templatesAssembly;
-
-            // 1) 检查已加载的程序集
-            _templatesAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == "ZL.Iot.Runner.Templates");
-            if (_templatesAssembly != null) return _templatesAssembly;
-
-            // 2) 从当前程序集所在目录加载
-            var baseDir = Path.GetDirectoryName(typeof(ProjectGenerator).Assembly.Location) ?? ".";
-            var dllPath = Path.Combine(baseDir, "ZL.Iot.Runner.Templates.dll");
-            if (File.Exists(dllPath))
-            {
-                _templatesAssembly = System.Reflection.Assembly.LoadFrom(dllPath);
-                return _templatesAssembly;
-            }
-
-            return null;
-        }
     }
 
     /// <summary>

@@ -41,6 +41,30 @@ public sealed class JobStatusEvent
 /// </summary>
 public class GenerateJob
 {
+    // ================================================================
+    //  线程安全状态字段（供 JobScheduler 原子操作）
+    // ================================================================
+
+    /// <summary>
+    /// 状态整数值，使用 Interlocked.CompareExchange 实现原子状态转换
+    /// </summary>
+    internal int _statusInt;
+
+    /// <summary>
+    /// 完成时间（后台字段，供 JobScheduler 直接赋值）
+    /// </summary>
+    internal DateTime? _completedAt;
+
+    /// <summary>
+    /// 错误信息（后台字段，供 JobScheduler 直接赋值）
+    /// </summary>
+    internal string? _errorMessage;
+
+    /// <summary>
+    /// 当前阶段（后台字段，供 JobScheduler 直接赋值）
+    /// </summary>
+    internal string _phase = "queued";
+
     /// <summary>
     /// 任务唯一标识
     /// </summary>
@@ -57,9 +81,13 @@ public class GenerateJob
     public GenerateRequest Request { get; }
 
     /// <summary>
-    /// 当前状态
+    /// 当前状态（基于 _statusInt 后台字段，支持 Interlocked 原子操作）
     /// </summary>
-    public JobStatus Status { get; private set; }
+    public JobStatus Status
+    {
+        get => (JobStatus)_statusInt;
+        private set => Interlocked.Exchange(ref _statusInt, (int)value);
+    }
 
     /// <summary>
     /// 创建时间
@@ -74,12 +102,20 @@ public class GenerateJob
     /// <summary>
     /// 完成时间（成功/失败/取消/超时）
     /// </summary>
-    public DateTime? CompletedAt { get; private set; }
+    public DateTime? CompletedAt
+    {
+        get => _completedAt;
+        private set => _completedAt = value;
+    }
 
     /// <summary>
     /// 错误信息
     /// </summary>
-    public string? ErrorMessage { get; private set; }
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        private set => _errorMessage = value;
+    }
 
     /// <summary>
     /// 结果文件名
@@ -105,6 +141,20 @@ public class GenerateJob
     /// 耗时（仅在完成后有值）
     /// </summary>
     public TimeSpan? Elapsed => CompletedAt.HasValue ? CompletedAt.Value - CreatedAt : null;
+
+    /// <summary>
+    /// 进度百分比 0-100（供 REST API 序列化）
+    /// </summary>
+    public int Progress { get; private set; }
+
+    /// <summary>
+    /// 当前阶段描述（供 REST API 序列化）
+    /// </summary>
+    public string Phase
+    {
+        get => _phase;
+        private set => _phase = value;
+    }
 
     /// <summary>
     /// 状态显示文本
@@ -133,15 +183,42 @@ public class GenerateJob
     private readonly object _eventLock = new();
 
     /// <summary>
+    /// 执行取消令牌源（由 JobScheduler.ProcessJobAsync 设置）
+    /// 用户取消时调用 CancelExecution() 可立即中断 dotnet publish
+    /// </summary>
+    private CancellationTokenSource? _executionCts;
+
+    /// <summary>
+    /// 设置执行 CTS（由 JobScheduler 调用）
+    /// </summary>
+    public void SetExecutionCts(CancellationTokenSource cts)
+    {
+        _executionCts = cts;
+    }
+
+    /// <summary>
+    /// 立即中断运行中的 dotnet publish（由 CancelJob 调用）
+    /// </summary>
+    public void CancelExecution()
+    {
+        _executionCts?.Cancel();
+    }
+
+    /// <summary>
     /// 订阅状态变更事件流（SSE 端点调用）
     /// </summary>
     public IAsyncEnumerable<JobStatusEvent> WatchStatusAsync()
         => _eventChannel.Reader.ReadAllAsync();
 
     /// <summary>
+    /// 暴露 Channel Reader 供 SSE 端点直接访问
+    /// </summary>
+    public ChannelReader<JobStatusEvent> StatusEventsReader => _eventChannel.Reader;
+
+    /// <summary>
     /// 发送状态事件（内部调用）
     /// </summary>
-    private void EmitEvent(JobStatus status, string message, int? progress = null, string? phase = null)
+    internal void EmitEvent(JobStatus status, string message, int? progress = null, string? phase = null)
     {
         lock (_eventLock)
         {
@@ -191,7 +268,7 @@ public class GenerateJob
     /// <summary>
     /// 关闭事件通道（任务结束后调用，通知 SSE 消费者结束）
     /// </summary>
-    private void CompleteEvents()
+    internal void CompleteEvents()
     {
         lock (_eventLock)
         {
@@ -226,6 +303,8 @@ public class GenerateJob
     public void SetRunning()
     {
         Status = JobStatus.Running;
+        Progress = 10;
+        Phase = "rendering";
         StartedAt = DateTime.UtcNow;
         EmitEvent(Status, "开始生成项目", progress: 10, phase: "rendering");
     }
@@ -236,6 +315,8 @@ public class GenerateJob
     public void SetSucceeded(byte[] bytes, string fileName, GenerateResult result)
     {
         Status = JobStatus.Succeeded;
+        Progress = 100;
+        Phase = "complete";
         CompletedAt = DateTime.UtcNow;
         ResultBytes = bytes;
         ResultFileName = fileName;
@@ -250,9 +331,11 @@ public class GenerateJob
     public void SetFailed(string error)
     {
         Status = JobStatus.Failed;
+        // 保留当前 Progress，不重置为 0，让前端能看到失败时的进度快照
+        Phase = "error";
         CompletedAt = DateTime.UtcNow;
         ErrorMessage = error;
-        EmitEvent(Status, $"生成失败: {error}", progress: 0, phase: "error");
+        EmitEvent(Status, $"生成失败: {error}", progress: Progress, phase: "error");
         CompleteEvents();
     }
 
@@ -262,6 +345,7 @@ public class GenerateJob
     public void SetCancelled()
     {
         Status = JobStatus.Cancelled;
+        Phase = "cancelled";
         CompletedAt = DateTime.UtcNow;
         ErrorMessage = "用户取消";
         EmitEvent(Status, "任务已取消", phase: "cancelled");
@@ -274,8 +358,9 @@ public class GenerateJob
     public void SetTimedOut()
     {
         Status = JobStatus.TimedOut;
+        Phase = "timeout";
         CompletedAt = DateTime.UtcNow;
-        ErrorMessage = "生成超时（超过 120 秒）";
+        ErrorMessage = "生成超时";
         EmitEvent(Status, "生成超时", phase: "timeout");
         CompleteEvents();
     }

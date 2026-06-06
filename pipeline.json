@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/qwdingyu/ZL.Pipeline/main/schemas/pipeline-schema.json",
+  "$schema": "https://raw.githubusercontent.com/usethink/ZL.Pipeline/main/schemas/pipeline-schema.json",
   "version": "1.0",
   "projects": [
     {
@@ -16,6 +16,11 @@
       "name": "ZL.Script",
       "csproj": "src/foundation/ZL.Script/ZL.Script.csproj",
       "obfuscate": true
+    },
+    {
+      "name": "ZL.Scripting",
+      "csproj": "src/foundation/ZL.Scripting/ZL.Scripting.csproj",
+      "obfuscate": false
     },
     {
       "name": "ZL.ConnectionGuard",
@@ -35,7 +40,7 @@
     {
       "name": "ZL.Iot.Interface",
       "csproj": "src/platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj",
-      "obfuscate": true
+      "obfuscate": false
     },
     {
       "name": "ZL.DB.Acc",
@@ -60,7 +65,7 @@
     {
       "name": "ZL.Iot.Plugin",
       "csproj": "src/application/ZL.Iot.Plugin/ZL.Iot.Plugin.csproj",
-      "obfuscate": true
+      "obfuscate": false
     },
     {
       "name": "ZL.Iot.Runner",
@@ -70,6 +75,11 @@
     {
       "name": "ZL.Iot.Runner.Generator",
       "csproj": "src/application/ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj",
+      "obfuscate": false
+    },
+    {
+      "name": "ZL.EdgeService",
+      "csproj": "src/application/ZL.EdgeService/ZL.EdgeService.csproj",
       "obfuscate": true
     }
   ],

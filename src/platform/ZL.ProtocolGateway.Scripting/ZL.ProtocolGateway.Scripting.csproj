@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;NU1603;NU1605;NU1902;NU1903</NoWarn>
+    <PackageId>ProtocolGateway.Scripting</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>UseThink</Authors>
+    <Company>有思智联</Company>
+    <Description>ProtocolGateway Lua 脚本引擎 — 基于 NLua 的 Lua 5.1 脚本支持，可作为独立 DLL 被多个项目引用</Description>
+    <PackageTags>protocol;gateway;lua;scripting;nlua;iot;industrial</PackageTags>
+    <RepositoryUrl>https://github.com/qwdingyu/ZL.PlcSimulator</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ZL.ProtocolGateway.Tests" />
+    <ProjectReference Include="..\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLua"  />
+  </ItemGroup>
+
+</Project>

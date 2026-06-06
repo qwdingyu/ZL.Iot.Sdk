@@ -1,0 +1,17 @@
+{
+  "scenario": "serial-to-http",
+  "source": {
+    "mode": "inline",
+    "protocol": "Serial",
+    "contentType": "text",
+    "topic": "serial/input",
+    "payload": "SN900,1.0,2.0"
+  },
+  "output": {
+    "mode": "console"
+  },
+  "serialToHttp": {
+    "stationNo": "ST-TEST",
+    "targetUrl": "https://example.test/api/upload"
+  }
+}

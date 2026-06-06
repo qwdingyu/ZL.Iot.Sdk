@@ -190,7 +190,8 @@ namespace ZL.Iot.Runner.Configuration
         public string TagId { get; set; } = "";
 
         /// <summary>触发条件类型（0-8），见上表</summary>
-        public string JudgeType { get; set; } = "0";
+        [JsonPropertyName("judgeType")]
+        public int JudgeType { get; set; } = 0;
 
         /// <summary>触发条件表达式，配合 JudgeType 使用（如 Threshold 值）</summary>
         public string JudgeExp { get; set; } = "";

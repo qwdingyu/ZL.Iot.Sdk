@@ -53,7 +53,7 @@ public static class Program
 
         try
         {
-            var runner = new DeviceRunner(config, loggerFactory.CreateLogger<DeviceRunner>());
+            var runner = new DeviceRunner(config, loggerFactory);
             runner.Run(cts.Token);  // 阻塞到 Ctrl+C
         }
         catch (Exception ex)

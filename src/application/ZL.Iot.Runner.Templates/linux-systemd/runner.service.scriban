@@ -15,7 +15,6 @@ StandardError=journal
 SyslogIdentifier={{ project_name }}
 
 # 环境变量
-Environment=HEALTH_CHECK_PORT=5000
 Environment=DOTNET_gcServer=1
 Environment=DOTNET_TieredCompilation=0
 

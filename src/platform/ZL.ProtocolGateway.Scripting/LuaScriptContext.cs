@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ZL.Scripting
+namespace ZL.ProtocolGateway.Scripting
 {
     /// <summary>
     /// Lua 脚本执行上下文 — 暴露给 Lua 脚本的 API 集合。

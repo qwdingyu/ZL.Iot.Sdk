@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <!-- 配置文件需标记为 Content 以便正确输出 -->
-    <Content Include="runner.config.json">
+    <Content Include="runner.config.{{ format }}">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="NLog.config">

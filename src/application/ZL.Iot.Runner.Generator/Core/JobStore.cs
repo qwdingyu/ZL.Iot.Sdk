@@ -5,13 +5,14 @@
 // ============================================================
 
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using ZL.Iot.Runner.Generator.Core.Models;
 
 namespace ZL.Iot.Runner.Generator.Core;
 
 /// <summary>
 /// 内存任务存储：存储所有生成任务的状态，定期清理过期数据。
-/// - 结果字节（ResultBytes）保留 5 分钟，节省内存
+/// - 结果字节（ResultBytes）保留 2 分钟，节省内存
 /// - 任务元数据保留 30 分钟，供状态查询
 /// </summary>
 public class JobStore : IDisposable
@@ -22,6 +23,7 @@ public class JobStore : IDisposable
     private readonly Task _cleanupTask;
     private readonly TimeSpan _resultTtl;
     private readonly TimeSpan _jobTtl;
+    private readonly ILogger<JobStore> _logger;
 
     /// <summary>
     /// 正在运行的任务数
@@ -38,13 +40,17 @@ public class JobStore : IDisposable
     /// </summary>
     public int ActiveCount => QueuedCount + RunningCount;
 
-    public JobStore(TimeSpan? resultTtl = null, TimeSpan? jobTtl = null)
+    public JobStore(
+        ILogger<JobStore>? logger = null,
+        TimeSpan? resultTtl = null,
+        TimeSpan? jobTtl = null)
     {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _jobs = new ConcurrentDictionary<Guid, GenerateJob>();
-        _resultTtl = resultTtl ?? TimeSpan.FromMinutes(5);
+        _resultTtl = resultTtl ?? TimeSpan.FromMinutes(2);
         _jobTtl = jobTtl ?? TimeSpan.FromMinutes(30);
         _cts = new CancellationTokenSource();
-        _cleanupTimer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+        _cleanupTimer = new PeriodicTimer(TimeSpan.FromMinutes(2));
         _cleanupTask = Task.Run(CleanupLoop);
     }
 
@@ -83,6 +89,14 @@ public class JobStore : IDisposable
             .OrderByDescending(j => j.CreatedAt)
             .Take(max)
             .ToArray();
+    }
+
+    /// <summary>
+    /// 获取所有任务（供端点层查询最近列表使用）
+    /// </summary>
+    public GenerateJob[] ListAll()
+    {
+        return _jobs.Values.ToArray();
     }
 
     /// <summary>
@@ -143,14 +157,21 @@ public class JobStore : IDisposable
 
         if (clearedBytes > 0 || removedJobs > 0)
         {
-            Console.WriteLine($"[JobStore] 清理: 释放结果 {clearedBytes} 个, 移除任务 {removedJobs} 个, 剩余 {_jobs.Count} 个");
+            _logger.LogDebug("清理: 释放结果 {ClearedResults} 个, 移除任务 {RemovedJobs} 个, 剩余 {Remaining} 个",
+                clearedBytes, removedJobs, _jobs.Count);
         }
     }
 
     public void Dispose()
     {
-        _cts.Cancel();
-        _cleanupTimer.Dispose();
-        _cleanupTask.Wait(TimeSpan.FromSeconds(10));
+        try { _cts.Cancel(); }
+        catch (ObjectDisposedException) { /* idempotent */ }
+        try { _cleanupTimer.Dispose(); }
+        catch (ObjectDisposedException) { /* idempotent */ }
+        // WaitAsync 不会在取消时抛异常（返回 false），但 Wait 会抛 TaskCanceledException
+        // 使用 Wait + 忽略异常来安全等待
+        try { _cleanupTask.Wait(TimeSpan.FromSeconds(10)); }
+        catch (AggregateException) { }
+        catch (TaskCanceledException) { }
     }
 }
