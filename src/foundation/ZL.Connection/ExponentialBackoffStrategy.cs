@@ -172,6 +172,9 @@ namespace ZL.Retry
             }
         }
 
+        /// <summary>
+        /// 返回退避策略的字符串表示
+        /// </summary>
         public override string ToString()
         {
             return $"ExponentialBackoff(Base={BaseDelayMs}ms, Max={MaxDelayMs}ms, Attempt={CurrentAttempt}, MaxRetries={MaxRetries})";

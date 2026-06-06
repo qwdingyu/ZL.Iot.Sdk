@@ -4,21 +4,10 @@ namespace ZL.ConnectionStateMachine
     /// 连接状态机
     /// <para>管理连接生命周期的状态转换，确保状态转换的合法性和可预测性。</para>
     /// <para>状态转换图：</para>
-    /// <code>
-    /// Disconnected ──[Connect]──> Connecting ──[Success]──> Connected
-    ///     ▲                           │                          │
-    ///     │                           │[Timeout/Error]           │[Disconnect]
-    ///     │                           ▼                          │
-    ///     └─────────────────────  Error  <──────────────────────┘
-    ///                                │
-    ///                                │[AutoReconnect]
-    ///                                ▼
-    ///                           Reconnecting ──[Success]──> Connected
-    ///                                │
-    ///                                │[MaxRetries]
-    ///                                ▼
-    ///                             Error
-    /// </code>
+    /// <para>Disconnected -> Connecting -> Connected</para>
+    /// <para>Connecting/Connected -> Error -> Connecting</para>
+    /// <para>Connected -> Reconnecting -> Connected</para>
+    /// <para>Reconnecting -> Error (MaxRetries)</para>
     /// </summary>
     public class ConnectionStateMachine
     {
@@ -181,6 +170,9 @@ namespace ZL.ConnectionStateMachine
             ForceTransition(ConnectionState.Disconnected);
         }
 
+        /// <summary>
+        /// 返回状态机的字符串表示
+        /// </summary>
         public override string ToString()
         {
             return $"StateMachine(Current={CurrentState}, Available=[{string.Join(", ", GetAvailableTransitions())}])";

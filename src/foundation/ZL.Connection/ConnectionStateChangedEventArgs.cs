@@ -30,6 +30,9 @@ namespace ZL.ConnectionStateMachine
         /// </summary>
         public Exception? Exception { get; }
 
+        /// <summary>
+        /// 创建状态变更事件参数
+        /// </summary>
         public ConnectionStateChangedEventArgs(
             ConnectionState previousState,
             ConnectionState currentState,
@@ -43,6 +46,9 @@ namespace ZL.ConnectionStateMachine
             Exception = exception;
         }
 
+        /// <summary>
+        /// 返回状态变更的字符串表示
+        /// </summary>
         public override string ToString()
         {
             var msg = $"{PreviousState} → {CurrentState} @ {Timestamp:HH:mm:ss.fff}";
