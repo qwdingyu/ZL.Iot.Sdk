@@ -142,23 +142,62 @@ namespace ZL.ProtocolGateway
 
         /// <summary>
         /// 启动所有输入插件，并将消息处理回调绑定到 Pipeline。
+        /// 如果任一插件启动失败，会回滚（停止）所有已成功启动的插件，并抛出聚合异常。
         /// </summary>
         public async Task StartInputsAsync(Func<string, Message, Task> processMessageAsync, CancellationToken ct)
         {
-            var startTasks = new List<Task>();
+            var startTasks = new List<(IInputPlugin Input, Task Task)>();
             foreach (var input in _inputs)
             {
                 var captureInput = input; // 闭包捕获
-                startTasks.Add(input.StartAsync(async (msg) =>
+                var task = input.StartAsync(async (msg) =>
                 {
                     await processMessageAsync(captureInput.Name, msg);
-                }, ct));
+                }, ct);
+                startTasks.Add((input, task));
             }
 
-            await Task.WhenAll(startTasks);
-            foreach (var input in _inputs)
+            // 等待所有任务完成（成功或失败）
+            await Task.WhenAll(startTasks.Select(t => t.Task));
+
+            // 收集失败
+            var failures = new List<Exception>();
+            var startedInputs = new List<IInputPlugin>();
+            foreach (var (input, task) in startTasks)
             {
-                GatewayLog.Info("GatewayInputManager", $"Input started: {input.Name}");
+                if (task.IsFaulted)
+                {
+                    failures.Add(task.Exception?.InnerException ?? task.Exception);
+                }
+                else if (task.IsCompletedSuccessfully)
+                {
+                    startedInputs.Add(input);
+                    GatewayLog.Info("GatewayInputManager", $"Input started: {input.Name}");
+                }
+            }
+
+            // 如有失败，回滚所有已成功启动的插件
+            if (failures.Count > 0)
+            {
+                GatewayLog.Error("GatewayInputManager",
+                    $"Starting inputs failed ({failures.Count} error(s)). Rolling back {startedInputs.Count} started input(s).");
+
+                foreach (var input in startedInputs)
+                {
+                    try
+                    {
+                        await input.StopAsync();
+                        GatewayLog.Info("GatewayInputManager", $"Rolled back input: {input.Name}");
+                    }
+                    catch (Exception ex)
+                    {
+                        GatewayLog.Warn("GatewayInputManager", $"Failed to rollback input '{input.Name}': {ex.Message}", ex);
+                    }
+                }
+
+                if (failures.Count == 1)
+                    throw failures[0];
+                throw new AggregateException("One or more input plugins failed to start.", failures);
             }
         }
 
