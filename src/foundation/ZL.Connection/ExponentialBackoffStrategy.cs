@@ -1,4 +1,4 @@
-namespace ZL.Retry
+namespace ZL.Connection
 {
     /// <summary>
     /// 指数退避重连策略

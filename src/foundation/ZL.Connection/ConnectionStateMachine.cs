@@ -1,4 +1,4 @@
-namespace ZL.ConnectionStateMachine
+namespace ZL.Connection
 {
     /// <summary>
     /// 连接状态机

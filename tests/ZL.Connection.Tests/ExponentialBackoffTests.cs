@@ -1,4 +1,4 @@
-using ZL.Retry;
+using ZL.Connection;
 using Xunit;
 
 namespace ZL.Connection.Tests;
@@ -39,17 +39,16 @@ public class ExponentialBackoffTests
     [Fact]
     public void GetNextDelayMs_Sequence_ExponentialGrowth()
     {
-        // Use jitter=0 for predictable results
         var strategy = new ExponentialBackoffStrategy(baseDelayMs: 1000, maxDelayMs: 60000, jitterFactor: 0);
 
-        Assert.Equal(1000, strategy.GetNextDelayMs());  // 1000 * 2^0
-        Assert.Equal(2000, strategy.GetNextDelayMs());  // 1000 * 2^1
-        Assert.Equal(4000, strategy.GetNextDelayMs());  // 1000 * 2^2
-        Assert.Equal(8000, strategy.GetNextDelayMs());  // 1000 * 2^3
-        Assert.Equal(16000, strategy.GetNextDelayMs()); // 1000 * 2^4
-        Assert.Equal(32000, strategy.GetNextDelayMs()); // 1000 * 2^5
-        Assert.Equal(60000, strategy.GetNextDelayMs()); // capped at max
-        Assert.Equal(60000, strategy.GetNextDelayMs()); // still capped
+        Assert.Equal(1000, strategy.GetNextDelayMs());
+        Assert.Equal(2000, strategy.GetNextDelayMs());
+        Assert.Equal(4000, strategy.GetNextDelayMs());
+        Assert.Equal(8000, strategy.GetNextDelayMs());
+        Assert.Equal(16000, strategy.GetNextDelayMs());
+        Assert.Equal(32000, strategy.GetNextDelayMs());
+        Assert.Equal(60000, strategy.GetNextDelayMs());
+        Assert.Equal(60000, strategy.GetNextDelayMs());
     }
 
     [Fact]
@@ -61,7 +60,6 @@ public class ExponentialBackoffTests
         {
             strategy.Reset();
             var delay = strategy.GetNextDelayMs();
-            // With jitter ±20%, and minimum clamped to BaseDelayMs
             Assert.InRange(delay, 1000, 1200);
         }
     }
@@ -71,10 +69,10 @@ public class ExponentialBackoffTests
     {
         var strategy = new ExponentialBackoffStrategy(baseDelayMs: 1000, maxDelayMs: 60000, maxRetries: 3, jitterFactor: 0);
 
-        Assert.Equal(1000, strategy.GetNextDelayMs());  // attempt 0
-        Assert.Equal(2000, strategy.GetNextDelayMs());  // attempt 1
-        Assert.Equal(4000, strategy.GetNextDelayMs());  // attempt 2
-        Assert.Equal(-1, strategy.GetNextDelayMs());    // attempt 3 >= maxRetries
+        Assert.Equal(1000, strategy.GetNextDelayMs());
+        Assert.Equal(2000, strategy.GetNextDelayMs());
+        Assert.Equal(4000, strategy.GetNextDelayMs());
+        Assert.Equal(-1, strategy.GetNextDelayMs());
     }
 
     [Fact]
@@ -113,13 +111,13 @@ public class ExponentialBackoffTests
     {
         var strategy = new ExponentialBackoffStrategy(baseDelayMs: 1000, maxDelayMs: 60000, jitterFactor: 0);
 
-        strategy.GetNextDelayMs(); // attempt 0
-        strategy.GetNextDelayMs(); // attempt 1
+        strategy.GetNextDelayMs();
+        strategy.GetNextDelayMs();
         Assert.Equal(2, strategy.CurrentAttempt);
 
         strategy.Reset();
         Assert.Equal(0, strategy.CurrentAttempt);
-        Assert.Equal(1000, strategy.GetNextDelayMs()); // starts from beginning
+        Assert.Equal(1000, strategy.GetNextDelayMs());
     }
 
     [Fact]
@@ -133,7 +131,7 @@ public class ExponentialBackoffTests
         strategy.GetNextDelayMs();
         Assert.True(strategy.CanRetry());
         strategy.GetNextDelayMs();
-        Assert.False(strategy.CanRetry()); // attempt 3 >= maxRetries 3
+        Assert.False(strategy.CanRetry());
     }
 
     [Fact]
