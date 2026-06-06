@@ -79,8 +79,9 @@ namespace ZL.ProtocolGateway
                                 var latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
                                 Interlocked.Add(ref _totalLatencySumMs, latency);
                                 Interlocked.Increment(ref _latencySampleCount);
-                                _enqueueTimestamps.Remove(traceId);
                             }
+                            // 无论是否找到 timestamp，都移除 — 防止失败消息的 timestamp 永久残留
+                            _enqueueTimestamps.Remove(traceId);
                         }
                     }
                     else if (result == "Failed")
