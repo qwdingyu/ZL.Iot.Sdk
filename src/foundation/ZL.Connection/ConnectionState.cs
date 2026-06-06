@@ -10,9 +10,17 @@ namespace ZL.Connection
     ///   <item>Connected → Disconnected (主动断开)</item>
     ///   <item>Connected → Reconnecting (连接断开，自动重连)</item>
     ///   <item>Connected → Error (协议错误)</item>
+    ///   <item>Connected → Faulted (致命故障，不可自动恢复)</item>
     ///   <item>Reconnecting → Connected (重连成功)</item>
     ///   <item>Reconnecting → Error (重连失败，超过最大重试次数)</item>
     ///   <item>Error → Connecting (手动重试)</item>
+    ///   <item>Error → Disconnected (重置)</item>
+    ///   <item>Faulted → Disconnected (仅能重置)</item>
+    /// </list>
+    /// <para>Error 与 Faulted 的区别：</para>
+    /// <list type="bullet">
+    ///   <item>Error — 可恢复错误（超时、临时网络故障），可手动重试</item>
+    ///   <item>Faulted — 致命故障（硬件故障、协议不兼容），只能重置后重建</item>
     /// </list>
     /// </summary>
     public enum ConnectionState
@@ -38,8 +46,14 @@ namespace ZL.Connection
         Reconnecting = 3,
 
         /// <summary>
-        /// 错误 - 连接失败或协议错误，需要手动干预
+        /// 错误 - 可恢复错误（超时、临时网络故障），可手动重试
         /// </summary>
-        Error = 4
+        Error = 4,
+
+        /// <summary>
+        /// 致命故障 - 不可自动恢复（硬件故障、协议不兼容），只能重置后重建
+        /// 与 ConnectionGuard 的 GuardState.Faulted 对应
+        /// </summary>
+        Faulted = 5
     }
 }

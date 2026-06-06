@@ -32,6 +32,8 @@ public class ConnectionStateMachineTests
     [InlineData(ConnectionState.Reconnecting, ConnectionState.Disconnected, true)]
     [InlineData(ConnectionState.Error, ConnectionState.Connecting, true)]
     [InlineData(ConnectionState.Error, ConnectionState.Disconnected, true)]
+    [InlineData(ConnectionState.Connected, ConnectionState.Faulted, true)]
+    [InlineData(ConnectionState.Faulted, ConnectionState.Disconnected, true)]
     public void TryTransition_ValidTransitions_Succeed(ConnectionState from, ConnectionState to, bool expected)
     {
         var sm = new ConnectionStateMachine(from);
@@ -49,6 +51,10 @@ public class ConnectionStateMachineTests
     [InlineData(ConnectionState.Reconnecting, ConnectionState.Connecting)]
     [InlineData(ConnectionState.Error, ConnectionState.Connected)]
     [InlineData(ConnectionState.Error, ConnectionState.Reconnecting)]
+    [InlineData(ConnectionState.Faulted, ConnectionState.Connecting)]
+    [InlineData(ConnectionState.Faulted, ConnectionState.Connected)]
+    [InlineData(ConnectionState.Faulted, ConnectionState.Reconnecting)]
+    [InlineData(ConnectionState.Faulted, ConnectionState.Error)]
     public void TryTransition_InvalidTransitions_Fail(ConnectionState from, ConnectionState to)
     {
         var sm = new ConnectionStateMachine(from);
@@ -169,6 +175,22 @@ public class ConnectionStateMachineTests
                 ConnectionState.Connected
             },
             events);
+    }
+
+    [Fact]
+    public void Faulted_CanOnlyTransitionToDisconnected()
+    {
+        var sm = new ConnectionStateMachine(ConnectionState.Connected);
+        sm.TryTransition(ConnectionState.Faulted, "hardware failure");
+        Assert.Equal(ConnectionState.Faulted, sm.CurrentState);
+
+        // Faulted 只能到 Disconnected
+        Assert.False(sm.TryTransition(ConnectionState.Connecting));
+        Assert.False(sm.TryTransition(ConnectionState.Connected));
+        Assert.False(sm.TryTransition(ConnectionState.Reconnecting));
+        Assert.False(sm.TryTransition(ConnectionState.Error));
+        Assert.True(sm.TryTransition(ConnectionState.Disconnected));
+        Assert.Equal(ConnectionState.Disconnected, sm.CurrentState);
     }
 
     [Fact]

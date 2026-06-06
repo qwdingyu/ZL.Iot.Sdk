@@ -64,6 +64,13 @@ namespace ZL.Connection
                 [(ConnectionState.Error, ConnectionState.Disconnected)] = () => true, // 重置
                 [(ConnectionState.Error, ConnectionState.Connected)] = () => false, // 不能直接连接
                 [(ConnectionState.Error, ConnectionState.Reconnecting)] = () => false, // 必须先 Connecting
+
+                // 从 Faulted 出发（致命故障，只能重置）
+                [(ConnectionState.Faulted, ConnectionState.Disconnected)] = () => true, // 仅能重置
+                [(ConnectionState.Faulted, ConnectionState.Connecting)] = () => false, // 不能直接重试
+                [(ConnectionState.Faulted, ConnectionState.Connected)] = () => false,
+                [(ConnectionState.Faulted, ConnectionState.Reconnecting)] = () => false,
+                [(ConnectionState.Faulted, ConnectionState.Error)] = () => false,
             };
         }
 
