@@ -649,7 +649,6 @@ namespace ZL.ProtocolGateway
             foreach (var outputName in matchedOutputs)
             {
                 if (!_outputs.TryGetValue(outputName, out var output))
-                if (output == null)
                 {
                     results.Add(PipelineSendStrategy.CreateSkippedResult(traceId, outputName, currentMessage, "Output plugin not registered."));
                     GatewayLog.Warn("ResilientMessagePipeline", $"Skipped send because output '{outputName}' is not registered.");
