@@ -454,13 +454,15 @@ namespace ZL.ProtocolGateway
 
             try
             {
-                // 背压检测：使用 WaitToWriteAsync 超时判断，避免每条消息创建 CTS（高吞吐 GC 优化）
+                // 背压检测：WaitToWriteAsync 超时判断，避免每条消息创建 CTS
                 var waitTask = _messageQueue.Writer.WaitToWriteAsync().AsTask();
                 if (!await waitTask.WaitAsync(TimeSpan.FromSeconds(5)))
                 {
                     _metrics.RecordBackpressureWarning();
+                    _metrics.RecordDropped();
                     GatewayLog.Warn("Pipeline",
-                        $"Backpressure detected: message enqueue blocked >5s (queue capacity: {QueueCapacity})");
+                        $"Backpressure: dropping message (enqueue blocked >5s, queue capacity: {QueueCapacity}, intent: {message?.Intent})");
+                    return;  // 丢弃消息，不阻塞调用方
                 }
 
                 await _messageQueue.Writer.WriteAsync(message);
