@@ -14,9 +14,9 @@
     <!-- 复用已有类库，不重复造轮子 -->
     <ItemGroup>
         <!-- 脚本引擎+规则引擎+SQL执行器（已在 ZL.Biz.Execute 中实现） -->
-        <ProjectReference Include="..\..\domain\ZL.Biz.Execute\ZL.Biz.Execute.csproj" />
+        <PackageReference Include="ZL.Biz.Execute" />
         <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
-        <ProjectReference Include="..\..\platform\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
+        <PackageReference Include="ZL.Iot.Interface" />
         <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
         <ProjectReference Condition="Exists('..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj')" Include="..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj" />
         <PackageReference Condition="!Exists('..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj')" Include="ZL.PlcBase" />

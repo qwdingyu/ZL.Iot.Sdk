@@ -68,16 +68,8 @@ public class ProjectGenerator : IProjectGenerator
                     zipBytes = bytes;
                     manifest = m;
                     await ReportProgress("building", 90);
-                    var platformSuffix = request.Platform switch
-                    {
-                        TargetPlatform.Console => "console",
-                        TargetPlatform.WindowsService => "win-service",
-                        TargetPlatform.LinuxSystemd => "linux-systemd",
-                        TargetPlatform.WinForm => "winforms",
-                        TargetPlatform.Web => "web",
-                        _ => "console"
-                    };
-                    zipFileName = $"{request.ProjectName}-{request.Version}-{request.RuntimeIdentifier}-{platformSuffix}.zip";
+                    var hostType = request.Platform == TargetPlatform.WinForm ? HostType.WinForms : HostType.Console;
+                    zipFileName = $"{request.ProjectName}-{request.Version}-{request.RuntimeIdentifier}-{hostType.ToString().ToLowerInvariant()}.zip";
                 }
                 else
                 {
@@ -192,7 +184,7 @@ public class ProjectGenerator : IProjectGenerator
             HostType = hostType
         };
 
-        var buildResult = BuildEngine.Publish(workDir, buildOptions, ct);
+        var buildResult = await BuildEngine.PublishAsync(workDir, buildOptions, ct);
         if (!buildResult.Success)
             throw new InvalidOperationException(
                 $"dotnet publish 失败: {string.Join("; ", buildResult.Errors)}");

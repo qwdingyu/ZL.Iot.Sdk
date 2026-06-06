@@ -6,6 +6,7 @@
 
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ZL.Iot.Runner.Generator.Core.Models;
 
 namespace ZL.Iot.Runner.Generator.Core;
@@ -45,7 +46,7 @@ public class JobStore : IDisposable
         TimeSpan? resultTtl = null,
         TimeSpan? jobTtl = null)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _logger = logger ?? NullLogger<JobStore>.Instance;
         _jobs = new ConcurrentDictionary<Guid, GenerateJob>();
         _resultTtl = resultTtl ?? TimeSpan.FromMinutes(2);
         _jobTtl = jobTtl ?? TimeSpan.FromMinutes(30);
@@ -138,21 +139,21 @@ public class JobStore : IDisposable
                 clearedBytes++;
             }
 
-            // 2) 移除完全过期的任务
+            // 2) 移除完全过期的已完成任务
             if (job.CompletedAt.HasValue
                 && now - job.CompletedAt.Value > _jobTtl)
             {
                 _jobs.TryRemove(job.Id, out _);
                 removedJobs++;
             }
-        }
 
-        // 也清理一直排队未完成的僵尸任务（超过 jobTtl）
-        foreach (var job in _jobs.Values.Where(j => !j.CompletedAt.HasValue && now - j.CreatedAt > _jobTtl))
-        {
-            job.SetFailed("任务过期自动清理");
-            _jobs.TryRemove(job.Id, out _);
-            removedJobs++;
+            // 3) 清理一直排队未完成的僵尸任务（超过 jobTtl）
+            if (!job.CompletedAt.HasValue && now - job.CreatedAt > _jobTtl)
+            {
+                job.SetFailed("任务过期自动清理");
+                _jobs.TryRemove(job.Id, out _);
+                removedJobs++;
+            }
         }
 
         if (clearedBytes > 0 || removedJobs > 0)

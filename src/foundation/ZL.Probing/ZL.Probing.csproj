@@ -6,6 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ZL.Framing\ZL.Framing.csproj" />
+    <PackageReference Include="ZL.Framing" />
   </ItemGroup>
 </Project>

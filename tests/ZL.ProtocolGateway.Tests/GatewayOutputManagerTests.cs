@@ -7,7 +7,6 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using NSubstitute;
 using ZL.ProtocolGateway.Plugins;
 using Xunit;
 
@@ -17,13 +16,7 @@ namespace ZL.ProtocolGateway.Tests
     {
         private ResilientMessagePipeline CreateMockPipeline()
         {
-            var pipeline = Substitute.ForPartsOf<ResilientMessagePipeline>();
-            pipeline.SendTimeoutMs = 30000;
-            pipeline.MaxRetryAttempts = 3;
-            pipeline.RetryBaseDelayMs = 100;
-            pipeline.CircuitBreakerFailureThreshold = 5;
-            pipeline.CircuitBreakerRecoveryTimeMs = 60000;
-            return pipeline;
+            return new FakeResilientPipeline();
         }
 
         private GatewayOutputManager CreateManager()
@@ -31,14 +24,9 @@ namespace ZL.ProtocolGateway.Tests
             return new GatewayOutputManager(CreateMockPipeline());
         }
 
-        private IOutputPlugin CreateMockOutput(string name = "test-out", string protocol = "test")
+        private FakeOutputPlugin CreateMockOutput(string name = "test-out", string protocol = "test")
         {
-            var output = Substitute.For<IOutputPlugin>();
-            output.Name.Returns(name);
-            output.ProtocolType.Returns(protocol);
-            output.Version.Returns("1.0.0");
-            output.Status.Returns(PluginStatus.Stopped);
-            return output;
+            return new FakeOutputPlugin(name, protocol);
         }
 
         #region Register/Unregister
@@ -47,7 +35,7 @@ namespace ZL.ProtocolGateway.Tests
         public void RegisterOutput_ValidArgs_ReturnsTrue()
         {
             var manager = CreateManager();
-            var output = new TestOutputPlugin("test-out");
+            var output = new FakeOutputPlugin("test-out");
 
             var result = manager.RegisterOutput("test-out", output);
 
@@ -103,7 +91,7 @@ namespace ZL.ProtocolGateway.Tests
             Assert.Equal("test-out", manager.RegisteredOutputNames[0]);
 
             // 旧插件已被 Dispose
-            oldOutput.Received(1).Dispose();
+            Assert.True(oldOutput.Disposed);
         }
 
         [Fact]
@@ -133,12 +121,12 @@ namespace ZL.ProtocolGateway.Tests
         public async Task UnregisterOutput_CallsDispose()
         {
             var manager = CreateManager();
-            var output = new TestOutputPlugin("test-out");
+            var output = new FakeOutputPlugin("test-out");
             manager.RegisterOutput("test-out", output);
 
             manager.UnregisterOutput("test-out");
 
-            Assert.True(output.DisposeAsyncCalled || output.Disposed);
+            Assert.True(output.Disposed);
         }
 
         #endregion
@@ -151,7 +139,7 @@ namespace ZL.ProtocolGateway.Tests
             var pipeline = new ResilientMessagePipeline();
             var manager = new GatewayOutputManager(pipeline);
 
-            var output = new TestOutputPlugin("start-test");
+            var output = new FakeOutputPlugin("start-test");
             manager.RegisterOutput("start-test", output);
 
             var result = await manager.StartOutputAsync("start-test");
@@ -175,38 +163,28 @@ namespace ZL.ProtocolGateway.Tests
         {
             var pipeline = CreateMockPipeline();
             var manager = new GatewayOutputManager(pipeline);
-            var output = Substitute.For<IOutputPlugin>();
-            output.Name.Returns("running-out");
-            output.ProtocolType.Returns("test");
-            output.Version.Returns("1.0.0");
-            output.Status.Returns(PluginStatus.Running);
+            var output = new FakeOutputPlugin("running-out");
+            output.Status = PluginStatus.Running;
 
             manager.RegisterOutput("running-out", output);
 
             var result = await manager.StartOutputAsync("running-out");
 
             Assert.True(result);
-            // 不应调用 pipeline.RegisterOutput 或 output.StartAsync
-            pipeline.DidNotReceive().RegisterOutput(Arg.Any<IOutputPlugin>());
+            // StartAsync should not be called again (already running)
+            Assert.False(output.StartAsyncCalled);
         }
 
         [Fact]
         public async Task StartOutputAsync_StartThrows_ReturnsFalse()
         {
-            var pipeline = Substitute.ForPartsOf<ResilientMessagePipeline>();
-            pipeline.SendTimeoutMs = 30000;
-            pipeline.MaxRetryAttempts = 3;
-            pipeline.RetryBaseDelayMs = 100;
-            pipeline.CircuitBreakerFailureThreshold = 5;
-            pipeline.CircuitBreakerRecoveryTimeMs = 60000;
+            var pipeline = CreateMockPipeline();
             var manager = new GatewayOutputManager(pipeline);
 
-            var output = Substitute.For<IOutputPlugin>();
-            output.Name.Returns("failing-out");
-            output.ProtocolType.Returns("test");
-            output.Version.Returns("1.0.0");
-            output.Status.Returns(PluginStatus.Stopped);
-            output.StartAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException(new Exception("startup failure")));
+            var output = new FakeOutputPlugin("failing-out")
+            {
+                StartException = new Exception("startup failure")
+            };
 
             manager.RegisterOutput("failing-out", output);
 
@@ -219,7 +197,7 @@ namespace ZL.ProtocolGateway.Tests
         public async Task StopOutputAsync_Registered_StopsSuccessfully()
         {
             var manager = CreateManager();
-            var output = new TestOutputPlugin("stop-test");
+            var output = new FakeOutputPlugin("stop-test");
             output.Status = PluginStatus.Running;
 
             manager.RegisterOutput("stop-test", output);
@@ -243,12 +221,11 @@ namespace ZL.ProtocolGateway.Tests
         public async Task StopOutputAsync_StopThrows_ReturnsFalse()
         {
             var manager = CreateManager();
-            var output = Substitute.For<IOutputPlugin>();
-            output.Name.Returns("bad-stop");
-            output.ProtocolType.Returns("test");
-            output.Version.Returns("1.0.0");
-            output.Status.Returns(PluginStatus.Running);
-            output.StopAsync().Returns(Task.FromException(new Exception("stop failure")));
+            var output = new FakeOutputPlugin("bad-stop")
+            {
+                Status = PluginStatus.Running,
+                StopException = new Exception("stop failure")
+            };
 
             manager.RegisterOutput("bad-stop", output);
 
@@ -263,8 +240,8 @@ namespace ZL.ProtocolGateway.Tests
         public async Task ClearOutputsAsync_StopsAllRegistered()
         {
             var manager = CreateManager();
-            var output1 = new TestOutputPlugin("out1");
-            var output2 = new TestOutputPlugin("out2");
+            var output1 = new FakeOutputPlugin("out1");
+            var output2 = new FakeOutputPlugin("out2");
             manager.RegisterOutput("out1", output1);
             manager.RegisterOutput("out2", output2);
 
@@ -297,7 +274,7 @@ namespace ZL.ProtocolGateway.Tests
         public void GetOutputPluginStatus_Existing_ReturnsStatus()
         {
             var manager = CreateManager();
-            var output = new TestOutputPlugin("query-out");
+            var output = new FakeOutputPlugin("query-out");
             manager.RegisterOutput("query-out", output);
 
             var status = manager.GetOutputPluginStatus("query-out");
@@ -321,7 +298,7 @@ namespace ZL.ProtocolGateway.Tests
         {
             var manager = CreateManager();
             var output = CreateMockOutput("status-out");
-            output.Status.Returns(PluginStatus.Running);
+            output.Status = PluginStatus.Running;
             manager.RegisterOutput("status-out", output);
 
             var status = manager.GetOutputStatus("status-out");
@@ -371,10 +348,10 @@ namespace ZL.ProtocolGateway.Tests
         [Fact]
         public void OutputHealthChanged_Fires_OnDetailedStatusChanged()
         {
-            var pipeline = Substitute.ForPartsOf<ResilientMessagePipeline>();
+            var pipeline = CreateMockPipeline();
             var manager = new GatewayOutputManager(pipeline);
 
-            var output = new TestOutputPlugin("event-out");
+            var output = new FakeOutputPlugin("event-out");
 
             OutputPluginStatusArgs? captured = null;
             manager.OutputHealthChanged += args => { captured = args; };
@@ -394,26 +371,68 @@ namespace ZL.ProtocolGateway.Tests
             Assert.Equal("event-out", captured.PluginName);
         }
 
-        /// <summary>Minimal IOutputPlugin implementation for event-firing tests.</summary>
-        private sealed class TestOutputPlugin : IOutputPlugin
+        #endregion
+
+        /// <summary>
+        /// Fake ResilientMessagePipeline for tests — just configures timeouts.
+        /// </summary>
+        private sealed class FakeResilientPipeline : ResilientMessagePipeline
         {
-            public TestOutputPlugin(string name) => Name = name;
+            public FakeResilientPipeline()
+            {
+                SendTimeoutMs = 30000;
+                MaxRetryAttempts = 3;
+                RetryBaseDelayMs = 100;
+                CircuitBreakerFailureThreshold = 5;
+                CircuitBreakerRecoveryTimeMs = 60000;
+            }
+        }
+
+        /// <summary>
+        /// Fake IOutputPlugin for tests — configurable status, exceptions, and event firing.
+        /// </summary>
+        private sealed class FakeOutputPlugin : IOutputPlugin
+        {
+            public FakeOutputPlugin(string name, string protocol = "test")
+            {
+                Name = name;
+                ProtocolType = protocol;
+            }
+
             public string Name { get; }
-            public string ProtocolType => "test";
+            public string ProtocolType { get; }
             public string Version => "1.0.0";
             public PluginStatus Status { get; set; }
             public bool Disposed { get; private set; }
             public bool DisposeAsyncCalled { get; private set; }
+
+            public Exception? StartException { get; set; }
+            public Exception? StopException { get; set; }
+            public bool StartAsyncCalled { get; private set; }
+
             public event Action<string, bool>? ConnectionChanged;
             public event Action<OutputPluginStatusArgs>? DetailedStatusChanged;
-            public Task StartAsync(CancellationToken ct = default) { Status = PluginStatus.Running; return Task.CompletedTask; }
+
+            public Task StartAsync(CancellationToken ct = default)
+            {
+                StartAsyncCalled = true;
+                if (StartException != null) throw StartException;
+                Status = PluginStatus.Running;
+                return Task.CompletedTask;
+            }
+
             public Task SendAsync(Message msg, CancellationToken ct = default) => Task.CompletedTask;
-            public Task StopAsync() => Task.CompletedTask;
+
+            public Task StopAsync()
+            {
+                if (StopException != null) throw StopException;
+                return Task.CompletedTask;
+            }
+
             public void Dispose() => Disposed = true;
             public ValueTask DisposeAsync() { DisposeAsyncCalled = true; return default; }
+
             public void FireDetailedStatus(OutputPluginStatusArgs args) => DetailedStatusChanged?.Invoke(args);
         }
-
-        #endregion
     }
 }

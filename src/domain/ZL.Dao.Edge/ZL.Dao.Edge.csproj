@@ -17,8 +17,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\platform\ZL.DB.Acc\ZL.DB.Acc.csproj" />
-        <ProjectReference Include="..\..\platform\ZL.DataConvert\ZL.DataConvert.csproj" />
+        <PackageReference Include="ZL.DB.Acc" />
+        <PackageReference Include="ZL.DataConvert" />
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 

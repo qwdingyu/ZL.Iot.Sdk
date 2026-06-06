@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\foundation\ZL.Collections\ZL.Collections.csproj" />
+    <PackageReference Include="ZL.Collections" />
   </ItemGroup>
 
   <ItemGroup>

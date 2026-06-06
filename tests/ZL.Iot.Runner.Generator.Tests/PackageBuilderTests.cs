@@ -214,7 +214,7 @@ public class PackageBuilderTests : IDisposable
     public void BuildPackage_CleansUpTempManifest()
     {
         var sourceDir = CreateTestSource();
-        Assert.False(Directory.GetFiles(sourceDir).Any(f => f.EndsWith("manifest.json")));
+        Assert.DoesNotContain(Directory.GetFiles(sourceDir), f => f.EndsWith("manifest.json"));
 
         PackageBuilder.BuildPackage(sourceDir, "MyApp", "1.0.0", "Console", "win-x64", true);
 

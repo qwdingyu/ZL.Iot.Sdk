@@ -106,6 +106,26 @@ public class JobSchedulerTests : IDisposable
         _generatorCalledTcs.Task.Wait(TimeSpan.FromSeconds(10));
     }
 
+    /// <summary>异步版本：通过轮询 job 状态判断 worker 是否已开始处理</summary>
+    private async Task WaitGeneratorCalledAsync(GenerateJob job)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            var current = _scheduler?.GetJob(job.Id);
+            if (current is null)
+                throw new InvalidOperationException($"Job {job.Id} not found");
+            // Running 表示 worker 正在处理；Succeeded/Failed 表示处理极快已经完成
+            if (current.Status == JobStatus.Running ||
+                current.Status == JobStatus.Succeeded ||
+                current.Status == JobStatus.Failed ||
+                current.Status == JobStatus.TimedOut ||
+                current.Status == JobStatus.Cancelled)
+                return;
+            await Task.Delay(20);
+        }
+        throw new TimeoutException($"Worker did not start processing job {job.Id} within 10 seconds (status={_scheduler!.GetJob(job.Id)?.Status})");
+    }
 
     public void Dispose()
     {
@@ -194,7 +214,7 @@ public class JobSchedulerTests : IDisposable
     }
 
     [Fact]
-    public void Enqueue_AfterRateLimitExpires_Succeeds()
+    public async Task Enqueue_AfterRateLimitExpires_Succeeds()
     {
         CreateScheduler(rateLimit: TimeSpan.FromMilliseconds(100));
         var request = CreateRequest();
@@ -202,7 +222,7 @@ public class JobSchedulerTests : IDisposable
         var (s1, _, _) = _scheduler!.Enqueue(request, "user1");
         Assert.True(s1);
 
-        Thread.Sleep(150); // 超过限流间隔
+        await Task.Delay(150); // 超过限流间隔
 
         var (s2, error2, job2) = _scheduler.Enqueue(request, "user1");
         Assert.True(s2);
@@ -215,23 +235,24 @@ public class JobSchedulerTests : IDisposable
     #region Enqueue - 队列满
 
     [Fact]
-    public void Enqueue_QueueFull_ReturnsFailure()
+    public async Task Enqueue_QueueFull_ReturnsFailure()
     {
         CreateScheduler(maxQueue: 2, rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
 
-        // 先入队 2 个（不完成它们，让队列计数保持）
-        var (s1, _, _) = _scheduler!.Enqueue(request, "user1");
+        // 先入队 2 个
+        var (s1, _, job1) = _scheduler!.Enqueue(request, "user1");
         Assert.True(s1);
-
-        var (s2, _, _) = _scheduler.Enqueue(request, "user2");
+        var (s2, _, job2) = _scheduler.Enqueue(request, "user2");
         Assert.True(s2);
 
-        // 等待 worker 处理完（让 mock 完成）
-        CompleteGeneratorSuccess();
-        Thread.Sleep(200);
-        CompleteGeneratorSuccess();
-        Thread.Sleep(200);
+        // 等待 worker 处理完
+        await WaitGeneratorCalledAsync(job1!);
+        _generatorTcs?.TrySetResult(GenerateResult.Ok(new byte[] { 1 }, "t.zip", TimeSpan.Zero));
+        await Task.Delay(200);
+        await WaitGeneratorCalledAsync(job2!);
+        _generatorTcs?.TrySetResult(GenerateResult.Ok(new byte[] { 1 }, "t.zip", TimeSpan.Zero));
+        await Task.Delay(200);
 
         // 现在再入队应该成功（队列已空）
         var (s3, error3, job3) = _scheduler.Enqueue(request, "user3");
@@ -310,7 +331,7 @@ public class JobSchedulerTests : IDisposable
     }
 
     [Fact]
-    public void CancelJob_AlreadyCompleted_ReturnsFalse()
+    public async Task CancelJob_AlreadyCompleted_ReturnsFalse()
     {
         CreateScheduler(rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
@@ -318,8 +339,10 @@ public class JobSchedulerTests : IDisposable
         Assert.NotNull(job);
 
         // 让 worker 执行完成
-        CompleteGeneratorSuccess();
-        Thread.Sleep(500);
+        await WaitGeneratorCalledAsync(job!);
+        _generatorTcs?.TrySetResult(GenerateResult.Ok(
+            new byte[] { 1, 2, 3 }, "test.zip", TimeSpan.Zero));
+        await Task.Delay(500);
 
         var updated = _scheduler.GetJob(job.Id!);
         Assert.NotNull(updated);
@@ -347,19 +370,28 @@ public class JobSchedulerTests : IDisposable
     }
 
     [Fact]
-    public void ListJobsByUser_ReturnsJobs()
+    public async Task ListJobsByUser_ReturnsJobs()
     {
         CreateScheduler(rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
 
-        _scheduler!.Enqueue(request, "user1");
-        _scheduler.Enqueue(request, "user1");
-        _scheduler.Enqueue(request, "user2");
+        var (_, _, job1) = _scheduler!.Enqueue(request, "user1");
+        var (_, _, job2) = _scheduler.Enqueue(request, "user1");
+        var (_, _, job3) = _scheduler.Enqueue(request, "user2");
 
-        // 完成所有 mock
-        CompleteGeneratorSuccess(); Thread.Sleep(100);
-        CompleteGeneratorSuccess(); Thread.Sleep(100);
-        CompleteGeneratorSuccess(); Thread.Sleep(100);
+        // 等待所有 3 个 job 至少被 worker 取走（不再 Queued）
+        for (int i = 0; i < 100; i++)
+        {
+            var allProcessed = _scheduler.GetJob(job1!.Id)?.Status != JobStatus.Queued
+                             && _scheduler.GetJob(job2!.Id)?.Status != JobStatus.Queued
+                             && _scheduler.GetJob(job3!.Id)?.Status != JobStatus.Queued;
+            if (allProcessed) break;
+            await Task.Delay(50);
+        }
+
+        // 完成所有 pending mock（一次性设置，所有 worker 共享结果）
+        _generatorTcs?.TrySetResult(GenerateResult.Ok(new byte[] { 1 }, "t.zip", TimeSpan.Zero));
+        await Task.Delay(300);
 
         var user1Jobs = _scheduler.ListJobsByUser("user1");
         Assert.Equal(2, user1Jobs.Length);
@@ -373,7 +405,7 @@ public class JobSchedulerTests : IDisposable
     #region 执行流程 - 成功/失败
 
     [Fact]
-    public void ProcessJob_Success_JobCompletes()
+    public async Task ProcessJob_Success_JobCompletes()
     {
         CreateScheduler(rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
@@ -381,8 +413,10 @@ public class JobSchedulerTests : IDisposable
         Assert.NotNull(job);
 
         // 让 mock 返回成功
-        CompleteGeneratorSuccess();
-        Thread.Sleep(500); // 等 worker 处理完
+        await WaitGeneratorCalledAsync(job!);
+        _generatorTcs?.TrySetResult(GenerateResult.Ok(
+            new byte[] { 1, 2, 3 }, "test.zip", TimeSpan.Zero));
+        await Task.Delay(500); // 等 worker 处理完
 
         var updated = _scheduler.GetJob(job.Id!);
         Assert.NotNull(updated);
@@ -392,15 +426,16 @@ public class JobSchedulerTests : IDisposable
     }
 
     [Fact]
-    public void ProcessJob_Failure_JobMarksFailed()
+    public async Task ProcessJob_Failure_JobMarksFailed()
     {
         CreateScheduler(rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
         var (_, _, job) = _scheduler!.Enqueue(request, "user1");
         Assert.NotNull(job);
 
-        CompleteGeneratorFailure();
-        Thread.Sleep(500);
+        await WaitGeneratorCalledAsync(job!);
+        _generatorTcs?.TrySetResult(GenerateResult.Fail("mock error", TimeSpan.Zero));
+        await Task.Delay(500);
 
         var updated = _scheduler.GetJob(job.Id!);
         Assert.NotNull(updated);
@@ -413,7 +448,7 @@ public class JobSchedulerTests : IDisposable
     #region 超时
 
     [Fact]
-    public void ProcessJob_Timeout_JobMarksTimedOut()
+    public async Task ProcessJob_Timeout_JobMarksTimedOut()
     {
         CreateScheduler(rateLimit: TimeSpan.Zero, jobTimeout: TimeSpan.FromMilliseconds(500));
         var request = CreateRequest();
@@ -422,7 +457,7 @@ public class JobSchedulerTests : IDisposable
 
         // 让 generator 挂起（不完成）
         LetGeneratorHang();
-        Thread.Sleep(1500); // 超过 500ms 超时
+        await Task.Delay(1500); // 超过 500ms 超时
 
         var updated = _scheduler.GetJob(job.Id!);
         Assert.NotNull(updated);
@@ -435,7 +470,7 @@ public class JobSchedulerTests : IDisposable
     #region 并发安全
 
     [Fact]
-    public void Enqueue_Concurrent_IsThreadSafe()
+    public async Task Enqueue_Concurrent_IsThreadSafe()
     {
         CreateScheduler(maxQueue: 1000, rateLimit: TimeSpan.Zero);
         var request = CreateRequest();
@@ -450,10 +485,10 @@ public class JobSchedulerTests : IDisposable
             }
         }).ToList();
 
-        Task.WhenAll(tasks).Wait();
+        await Task.WhenAll(tasks);
 
         // 所有 20 个用户各提交 1 个
-        Thread.Sleep(500);
+        await Task.Delay(500);
         var allJobs = _store!.ListAll();
         Assert.Equal(20, allJobs.Length);
     }

@@ -43,7 +43,7 @@ namespace ZL.ProtocolGateway
         /// <summary>
         /// 作为 Pipeline Filter 使用：返回 true 表示通过（非重复），false 表示拦截（重复）。
         /// </summary>
-        public async Task<bool> FilterAsync(Message msg)
+        public bool Filter(Message msg)
         {
             var key = ComputeDedupKey(msg);
             if (_seenMessages.TryGetValue(key, out _))
@@ -52,6 +52,14 @@ namespace ZL.ProtocolGateway
             }
             _seenMessages.TryAdd(key, DateTime.UtcNow);
             return true;
+        }
+
+        /// <summary>
+        /// 作为 Pipeline Filter 使用（异步兼容版本，返回 Task.FromResult 避免状态机分配）。
+        /// </summary>
+        public Task<bool> FilterAsync(Message msg)
+        {
+            return Task.FromResult(Filter(msg));
         }
 
         /// <summary>

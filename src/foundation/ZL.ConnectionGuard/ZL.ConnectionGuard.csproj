@@ -6,6 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" />
-    <ProjectReference Include="..\ZL.Connection\ZL.Connection.csproj" />
+    <PackageReference Include="ZL.Connection" />
   </ItemGroup>
 </Project>

@@ -56,8 +56,15 @@ public static class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // 注册调度器为单例
+        // 使用内存 JobStore（生产环境可替换为持久化实现）
+        var store = new JobStore();
+
+        // 注册调度器为单例（需先构建 LoggerFactory）
+        using var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
+        var logger = loggerFactory.CreateLogger<JobScheduler>();
         var scheduler = new JobScheduler(
+            store,
+            logger,
             maxConcurrency: 2,
             maxQueueLength: 50,
             jobTimeout: TimeSpan.FromSeconds(120),

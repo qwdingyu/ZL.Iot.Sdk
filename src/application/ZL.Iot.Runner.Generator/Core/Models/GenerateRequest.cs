@@ -81,6 +81,21 @@ public class GenerateRequest
         if (Config.Devices == null || Config.Devices.Count == 0)
             throw new ArgumentException("至少需要配置一个设备", nameof(Config));
 
+        if (Config.Devices.Count > MaxDevices)
+            throw new ArgumentException($"设备数 {Config.Devices.Count} 超过上限 {MaxDevices}", nameof(Config));
+
+        var totalTags = Config.Devices.Sum(d => d.Tags?.Count ?? 0);
+        if (totalTags > MaxTotalTags)
+            throw new ArgumentException($"所有设备标签总数 {totalTags} 超过上限 {MaxTotalTags}", nameof(Config));
+
+        var totalExecutors = Config.Devices.Sum(d => d.Executors?.Count ?? 0);
+        if (totalExecutors > MaxTotalExecutors)
+            throw new ArgumentException($"所有设备执行器总数 {totalExecutors} 超过上限 {MaxTotalExecutors}", nameof(Config));
+
+        var configJson = System.Text.Json.JsonSerializer.Serialize(Config);
+        if (configJson.Length > MaxConfigJsonSizeBytes)
+            throw new ArgumentException($"Config JSON 大小 {configJson.Length} 超过上限 {MaxConfigJsonSizeBytes} bytes", nameof(Config));
+
         if (!string.IsNullOrWhiteSpace(Namespace))
         {
             if (!System.Text.RegularExpressions.Regex.IsMatch(Namespace, @"^[a-zA-Z_][a-zA-Z0-9_.]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$"))
@@ -130,6 +145,18 @@ public class GenerateRequest
         "osx-x64",
         "osx-arm64"
     ];
+
+    /// <summary>最大设备数</summary>
+    public static readonly int MaxDevices = 50;
+
+    /// <summary>所有设备合计最大标签数</summary>
+    public static readonly int MaxTotalTags = 500;
+
+    /// <summary>所有设备合计最大执行器数</summary>
+    public static readonly int MaxTotalExecutors = 100;
+
+    /// <summary>Config JSON 序列化最大字节数 (1MB)</summary>
+    public static readonly int MaxConfigJsonSizeBytes = 1 * 1024 * 1024;
 }
 
 /// <summary>

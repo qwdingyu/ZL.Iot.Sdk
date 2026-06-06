@@ -85,7 +85,7 @@ public class GenerateJob
     /// </summary>
     public JobStatus Status
     {
-        get => (JobStatus)_statusInt;
+        get => (JobStatus)System.Threading.Volatile.Read(ref _statusInt);
         private set => Interlocked.Exchange(ref _statusInt, (int)value);
     }
 
@@ -126,6 +126,12 @@ public class GenerateJob
     /// 结果字节（ZIP 内容）
     /// </summary>
     public byte[]? ResultBytes { get; private set; }
+
+    /// <summary>
+    /// 安全下载令牌：SSE 和下载端点的访问凭证（128 位随机 GUID）
+    /// 用于替代 JWT，因为 EventSource 和 window.open 无法携带自定义 Header
+    /// </summary>
+    public string DownloadToken { get; }
 
     /// <summary>
     /// 在队列中的近似位置（1 = 下一个执行）
@@ -280,6 +286,7 @@ public class GenerateJob
     {
         Id = Guid.NewGuid();
         UserId = userId;
+        DownloadToken = Guid.NewGuid().ToString("N");
         Request = request;
         CreatedAt = DateTime.UtcNow;
         Status = JobStatus.Queued;

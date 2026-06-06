@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ZL.ProtocolGateway.Tests" />
-    <ProjectReference Include="..\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj" />
+    <PackageReference Include="ProtocolGateway" />
   </ItemGroup>
 
   <ItemGroup>

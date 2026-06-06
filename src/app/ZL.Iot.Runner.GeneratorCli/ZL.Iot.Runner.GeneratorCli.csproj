@@ -12,7 +12,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- Generator CLI needs current source (not package) for JobScheduler/JobStore API alignment. -->
         <ProjectReference Include="..\..\application\ZL.Iot.Runner.Generator\ZL.Iot.Runner.Generator.csproj" />
+        <!-- Templates is not packable (IsPackable=false), so it must be referenced as a project. -->
+        <ProjectReference Include="..\..\application\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
     </ItemGroup>
 
 </Project>

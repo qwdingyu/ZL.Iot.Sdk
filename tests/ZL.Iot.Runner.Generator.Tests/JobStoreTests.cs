@@ -46,7 +46,7 @@ public class JobStoreTests : IDisposable
         return job;
     }
 
-    public void Initialize()
+    private void Initialize()
     {
         _store = new JobStore(
             logger: NullLogger<JobStore>.Instance,

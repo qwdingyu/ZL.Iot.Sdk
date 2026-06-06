@@ -119,7 +119,7 @@ public class JobScheduler : IDisposable
     /// <returns>(是否成功, 错误信息, 任务对象)</returns>
     public (bool Success, string? Error, GenerateJob? Job) Enqueue(GenerateRequest request, string? userId)
     {
-        // 1) 用户限流检查
+        // 1) 用户限流检查（仅检查，不更新 — 入队成功后才记录时间）
         if (!string.IsNullOrEmpty(userId))
         {
             if (_userLastRequest.TryGetValue(userId, out var lastTime))
@@ -131,7 +131,6 @@ public class JobScheduler : IDisposable
                     return (false, $"请求过于频繁，请 {waitSec:F0} 秒后再试", null);
                 }
             }
-            _userLastRequest[userId] = DateTime.UtcNow;
         }
 
         // 2) 队列容量检查 — 使用 Interlocked.Increment + 超限回退，避免 TOCTOU 竞争
@@ -148,6 +147,12 @@ public class JobScheduler : IDisposable
         _store.Add(job);
 
         _channel.Writer.TryWrite(job);
+
+        // 4) 入队成功后才更新限流时间戳，避免队列满时浪费限流配额
+        if (!string.IsNullOrEmpty(userId))
+        {
+            _userLastRequest[userId] = DateTime.UtcNow;
+        }
 
         _logger.LogInformation("任务入队: {JobId} (用户={UserId}, 队列位置={QueuePosition}, 平台={Platform}, SKU={Sku})",
             job.Id, userId ?? "匿名", job.QueuePosition, request.Platform, request.Sku);
@@ -226,29 +231,29 @@ public class JobScheduler : IDisposable
     {
         await foreach (var job in _channel.Reader.ReadAllAsync(_cts.Token))
         {
+            // 检查是否已被取消 — CancelJob 已递减 _queuedCount，此处不再重复递减
+            if (job.Status == JobStatus.Cancelled)
+            {
+                continue;
+            }
+
             // 从队列中取出，减少排队计数
             Interlocked.Decrement(ref _queuedCount);
 
             try
             {
-                // 检查是否已被取消
-                if (job.Status == JobStatus.Cancelled)
-                {
-                    continue;
-                }
-
                 // 等待可用槽位
-                if (job.Status != JobStatus.Cancelled)
-                {
-                    await _semaphore.WaitAsync(_cts.Token);
-                }
+                await _semaphore.WaitAsync(_cts.Token);
 
                 try
                 {
                     // 再次检查取消（可能在等信号量期间被取消）
                     if (job.Status == JobStatus.Cancelled)
-                        continue;
+                    {
+                        continue; // finally 会释放信号量；_runningCount 未递增过，无需递减
+                    }
 
+                    // 只有在真正执行时才递增 _runningCount
                     Interlocked.Increment(ref _runningCount);
                     job.SetRunning();
                     _logger.LogInformation("开始执行: {JobId} (并发={RunningCount}/{MaxConcurrency})", job.Id, _runningCount, _maxConcurrency);
@@ -259,18 +264,27 @@ public class JobScheduler : IDisposable
                 }
                 finally
                 {
-                    Interlocked.Decrement(ref _runningCount);
+                    // 仅当执行了任务（StartedAt 不为空）时才递减 _runningCount
+                    if (job.StartedAt.HasValue)
+                    {
+                        Interlocked.Decrement(ref _runningCount);
+                    }
                     _semaphore.Release();
                 }
             }
             catch (OperationCanceledException)
             {
+                // _cts.Token 取消（Dispose）→ 退出 WorkerLoop
                 break;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(ex, "Worker 异常");
-                job.SetFailed($"系统内部错误: {ex.Message}");
+                // 仅当 job 仍未处于终态时才标记失败，避免覆盖 Cancelled/TimedOut 状态
+                if (job.Status is JobStatus.Running or JobStatus.Queued)
+                {
+                    _logger.LogError(ex, "Worker 异常");
+                    job.SetFailed($"系统内部错误: {ex.Message}");
+                }
             }
         }
     }
@@ -351,7 +365,7 @@ public class JobScheduler : IDisposable
                 job.CompleteEvents();
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (job.Status == JobStatus.Running)
         {
             job.SetFailed($"生成异常: {ex.Message}");
         }

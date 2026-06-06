@@ -12,7 +12,7 @@
 
     <!-- 依赖 Runner 核心库（用于读取 RunnerConfig 模型） -->
     <ItemGroup>
-        <ProjectReference Include="..\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
+        <PackageReference Include="ZL.Iot.Runner.Lib" />
     </ItemGroup>
 
     <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->

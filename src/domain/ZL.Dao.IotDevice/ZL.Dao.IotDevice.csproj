@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\platform\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+        <PackageReference Include="ZL.DB.Acc" />
     </ItemGroup>
 
 </Project>

@@ -24,7 +24,7 @@
 
     <ItemGroup>
         <!-- 核心类库 -->
-        <ProjectReference Include="..\..\application\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
+        <PackageReference Include="ZL.Iot.Runner.Lib" />
     </ItemGroup>
 
 </Project>

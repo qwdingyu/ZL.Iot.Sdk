@@ -18,7 +18,7 @@ namespace ZL.ProtocolGateway.Tests
             var frame = ModbusWriteSupport.BuildTcpWriteRequest(write, transactionId: 0x1234);
 
             // TCP frame: [txn_hi, txn_lo, proto_hi, proto_lo, len_hi, len_lo, unitId, FC, addr_hi, addr_lo, val_hi, val_lo]
-            Assert.Equal(13, frame.Length); // 7 header + 6 PDU
+            Assert.Equal(12, frame.Length); // 7 header + 5 PDU
             Assert.Equal((byte)0x12, frame[0]);
             Assert.Equal((byte)0x34, frame[1]);
             Assert.Equal((byte)0x00, frame[2]); // protocol id = 0

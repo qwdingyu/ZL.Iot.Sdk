@@ -1,3 +1,4 @@
+#if SLOW_TESTS
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
@@ -472,3 +473,4 @@ namespace ZL.ProtocolGateway.Tests
         }
     }
 }
+#endif

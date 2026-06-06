@@ -3,13 +3,28 @@
   "version": "1.0",
   "projects": [
     {
+      "name": "ZL.Collections",
+      "csproj": "src/foundation/ZL.Collections/ZL.Collections.csproj",
+      "obfuscate": true
+    },
+    {
       "name": "ZL.Shared",
       "csproj": "src/foundation/ZL.Shared/ZL.Shared.csproj",
       "obfuscate": true
     },
     {
+      "name": "ZL.Protocol",
+      "csproj": "src/foundation/ZL.Protocol/ZL.Protocol.csproj",
+      "obfuscate": true
+    },
+    {
       "name": "ZL.Framing",
       "csproj": "src/foundation/ZL.Framing/ZL.Framing.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.Probing",
+      "csproj": "src/foundation/ZL.Probing/ZL.Probing.csproj",
       "obfuscate": true
     },
     {
@@ -23,6 +38,11 @@
       "obfuscate": false
     },
     {
+      "name": "ZL.Connection",
+      "csproj": "src/foundation/ZL.Connection/ZL.Connection.csproj",
+      "obfuscate": true
+    },
+    {
       "name": "ZL.ConnectionGuard",
       "csproj": "src/foundation/ZL.ConnectionGuard/ZL.ConnectionGuard.csproj",
       "obfuscate": true
@@ -33,6 +53,11 @@
       "obfuscate": true
     },
     {
+      "name": "ZL.Watchdog",
+      "csproj": "src/platform/ZL.Watchdog/ZL.Watchdog.csproj",
+      "obfuscate": true
+    },
+    {
       "name": "ZL.DataConvert",
       "csproj": "src/platform/ZL.DataConvert/ZL.DataConvert.csproj",
       "obfuscate": true
@@ -40,6 +65,16 @@
     {
       "name": "ZL.Iot.Interface",
       "csproj": "src/platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj",
+      "obfuscate": false
+    },
+    {
+      "name": "ZL.ProtocolGateway",
+      "csproj": "src/platform/ZL.ProtocolGateway/ZL.ProtocolGateway.csproj",
+      "obfuscate": true
+    },
+    {
+      "name": "ZL.ProtocolGateway.Scripting",
+      "csproj": "src/platform/ZL.ProtocolGateway.Scripting/ZL.ProtocolGateway.Scripting.csproj",
       "obfuscate": false
     },
     {

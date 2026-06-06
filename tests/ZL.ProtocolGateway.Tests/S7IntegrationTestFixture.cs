@@ -134,3 +134,4 @@ namespace ZL.ProtocolGateway.Tests
     {
     }
 }
+#endif

@@ -98,7 +98,7 @@ public static class BuildEngine
     private const int FrameworkDependentTimeoutSeconds = 120;
 
     /// <summary>
-    /// 调用 dotnet publish 编译项目（兼容旧签名）
+    /// 调用 dotnet publish 编译项目（兼容旧签名，同步）
     /// </summary>
     /// <param name="projectDir">项目根目录（包含 .csproj 的目录）</param>
     /// <param name="runtimeIdentifier">目标 RID，如 win-x64</param>
@@ -120,6 +120,36 @@ public static class BuildEngine
     }
 
     /// <summary>
+    /// 异步调用 dotnet restore + dotnet publish（推荐在 JobScheduler 中使用）
+    /// </summary>
+    public static async Task<BuildResult> PublishAsync(string projectDir, BuildPublishOptions options, CancellationToken ct = default)
+    {
+        var csprojPath = FindCsproj(projectDir);
+        if (csprojPath == null)
+        {
+            return new BuildResult
+            {
+                Success = false,
+                Errors = new[] { $"在 {projectDir} 下未找到 .csproj 文件" }
+            };
+        }
+
+        // 1) 先执行 dotnet restore，确保 NuGet 包可用
+        var restoreResult = await RunDotnetAsync(projectDir, csprojPath, "restore", "--nologo", ct: ct);
+        if (!restoreResult)
+        {
+            return new BuildResult
+            {
+                Success = false,
+                Errors = new[] { "dotnet restore 失败，请检查 NuGet.config 和网络连接" }
+            };
+        }
+
+        // 2) 执行 dotnet publish
+        return Publish(projectDir, options, ct);
+    }
+
+    /// <summary>
     /// 调用 dotnet publish 编译项目（新签名）
     /// </summary>
     /// <param name="projectDir">项目根目录（包含 .csproj 的目录）</param>
@@ -131,6 +161,7 @@ public static class BuildEngine
         var sw = Stopwatch.StartNew();
         var result = new BuildResult();
 
+        string? outputDir = null;
         try
         {
             var csprojPath = FindCsproj(projectDir);
@@ -139,10 +170,15 @@ public static class BuildEngine
                 result.Success = false;
                 result.Errors = new[] { $"在 {projectDir} 下未找到 .csproj 文件" };
                 result.BuildDuration = sw.Elapsed;
+                if (Directory.Exists(outputDir))
+                {
+                    try { Directory.Delete(outputDir, recursive: true); }
+                    catch { /* cleanup best-effort */ }
+                }
                 return result;
             }
 
-            var outputDir = options.OutputDirectory
+            outputDir = options.OutputDirectory
                 ?? Path.Combine(projectDir, "bin", "publish", options.RuntimeIdentifier);
 
             var args = new List<string>
@@ -197,25 +233,8 @@ public static class BuildEngine
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
 
-            var outputTask = Task.Run(async () =>
-            {
-                while (!process.StandardOutput.EndOfStream)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var line = await process.StandardOutput.ReadLineAsync();
-                    if (line != null) outputBuilder.AppendLine(line);
-                }
-            }, ct);
-
-            var errorTask = Task.Run(async () =>
-            {
-                while (!process.StandardError.EndOfStream)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    var line = await process.StandardError.ReadLineAsync();
-                    if (line != null) errorBuilder.AppendLine(line);
-                }
-            }, ct);
+            Task<string> outputTask = process.StandardOutput.ReadToEndAsync(ct);
+            Task<string> errorTask = process.StandardError.ReadToEndAsync(ct);
 
             var waitForExitTask = Task.Run(() => process.WaitForExit(), ct);
 
@@ -227,16 +246,16 @@ public static class BuildEngine
             {
                 wasKilled = true;
                 process.Kill(true);
-                // Kill(true) 后等待进程真正退出，避免后续访问 ExitCode 时异常
                 process.WaitForExit(2000);
             }
 
-            // 等待所有流读取任务完成后再访问 outputBuilder/errorBuilder，避免数据竞争
-            // Kill(true) 后管道可能不会立即关闭，加 5 秒超时防止无限 hang
-            if (!Task.WaitAll(new[] { outputTask, errorTask }, 5000))
-            {
-                // 流读取超时 — 用已有的输出继续，不阻塞
-            }
+            // 等待流读取完成
+            try { Task.WaitAll(new[] { outputTask, errorTask }, 5000); }
+            catch { /* 忽略 */ }
+
+            // 将结果写入 StringBuilder
+            try { outputBuilder.Append(outputTask.Result); } catch { }
+            try { errorBuilder.Append(errorTask.Result); } catch { }
 
             if (wasKilled)
             {
@@ -247,6 +266,11 @@ public static class BuildEngine
                     $"标准错误: {errorBuilder.ToString().Truncate(500)}"
                 };
                 result.BuildDuration = sw.Elapsed;
+                if (Directory.Exists(outputDir))
+                {
+                    try { Directory.Delete(outputDir, recursive: true); }
+                    catch { /* cleanup best-effort */ }
+                }
                 return result;
             }
 
@@ -260,11 +284,33 @@ public static class BuildEngine
                     $"标准错误: {errorBuilder.ToString().Truncate(500)}"
                 };
                 result.BuildDuration = sw.Elapsed;
+                if (Directory.Exists(outputDir))
+                {
+                    try { Directory.Delete(outputDir, recursive: true); }
+                    catch { /* cleanup best-effort */ }
+                }
                 return result;
             }
 
+            // 从 stdout/stderr 中提取警告
+            var warningLines = new List<string>();
+            foreach (var line in outputBuilder.ToString().Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("warn:", StringComparison.Ordinal))
+                    warningLines.Add(trimmed);
+            }
+            foreach (var line in errorBuilder.ToString().Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("warn:", StringComparison.Ordinal))
+                    warningLines.Add(trimmed);
+            }
+            result.Warnings = warningLines.ToArray();
+
             // 计算输出文件的 SHA256 哈希
             var hashes = new Dictionary<string, string>();
+            long totalSize = 0;
             if (Directory.Exists(outputDir))
             {
                 foreach (var file in Directory.GetFiles(outputDir, "*", SearchOption.AllDirectories))
@@ -274,12 +320,14 @@ public static class BuildEngine
                     var hash = SHA256.HashData(stream);
                     var hashString = Convert.ToHexString(hash).ToLowerInvariant();
                     hashes[relativePath] = hashString;
+                    totalSize += stream.Length;
                 }
             }
 
             result.Success = true;
             result.OutputPath = outputDir;
             result.FileHashes = hashes;
+            result.PackageSizeBytes = totalSize;
             result.BuildDuration = sw.Elapsed;
             return result;
         }
@@ -288,6 +336,11 @@ public static class BuildEngine
             result.Success = false;
             result.Errors = new[] { "构建操作已被取消" };
             result.BuildDuration = sw.Elapsed;
+            if (Directory.Exists(outputDir))
+            {
+                try { Directory.Delete(outputDir, recursive: true); }
+                catch { /* cleanup best-effort */ }
+            }
             return result;
         }
         catch (Exception ex)
@@ -295,6 +348,11 @@ public static class BuildEngine
             result.Success = false;
             result.Errors = new[] { ex.Message };
             result.BuildDuration = sw.Elapsed;
+            if (Directory.Exists(outputDir))
+            {
+                try { Directory.Delete(outputDir, recursive: true); }
+                catch { /* cleanup best-effort */ }
+            }
             return result;
         }
     }
@@ -314,5 +372,45 @@ public static class BuildEngine
     private static string Truncate(this string s, int maxLen)
     {
         return s.Length <= maxLen ? s : s[..maxLen] + "...";
+    }
+
+    /// <summary>
+    /// 运行 dotnet 命令（用于 restore 等辅助操作）
+    /// </summary>
+    private static async Task<bool> RunDotnetAsync(string workingDir, string projectPath, string command, string? extraArgs = null, CancellationToken ct = default)
+    {
+        var args = new List<string> { command, projectPath, "--nologo" };
+        if (!string.IsNullOrEmpty(extraArgs))
+            args.AddRange(extraArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            WorkingDirectory = workingDir,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+
+        using var process = Process.Start(psi)
+            ?? throw new InvalidOperationException("无法启动 dotnet 进程");
+
+        var outputTask = process.StandardOutput.ReadToEndAsync(ct);
+        var errorTask = process.StandardError.ReadToEndAsync(ct);
+
+        var completed = await Task.WhenAny(Task.Run(() => process.WaitForExit(), ct), Task.Delay(TimeSpan.FromSeconds(60), ct));
+        if (!process.HasExited)
+        {
+            process.Kill(true);
+            process.WaitForExit(2000);
+        }
+
+        // 等待流读取完成，避免管道未关闭前就返回
+        try { await Task.WhenAll(outputTask, errorTask); } catch { /* 管道已关闭，忽略 */ }
+
+        ct.ThrowIfCancellationRequested();
+        return process.ExitCode == 0;
     }
 }

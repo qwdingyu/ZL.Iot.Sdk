@@ -176,14 +176,16 @@ namespace ZL.ProtocolGateway.Tests
         public void LengthField_MultipleFrames_ExtractsAll()
         {
             var splitter = new LengthFieldSplitter(lengthFieldOffset: 0, lengthFieldSize: 2);
-            // Two frames: [0,3,A,B,C] [0,2,X,Y]
-            splitter.Append(new byte[] { 0, 3, 65, 66, 67, 0, 2, 88, 89 }, 0, 9);
+            // Two frames back-to-back. Length field = total frame length (including length field itself).
+            // Frame 1: [0,5, 65,66,67]  → length=5, 3 payload bytes
+            // Frame 2: [0,4, 88,89]     → length=4, 2 payload bytes
+            splitter.Append(new byte[] { 0, 5, 65, 66, 67, 0, 4, 88, 89 }, 0, 9);
 
             var frames = ToArrays(splitter.ExtractFrames());
 
             Assert.Equal(2, frames.Length);
-            Assert.Equal(3, frames[0].Length);
-            Assert.Equal(2, frames[1].Length);
+            Assert.Equal(5, frames[0].Length);
+            Assert.Equal(4, frames[1].Length);
         }
 
         [Fact]

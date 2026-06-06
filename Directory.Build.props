@@ -24,6 +24,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
+    <!-- 禁用无关警告，减少编译输出噪音 -->
+    <NoWarn>$(NoWarn);NU1701;CS0618;CS1591;CS8632;CS0168;CS8602;CS8604;CS8600;CS8601;CS8625;CS8603;CS8618;CS8622;CS8629;CS1998;CS8981</NoWarn>
+
     <!-- ========== 输出配置 ========== -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DebugType>portable</DebugType>
