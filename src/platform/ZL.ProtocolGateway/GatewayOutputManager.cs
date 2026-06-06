@@ -29,9 +29,9 @@ namespace ZL.ProtocolGateway
         private readonly ConcurrentDictionary<IOutputPlugin, string> _pluginToName = new();
 
         /// <summary>
-        /// 已注册的输出插件名称列表。
+        /// 已注册的输出插件名称集合。
         /// </summary>
-        public IReadOnlyList<string> RegisteredOutputNames => _registeredOutputs.Keys.ToList();
+        public IReadOnlyCollection<string> RegisteredOutputNames => (IReadOnlyCollection<string>)_registeredOutputs.Keys;
 
         /// <summary>
         /// 输出插件健康状态变更事件（桥接自各插件的 DetailedStatusChanged）。

@@ -104,15 +104,8 @@ namespace ZL.ProtocolGateway
             lock (_writeLock)
             {
                 var list = new List<RouteRule>(_rulesSnapshot);
-                var existing = list.FirstOrDefault(r => r.Name == updated.Name);
-                if (existing == null) return false;
-
-                existing.Condition = updated.Condition;
-                existing.OutputNames.Clear();
-                existing.OutputNames.AddRange(updated.OutputNames);
-                existing.ContinueMatching = updated.ContinueMatching;
-                existing.Priority = updated.Priority;
-
+                if (list.RemoveAll(r => r.Name == updated.Name) == 0) return false;
+                list.Add(updated);
                 list.Sort((a, b) => a.Priority.CompareTo(b.Priority));
                 _rulesSnapshot = list.ToArray();
                 return true;

@@ -68,7 +68,7 @@ namespace ZL.ProtocolGateway
         /// <summary>
         /// 已注册的输出插件名称列表
         /// </summary>
-        public IReadOnlyList<string> RegisteredOutputNames => _outputManager.RegisteredOutputNames;
+        public IReadOnlyCollection<string> RegisteredOutputNames => _outputManager.RegisteredOutputNames;
 
         /// <summary>
         /// 输出插件健康状态变更事件（桥接自各插件的 DetailedStatusChanged）

@@ -40,7 +40,7 @@ namespace ZL.ProtocolGateway
         /// <summary>
         /// 获取网关转发指标快照。
         /// </summary>
-        public GatewayMetricsSnapshot GetMetricsSnapshot(IReadOnlyList<string> outputNames)
+        public GatewayMetricsSnapshot GetMetricsSnapshot(IReadOnlyCollection<string> outputNames)
         {
             var cbStates = new Dictionary<string, string>();
             foreach (var name in outputNames)

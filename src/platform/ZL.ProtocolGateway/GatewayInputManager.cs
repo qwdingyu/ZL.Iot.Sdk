@@ -33,7 +33,7 @@ namespace ZL.ProtocolGateway
             {
                 lock (_lock)
                 {
-                    return _inputs.AsReadOnly();
+                    return new List<IInputPlugin>(_inputs);
                 }
             }
         }
@@ -116,21 +116,24 @@ namespace ZL.ProtocolGateway
         /// <param name="tokensPerSecond">每秒允许的最大消息数，0 表示取消限流</param>
         public void SetRateLimit(double tokensPerSecond)
         {
-            if (tokensPerSecond <= 0)
+            lock (_lock)
             {
-                _rateLimiter?.Dispose();
-                _rateLimiter = null;
-                return;
-            }
+                if (tokensPerSecond <= 0)
+                {
+                    _rateLimiter?.Dispose();
+                    _rateLimiter = null;
+                    return;
+                }
 
-            _rateLimiter?.Dispose();
-            _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-            {
-                TokenLimit = (int)tokensPerSecond,
-                ReplenishmentPeriod = TimeSpan.FromSeconds(1),
-                TokensPerPeriod = (int)tokensPerSecond,
-                QueueLimit = 0 // 超限直接丢弃，不入队
-            });
+                _rateLimiter?.Dispose();
+                _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = (int)tokensPerSecond,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                    TokensPerPeriod = (int)tokensPerSecond,
+                    QueueLimit = 0 // 超限直接丢弃，不入队
+                });
+            }
         }
 
         #endregion

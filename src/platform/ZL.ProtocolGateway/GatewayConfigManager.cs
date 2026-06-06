@@ -16,6 +16,7 @@ namespace ZL.ProtocolGateway
     {
         private readonly ResilientMessagePipeline _pipeline;
         private GatewayManagerOptions _options;
+        private System.Threading.Timer? _configDebounceTimer;
 
         public GatewayConfigManager(ResilientMessagePipeline pipeline, GatewayManagerOptions options)
         {
@@ -91,13 +92,12 @@ namespace ZL.ProtocolGateway
 
             // 防抖 + 并发保护（使用 int + Interlocked 替代 volatile bool，因为 volatile 不能用于局部变量）
             int _reloadInProgress = 0;
-            System.Threading.Timer? _debounceTimer = null;
 
             watcher.Changed += (sender, e) =>
             {
                 // 防抖：重置 500ms 定时器，FileSystemWatcher.Changed 在单次写入时可能触发 2 次
-                _debounceTimer?.Dispose();
-                _debounceTimer = new System.Threading.Timer(async _ =>
+                _configDebounceTimer?.Dispose();
+                _configDebounceTimer = new System.Threading.Timer(async _ =>
                 {
                     // 并发保护：同一时刻只允许一个重载任务（0→1 成功表示获取锁）
                     if (Interlocked.CompareExchange(ref _reloadInProgress, 1, 0) != 0)
@@ -125,24 +125,24 @@ namespace ZL.ProtocolGateway
             watcher.EnableRaisingEvents = true;
             GatewayLog.Info("GatewayConfigManager", $"Watching config file: {configPath}");
 
-            return new FileSystemWatcherDisposable(watcher, _debounceTimer);
+            return new FileSystemWatcherDisposable(watcher, _configDebounceTimer);
         }
 
         private sealed class FileSystemWatcherDisposable : IDisposable
         {
             private readonly System.IO.FileSystemWatcher _watcher;
-            private readonly System.Threading.Timer? _debounceTimer;
+            private readonly System.Threading.Timer? _configDebounceTimer;
 
             public FileSystemWatcherDisposable(System.IO.FileSystemWatcher watcher, System.Threading.Timer? debounceTimer)
             {
                 _watcher = watcher;
-                _debounceTimer = debounceTimer;
+                _configDebounceTimer = debounceTimer;
             }
 
             public void Dispose()
             {
                 _watcher.EnableRaisingEvents = false;
-                _debounceTimer?.Dispose();
+                _configDebounceTimer?.Dispose();
                 _watcher.Dispose();
             }
         }

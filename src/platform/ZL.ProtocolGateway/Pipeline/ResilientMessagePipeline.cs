@@ -240,7 +240,7 @@ namespace ZL.ProtocolGateway
         /// <summary>
         /// 已注册的输出插件集合（只读视图）。
         /// </summary>
-        public IReadOnlyCollection<IOutputPlugin> RegisteredOutputs => (IReadOnlyCollection<IOutputPlugin>)_outputs.Values;
+        public IReadOnlyCollection<IOutputPlugin> RegisteredOutputs => new List<IOutputPlugin>(_outputs.Values);
 
         public ResilientMessagePipeline()
         {
