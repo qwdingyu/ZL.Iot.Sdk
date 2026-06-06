@@ -217,7 +217,7 @@ namespace ZL.ProtocolGateway
         /// <param name="ct">取消令牌</param>
         public async Task ForcePersistAsync(CancellationToken ct = default)
         {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0) return;
+            if (_disposed == 1) return;
 
             var conn = await GetConnectionAsync();
             await _dbLock.WaitAsync(ct);
