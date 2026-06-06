@@ -83,9 +83,10 @@ namespace ZL.ProtocolGateway
             if (!System.IO.File.Exists(configPath))
                 throw new System.IO.FileNotFoundException($"Config file not found: {configPath}");
 
+            var dirName = System.IO.Path.GetDirectoryName(configPath);
             var watcher = new System.IO.FileSystemWatcher
             {
-                Path = System.IO.Path.GetDirectoryName(configPath),
+                Path = string.IsNullOrEmpty(dirName) ? System.IO.Directory.GetCurrentDirectory() : dirName,
                 Filter = System.IO.Path.GetFileName(configPath),
                 NotifyFilter = System.IO.NotifyFilters.LastWrite
             };

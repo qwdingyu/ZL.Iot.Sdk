@@ -60,7 +60,9 @@ namespace ZL.ProtocolGateway
                     else
                     {
                         sendCts.Cancel();
-                        try { await sendTask.WaitAsync(TimeSpan.FromMilliseconds(500)); } catch { }
+                        try { await sendTask.WaitAsync(TimeSpan.FromMilliseconds(500)); }
+                        catch (TaskCanceledException) { /* expected after cancel */ }
+                        catch (Exception waitEx) { GatewayLog.Warn("PipelineSendStrategy", $"Wait after timeout for '{output.Name}' failed: {waitEx.Message}", waitEx); }
                         throw new TimeoutException($"Send to '{output.Name}' timed out after {_sendTimeoutMs()}ms");
                     }
                 }

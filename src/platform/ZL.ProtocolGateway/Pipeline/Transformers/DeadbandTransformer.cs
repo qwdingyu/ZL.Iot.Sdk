@@ -49,18 +49,18 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public Func<Message, Task<Message>> Build()
         {
-            return async (message) =>
+            return message =>
             {
                 // 死区为 0 且无特定类型配置 → 透传
                 if (_defaultDeadband == 0.0 && _deadbands.Count == 0)
                 {
-                    return await Task.FromResult(message);
+                    return Task.FromResult(message);
                 }
 
                 // 仅处理有 Writes 的消息
                 if (message?.Writes == null || message.Writes.Count == 0)
                 {
-                    return await Task.FromResult(message);
+                    return Task.FromResult(message);
                 }
 
                 var filtered = new List<TagWrite>();
@@ -74,22 +74,19 @@ namespace ZL.ProtocolGateway
 
                 if (filtered.Count == message.Writes.Count)
                 {
-                    // 无过滤，返回原消息
-                    return await Task.FromResult(message);
+                    return Task.FromResult(message);
                 }
 
                 if (filtered.Count == 0)
                 {
-                    // 全部被死区过滤，返回 null 让 Pipeline 丢弃整条消息
-                    return await Task.FromResult<Message>(null!);
+                    return Task.FromResult<Message>(null!);
                 }
 
-                // 部分过滤，返回克隆消息（修改 Writes 列表）
+                // 部分过滤，返回克隆消息
                 var clone = message.Clone();
-                // Clone() 创建新的 Writes 列表，清空后添加过滤后的
                 clone.Writes.Clear();
                 clone.Writes.AddRange(filtered);
-                return await Task.FromResult(clone);
+                return Task.FromResult(clone);
             };
         }
 

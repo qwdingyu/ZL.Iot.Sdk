@@ -29,22 +29,18 @@ namespace ZL.ProtocolGateway
         {
             if (_interval == 1)
             {
-                // 间隔为 1，全部放行，无需计数
-                return async (message) => await Task.FromResult(message);
+                // 间隔为 1，全部放行，无需计数 — 直接返回同步 lambda 包装为 Task
+                return message => Task.FromResult(message);
             }
 
-            return async (message) =>
+            return message =>
             {
-                // P0 修复：使用 Interlocked.Increment 原子递增，避免多线程并发时计数器丢失。
-                // Pipeline 使用 SemaphoreSlim(4) 并发处理消息，多个 Transformer 实例可能同时执行。
                 long current = Interlocked.Increment(ref _counter);
                 if (current % _interval == 0)
                 {
-                    return await Task.FromResult(message);
+                    return Task.FromResult(message);
                 }
-
-                // 不是采样点，返回 null 让 Pipeline 丢弃
-                return await Task.FromResult<Message>(null!);
+                return Task.FromResult<Message>(null!);
             };
         }
 
@@ -85,7 +81,7 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public Func<Message, Task<Message>> Build()
         {
-            return async (message) =>
+            return message =>
             {
                 var now = message?.Timestamp ?? DateTime.UtcNow;
                 long nowTicks = now.Ticks;
@@ -93,15 +89,13 @@ namespace ZL.ProtocolGateway
 
                 if (new TimeSpan(nowTicks - lastTicks) >= _interval)
                 {
-                    // 尝试原子更新：仅当 _lastPassedTicks 仍为 lastTicks 时写入 nowTicks
                     if (Interlocked.CompareExchange(ref _lastPassedTicks, nowTicks, lastTicks) == lastTicks)
                     {
-                        return await Task.FromResult(message);
+                        return Task.FromResult(message);
                     }
                 }
 
-                // 未到采样时间或被另一线程抢先，丢弃
-                return await Task.FromResult<Message>(null!);
+                return Task.FromResult<Message>(null!);
             };
         }
 

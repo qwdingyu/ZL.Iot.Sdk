@@ -83,10 +83,11 @@ namespace ZL.ProtocolGateway
                 if (path == "/api/dead-letters" || path == "/api/dead-letters/")
                 {
                     if (method != "GET") return MethodNotAllowed();
+                    var deadLetters = _manager.GetDeadLetters();
                     return OkJson(new
                     {
-                        count = _manager.GetDeadLetters().Count,
-                        messages = _manager.GetDeadLetters()
+                        count = deadLetters.Count,
+                        messages = deadLetters
                     });
                 }
 
