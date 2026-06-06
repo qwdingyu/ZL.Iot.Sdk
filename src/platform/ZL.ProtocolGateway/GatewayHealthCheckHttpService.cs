@@ -99,7 +99,7 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public async Task StopAsync()
         {
-            _isRunning = 0;
+            Interlocked.Exchange(ref _isRunning, 0);
             _listener?.Stop();
             _listener?.Close();
 
@@ -276,7 +276,7 @@ namespace ZL.ProtocolGateway
         {
             // P1 修复：避免 StopAsync().Wait() 同步死锁。
             // 同步 Dispose 仅停止监听器，不等待后台任务完成。
-            _isRunning = 0;
+            Interlocked.Exchange(ref _isRunning, 0);
             _listener?.Stop();
             _listener?.Close();
             _listener = null;
