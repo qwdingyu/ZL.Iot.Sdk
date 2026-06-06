@@ -124,7 +124,19 @@ namespace ZL.ProtocolGateway.Plugins
 
         protected override bool HasLiveConnection()
         {
-            return _tcpClient?.Connected == true && _stream != null;
+            if (_tcpClient?.Client == null || !_tcpClient.Connected || _stream == null)
+                return false;
+
+            try
+            {
+                if (_tcpClient.Client.Poll(0, SelectMode.SelectRead) && _tcpClient.Client.Available == 0)
+                    return false;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         protected override void CleanupConnection()

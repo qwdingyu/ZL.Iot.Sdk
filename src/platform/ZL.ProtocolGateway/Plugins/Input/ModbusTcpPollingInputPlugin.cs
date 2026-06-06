@@ -135,7 +135,21 @@ public class ModbusTcpPollingInputPlugin : IndustrialPollingInputBase
     /// <summary>检查 TCP 连接是否仍然有效</summary>
     protected override bool HasLiveConnection()
     {
-        return _client != null && _client.Connected;
+        if (_client?.Client == null || !_client.Connected || _stream == null)
+            return false;
+
+        try
+        {
+            // TcpClient.Connected 只检查 last error，不检测远端关闭（half-closed）。
+            // Poll(SelectRead) + Available==0 可检测远端已发送 FIN。
+            if (_client.Client.Poll(0, SelectMode.SelectRead) && _client.Client.Available == 0)
+                return false;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>同步清理 TCP 连接资源</summary>
