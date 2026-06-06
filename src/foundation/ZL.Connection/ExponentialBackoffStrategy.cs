@@ -26,7 +26,6 @@ namespace ZL.Connection
     /// </summary>
     public class ExponentialBackoffStrategy
     {
-        private readonly Random _random = new();
         private readonly object _lock = new();
 
         /// <summary>
@@ -111,11 +110,7 @@ namespace ZL.Connection
 
                 // 应用随机抖动（防雷群效应）
                 var jitterRange = delay * JitterFactor;
-                double jitter;
-                lock (_random)
-                {
-                    jitter = (_random.NextDouble() * 2 - 1) * jitterRange; // [-jitterRange, +jitterRange]
-                }
+                var jitter = (Random.Shared.NextDouble() * 2 - 1) * jitterRange; // [-jitterRange, +jitterRange]
 
                 var finalDelay = (int)Math.Round(delay + jitter);
 
@@ -155,7 +150,10 @@ namespace ZL.Connection
         /// <returns>true 表示可以重试</returns>
         public bool CanRetry()
         {
-            return MaxRetries < 0 || CurrentAttempt < MaxRetries;
+            lock (_lock)
+            {
+                return MaxRetries < 0 || CurrentAttempt < MaxRetries;
+            }
         }
 
         /// <summary>
