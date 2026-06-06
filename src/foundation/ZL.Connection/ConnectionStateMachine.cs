@@ -51,6 +51,7 @@ namespace ZL.Connection
                 [(ConnectionState.Connected, ConnectionState.Disconnected)] = () => true,
                 [(ConnectionState.Connected, ConnectionState.Reconnecting)] = () => true, // 连接断开，自动重连
                 [(ConnectionState.Connected, ConnectionState.Error)] = () => true,
+                [(ConnectionState.Connected, ConnectionState.Faulted)] = () => true, // 致命故障
                 [(ConnectionState.Connected, ConnectionState.Connecting)] = () => false, // 已连接不能再次连接
 
                 // 从 Reconnecting 出发
