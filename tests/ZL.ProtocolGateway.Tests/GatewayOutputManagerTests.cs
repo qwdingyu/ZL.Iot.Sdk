@@ -88,7 +88,7 @@ namespace ZL.ProtocolGateway.Tests
 
             Assert.True(result);
             Assert.Single(manager.RegisteredOutputNames);
-            Assert.Equal("test-out", manager.RegisteredOutputNames[0]);
+            Assert.True(manager.RegisteredOutputNames.Contains("test-out"));
 
             // 旧插件已被 Dispose
             Assert.True(oldOutput.Disposed);

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using ZL.Collections.Collections;
 using ZL.ProtocolGateway;
 using Xunit;
 
