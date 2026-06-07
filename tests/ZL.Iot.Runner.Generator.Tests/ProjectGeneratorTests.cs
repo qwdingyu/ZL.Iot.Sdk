@@ -57,7 +57,7 @@ public class ProjectGeneratorTests
                             {
                                 BizCode = "E1",
                                 TagId = "T1",
-                                JudgeType = "1",
+                                JudgeType = 1,
                                 JudgeExp = "1",
                                 ExeType = "M",
                                 Script = "SELECT 1",

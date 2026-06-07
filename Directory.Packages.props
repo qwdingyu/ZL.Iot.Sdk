@@ -31,8 +31,8 @@
     <PackageVersion Include="ZL.Dao.Edge" Version="1.0.4" />
     <PackageVersion Include="ZL.Biz.Execute" Version="1.0.4" />
     <PackageVersion Include="ZL.Iot.Plugin" Version="1.0.4" />
-    <PackageVersion Include="ZL.Iot.Runner.Lib" Version="1.0.4" />
-    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="1.0.4" />
+    <PackageVersion Include="ZL.Iot.Runner.Lib" Version="1.0.5" />
+    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="1.0.5" />
     <PackageVersion Include="ZL.EdgeService" Version="1.0.4" />
 
     <!-- 核心依赖 -->

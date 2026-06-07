@@ -18,11 +18,12 @@
         <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
         <PackageReference Include="ZL.Iot.Interface" />
         <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
-        <ProjectReference Condition="Exists('..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj')" Include="..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj" />
-        <PackageReference Condition="!Exists('..\..\..\..\ZL.PlcBase\ZL.PlcBase\ZL.PlcBase.csproj')" Include="ZL.PlcBase" />
+        <!-- 始终使用 PackageReference：Condition-based ProjectReference 在 pack 时
+             会引用本地源码的 Version（ZL.PlcBase.csproj 无 Version 标签），
+             导致 nuspec 写入不存在的 1.0.4 版本，下游 restore 失败（NU1605）。 -->
+        <PackageReference Include="ZL.PlcBase" />
         <!-- PFLite（DeviceConfig/SharedTagValueCache 等基础工具） -->
-        <ProjectReference Condition="Exists('..\..\..\..\ZL.PlcBase\ZL.PFLite\ZL.PFLite.csproj')" Include="..\..\..\..\ZL.PlcBase\ZL.PFLite\ZL.PFLite.csproj" />
-        <PackageReference Condition="!Exists('..\..\..\..\ZL.PlcBase\ZL.PFLite\ZL.PFLite.csproj')" Include="ZL.PFLite" />
+        <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 
     <!-- LoggerFactory / AddConsole 所需包 -->
