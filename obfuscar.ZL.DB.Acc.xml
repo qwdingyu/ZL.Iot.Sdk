@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Obfuscator>
+  <Var name='InPath' value='/Users/dingyuwang/0-X/iot-sdk/obfuscated/ZL.DB.Acc/publish' />
+  <Var name='OutPath' value='/Users/dingyuwang/0-X/iot-sdk/obfuscated/ZL.DB.Acc' />
+  <Var name='KeepPublicApi' value='true' />
+  <Var name='HidePrivateApi' value='true' />
+  <Var name='UseUnicodeNames' value='true' />
+  <Module file='$(InPath)/ZL.DB.Acc.dll' />
+</Obfuscator>

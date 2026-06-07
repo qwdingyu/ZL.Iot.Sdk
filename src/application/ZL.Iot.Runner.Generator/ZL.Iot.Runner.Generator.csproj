@@ -26,8 +26,10 @@
     </ItemGroup>
 
     <!-- 模板项目作为 EmbeddedResource 编译进 Templates 程序集 -->
+    <!-- PrivateAssets=all 阻止 NuGet 将 Templates 声明为传递依赖（Templates IsPackable=false） -->
     <ItemGroup>
-        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
+        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj"
+                          PrivateAssets="all" />
     </ItemGroup>
 
 </Project>

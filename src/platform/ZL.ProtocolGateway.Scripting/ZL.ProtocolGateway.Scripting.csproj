@@ -17,7 +17,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ZL.ProtocolGateway.Tests" />
-    <PackageReference Include="ProtocolGateway" />
+    <!-- Scripting 深度依赖 ProtocolGateway 内部类型（Message/TagWrite/Plugins），
+         混淆后会丢失符号。必须用 ProjectReference 确保源码编译一致性。 -->
+    <ProjectReference Include="..\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>
