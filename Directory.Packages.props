@@ -12,7 +12,7 @@
     <PackageVersion Include="ProtocolGateway" Version="1.0.4" />
     <PackageVersion Include="ProtocolGateway.Scripting" Version="1.0.4" />
 
-    <!-- ZL IoT SDK 自有包（v1.0.2 刚发布到 NuGet） -->
+    <!-- ZL IoT SDK 自有包（v1.0.4） -->
     <PackageVersion Include="ZL.Collections" Version="1.0.4" />
     <PackageVersion Include="ZL.Shared" Version="1.0.4" />
     <PackageVersion Include="ZL.Framing" Version="1.0.4" />
