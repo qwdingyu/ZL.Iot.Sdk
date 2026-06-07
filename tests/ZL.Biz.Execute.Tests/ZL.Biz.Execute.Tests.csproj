@@ -23,7 +23,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\domain\ZL.Biz.Execute\ZL.Biz.Execute.csproj" />
         <ProjectReference Include="..\..\src\application\ZL.EdgeService\ZL.EdgeService.csproj" />
     </ItemGroup>
 
