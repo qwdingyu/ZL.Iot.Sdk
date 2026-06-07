@@ -10,7 +10,7 @@
     <PackageVersion Include="ZL.PlcBase" Version="2.0.1" />
     <PackageVersion Include="ZL.Tag" Version="2.0.1" />
     <PackageVersion Include="ProtocolGateway" Version="1.0.4" />
-    <PackageVersion Include="ProtocolGateway.Scripting" Version="1.0.4" />
+    <PackageVersion Include="ProtocolGateway.Scripting" Version="1.0.3" />
 
     <!-- ZL IoT SDK 自有包（v1.0.4） -->
     <PackageVersion Include="ZL.Collections" Version="1.0.4" />
