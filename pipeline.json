@@ -120,5 +120,14 @@
   ],
   "nugetSource": "https://api.nuget.org/v3/index.json",
   "publishTimeout": 120,
-  "dryRun": false
+  "dryRun": false,
+  "consumers": [
+    {
+      "name": "tmom",
+      "path": "/Users/dingyuwang/0-X/tmom",
+      "cpmFile": "Directory.Packages.props",
+      "buildTarget": "api/TMom.Device.Runtime.Host/TMom.Device.Runtime.Host.csproj",
+      "autoCommit": false
+    }
+  ]
 }
