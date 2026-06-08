@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    
     <LangVersion>12.0</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NU1603;NU1605;NU1902;NU1903</NoWarn>
@@ -18,8 +18,10 @@
   <ItemGroup>
     <InternalsVisibleTo Include="ZL.ProtocolGateway.Tests" />
     <!-- Scripting 深度依赖 ProtocolGateway 内部类型（Message/TagWrite/Plugins），
-         混淆后会丢失符号。必须用 ProjectReference 确保源码编译一致性。 -->
-    <ProjectReference Include="..\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj" />
+         混淆后会丢失符号。必须用 ProjectReference 确保源码编译一致性。
+         PrivateAssets=all 阻止 pack 时将 ProtocolGateway 声明为传递依赖。 -->
+    <ProjectReference Include="..\ZL.ProtocolGateway\ZL.ProtocolGateway.csproj"
+                      PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

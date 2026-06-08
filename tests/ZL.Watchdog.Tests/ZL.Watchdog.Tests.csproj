@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        
         <AssemblyName>ZL.Watchdog.Tests</AssemblyName>
         <RootNamespace>ZL.Watchdog.Tests</RootNamespace>
         <LangVersion>latest</LangVersion>

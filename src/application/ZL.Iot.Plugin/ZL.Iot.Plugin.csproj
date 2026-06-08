@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <TargetFrameworks>netstandard2.1</TargetFrameworks>
         <AssemblyName>ZL.Iot.Plugin</AssemblyName>
         <RootNamespace>ZL.Iot.Plugin</RootNamespace>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>

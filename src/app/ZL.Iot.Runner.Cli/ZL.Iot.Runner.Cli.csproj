@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+        
         <AssemblyName>ZL.Iot.Runner.Cli</AssemblyName>
         <RootNamespace>ZL.Iot.Runner.Cli</RootNamespace>
         <LangVersion>latest</LangVersion>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <AssemblyName>ZL.DataSync</AssemblyName>
+        <RootNamespace>ZL.DataSync</RootNamespace>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <Description>轻量级数据同步管道：从 SQLite 缓冲库可靠地分发数据到远程数据库（MySQL/SQL Server）或 HTTP API。支持断网续传、批量写入、失败重试、水位线追踪。</Description>
+    </PropertyGroup>
+
+    <!-- NuGet 包依赖 -->
+    <ItemGroup>
+        <PackageReference Include="SqlSugarCore" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+        <PackageReference Include="Newtonsoft.Json" />
+    </ItemGroup>
+
+</Project>

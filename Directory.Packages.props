@@ -9,31 +9,31 @@
     <PackageVersion Include="ZL.PFLite" Version="2.0.1" />
     <PackageVersion Include="ZL.PlcBase" Version="2.0.1" />
     <PackageVersion Include="ZL.Tag" Version="2.0.1" />
-    <PackageVersion Include="ProtocolGateway" Version="1.0.4" />
-    <PackageVersion Include="ProtocolGateway.Scripting" Version="1.0.3" />
+    <PackageVersion Include="ProtocolGateway" Version="1.1.0" />
+    <PackageVersion Include="ProtocolGateway.Scripting" Version="1.1.0" />
 
-    <!-- ZL IoT SDK 自有包（v1.0.4） -->
-    <PackageVersion Include="ZL.Collections" Version="1.0.4" />
-    <PackageVersion Include="ZL.Shared" Version="1.0.4" />
-    <PackageVersion Include="ZL.Framing" Version="1.0.4" />
-    <PackageVersion Include="ZL.Script" Version="1.0.4" />
-    <PackageVersion Include="ZL.Scripting" Version="1.0.4" />
-    <PackageVersion Include="ZL.Connection" Version="1.0.4" />
-    <PackageVersion Include="ZL.ConnectionGuard" Version="1.0.4" />
-    <PackageVersion Include="ZL.DataProcessing" Version="1.0.4" />
-    <PackageVersion Include="ZL.Probing" Version="1.0.4" />
-    <PackageVersion Include="ZL.Protocol" Version="1.0.4" />
-    <PackageVersion Include="ZL.Watchdog" Version="1.0.4" />
-    <PackageVersion Include="ZL.DataConvert" Version="1.0.4" />
-    <PackageVersion Include="ZL.Iot.Interface" Version="1.0.4" />
-    <PackageVersion Include="ZL.DB.Acc" Version="1.0.4" />
-    <PackageVersion Include="ZL.Dao.IotDevice" Version="1.0.4" />
-    <PackageVersion Include="ZL.Dao.Edge" Version="1.0.4" />
-    <PackageVersion Include="ZL.Biz.Execute" Version="1.0.4" />
-    <PackageVersion Include="ZL.Iot.Plugin" Version="1.0.4" />
-    <PackageVersion Include="ZL.Iot.Runner.Lib" Version="1.0.5" />
-    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="1.0.5" />
-    <PackageVersion Include="ZL.EdgeService" Version="1.0.4" />
+<!-- ZL IoT SDK 自有包（v1.1.0） -->
+    <PackageVersion Include="ZL.Collections" Version="1.1.0" />
+    <PackageVersion Include="ZL.Shared" Version="1.1.0" />
+    <PackageVersion Include="ZL.Framing" Version="1.1.0" />
+    <PackageVersion Include="ZL.Script" Version="1.1.0" />
+    <PackageVersion Include="ZL.Scripting" Version="1.1.0" />
+    <PackageVersion Include="ZL.Connection" Version="1.1.0" />
+    <PackageVersion Include="ZL.ConnectionGuard" Version="1.1.0" />
+    <PackageVersion Include="ZL.DataProcessing" Version="1.1.0" />
+    <PackageVersion Include="ZL.Probing" Version="1.1.0" />
+    <PackageVersion Include="ZL.Protocol" Version="1.1.0" />
+    <PackageVersion Include="ZL.Watchdog" Version="1.1.0" />
+    <PackageVersion Include="ZL.DataConvert" Version="1.1.0" />
+    <PackageVersion Include="ZL.Iot.Interface" Version="1.1.0" />
+    <PackageVersion Include="ZL.DB.Acc" Version="1.1.0" />
+    <PackageVersion Include="ZL.Dao.IotDevice" Version="1.1.0" />
+    <PackageVersion Include="ZL.Dao.Edge" Version="1.1.0" />
+    <PackageVersion Include="ZL.Biz.Execute" Version="1.1.0" />
+    <PackageVersion Include="ZL.Iot.Plugin" Version="1.1.0" />
+    <PackageVersion Include="ZL.Iot.Runner.Lib" Version="1.1.0" />
+    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="1.1.0" />
+    <PackageVersion Include="ZL.EdgeService" Version="1.1.0" />
 
     <!-- 核心依赖 -->
     <PackageVersion Include="System.IO.Ports" Version="8.0.0" />
@@ -45,10 +45,13 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
     <PackageVersion Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="8.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
 
     <!-- JSON -->

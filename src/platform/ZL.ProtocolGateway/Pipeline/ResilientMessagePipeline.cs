@@ -508,55 +508,56 @@ namespace ZL.ProtocolGateway
         /// </summary>
         private async Task ProcessMessagesLoop(CancellationToken ct)
         {
-            Message? pendingMessage = null;
+            // P0 修复（v4）：恢复真正的并发处理。
+            // v3 消除 Task.Run 后导致循环串行化——单次 await ProcessMessageCore 会阻塞协程，
+            // SemaphoreSlim 的 16 个槽位只有一个被使用。
+            // 改为：循环只负责从 Channel 取消息 + 获取信号量，然后立即 fork 一个后台任务处理，
+            // 自身继续取下一条。使用 activeTasks 列表追踪，防止无限制堆积。
+            var activeTasks = new List<Task>();
+            const int MaxQueuedTasks = 32;
 
             try
             {
                 while (true)
                 {
-                    if (pendingMessage == null)
-                    {
-                        try
-                        {
-                            pendingMessage = await _messageQueue.Reader.ReadAsync(ct);
-                            Interlocked.Increment(ref _pendingMessageCount);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            break;
-                        }
-                        catch (ChannelClosedException)
-                        {
-                            break;
-                        }
-                    }
-
-                    bool acquired = false;
+                    Message? msg;
                     try
                     {
-                        await _concurrencyLimiter.WaitAsync(ct);
-                        acquired = true;
+                        msg = await _messageQueue.Reader.ReadAsync(ct);
                     }
                     catch (OperationCanceledException)
                     {
                         break;
                     }
-
-                    if (acquired)
+                    catch (ChannelClosedException)
                     {
-                        var msg = pendingMessage;
-                        pendingMessage = null;
+                        break;
+                    }
 
-                        // P0 修复（v3）：消除外层 Task.Run。
-                        // 原设计用 Task.Run 实现 fire-and-forget 让循环继续取下一条消息，
-                        // 但这导致每条消息多一次线程池调度。改为直接 await ProcessMessageCore，
-                        // 由 SemaphoreSlim 自然控制并发度——当所有槽位被占用时 WaitAsync 会
-                        // 挂起当前协程（不阻塞线程），ProcessMessageCore 内部的 Task.WhenAll
-                        // 已提供足够的并行度。
-                        Interlocked.Increment(ref _inFlightCount);
+                    Interlocked.Increment(ref _pendingMessageCount);
+
+                    try
+                    {
+                        await _concurrencyLimiter.WaitAsync(ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // 取消：将已取出的消息放入死信队列
+                        AddToDeadLetterQueue(msg, new OperationCanceledException("Pipeline shutting down; message was dequeued but could not acquire concurrency slot."));
+                        Interlocked.Decrement(ref _pendingMessageCount);
+                        break;
+                    }
+
+                    Interlocked.Increment(ref _inFlightCount);
+
+                    // Fire-and-forget：让循环立即继续取下一条消息。
+                    // 每条消息独立任务负责自己的 finally 清理（Release + 计数器）。
+                    var message = msg;
+                    var task = Task.Run(async () =>
+                    {
                         try
                         {
-                            await ProcessMessageCore(msg, ct);
+                            await ProcessMessageCore(message, ct);
                         }
                         catch (OperationCanceledException)
                         {
@@ -565,7 +566,7 @@ namespace ZL.ProtocolGateway
                         catch (Exception ex)
                         {
                             GatewayLog.Error("ResilientMessagePipeline", $"Failed to process message: {ex.Message}", ex);
-                            AddToDeadLetterQueue(msg, ex);
+                            AddToDeadLetterQueue(message, ex);
                         }
                         finally
                         {
@@ -573,15 +574,31 @@ namespace ZL.ProtocolGateway
                             Interlocked.Decrement(ref _inFlightCount);
                             Interlocked.Decrement(ref _pendingMessageCount);
                         }
+                    }, ct);
+
+                    activeTasks.Add(task);
+
+                    // 防止任务无限制堆积：如果达到上限，等待任意一个完成再继续
+                    if (activeTasks.Count >= MaxQueuedTasks)
+                    {
+                        await Task.WhenAny(activeTasks.ToArray());
+                        activeTasks.RemoveAll(t => t.IsCompleted);
                     }
                 }
             }
             finally
             {
-                if (pendingMessage != null)
+                // 等待所有进行中的任务完成（关闭流程）
+                if (activeTasks.Count > 0)
                 {
-                    AddToDeadLetterQueue(pendingMessage, new OperationCanceledException("Pipeline shutting down; message was dequeued but not processed."));
-                    Interlocked.Decrement(ref _pendingMessageCount);
+                    try
+                    {
+                        await Task.WhenAll(activeTasks.ToArray());
+                    }
+                    catch
+                    {
+                        // 关闭时忽略异常
+                    }
                 }
             }
         }

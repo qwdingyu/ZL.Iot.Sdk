@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        
         <AssemblyName>ZL.Iot.Runner</AssemblyName>
         <RootNamespace>ZL.Iot.Runner</RootNamespace>
         <LangVersion>latest</LangVersion>

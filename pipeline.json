@@ -128,6 +128,13 @@
       "cpmFile": "Directory.Packages.props",
       "buildTarget": "api/TMom.Device.Runtime.Host/TMom.Device.Runtime.Host.csproj",
       "autoCommit": false
+    },
+    {
+      "name": "UseThink.Iot.api",
+      "path": "/Users/dingyuwang/0-X/UseThink.Iot/api",
+      "cpmFile": "Directory.Packages.props",
+      "buildTarget": "UseThink.Iot/UseThink.Iot.csproj",
+      "autoCommit": false
     }
   ]
 }

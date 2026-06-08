@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        
         <AssemblyName>ZL.Probing.Tests</AssemblyName>
         <RootNamespace>ZL.Probing.Tests</RootNamespace>
         <LangVersion>latest</LangVersion>
