@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using SqlSugar;
 using ZL.DataSync.Config;
 using ZL.DataSync.Infrastructure;
@@ -19,33 +20,48 @@ public sealed class SyncEngine : IDisposable
     private bool _disposed;
 
     // 共享的本地 SQLite 连接（复用，避免频繁创建）
-    private readonly SqlSugarClient _localDb;
+    private readonly ISqlSugarClient _localDb;
 
     // 每个目标的策略缓存 + 任务
     private readonly object _strategyLock = new();
     private readonly Dictionary<string, (ISyncStrategy Strategy, Task Task)> _targetEntries = new();
 
-    // 已发现的本地表
-    private HashSet<string> _discoveredTables = new(StringComparer.OrdinalIgnoreCase);
+    // 已发现的本地表（线程安全只读）
+    private ImmutableHashSet<string> _discoveredTables;
 
     /// <summary>同步状态查询</summary>
     public SyncStatus Status => _status;
 
     /// <summary>
-    /// 创建同步引擎。
+    /// 是否使用外部共享连接（不释放）。
+    /// </summary>
+    private readonly bool _ownsLocalDb;
+
+    /// <summary>
+    /// 创建同步引擎（使用共享的本地 SQLite 连接）。
     /// </summary>
     /// <param name="config">同步配置</param>
     /// <param name="logger">日志（null 时使用 DebugLogger）</param>
-    public SyncEngine(DataSyncConfig config, IStructuredLogger? logger = null)
+    /// <param name="sharedLocalClient">共享的 ISqlSugarClient（用于避免多连接打开同一 SQLite 文件）</param>
+    public SyncEngine(DataSyncConfig config, IStructuredLogger? logger = null, ISqlSugarClient? sharedLocalClient = null)
+        : this(config, logger, sharedLocalClient, ownsLocalDb: sharedLocalClient == null)
+    {
+    }
+
+    /// <summary>
+    /// 创建同步引擎（内部构造器）。
+    /// </summary>
+    private SyncEngine(DataSyncConfig config, IStructuredLogger? logger, ISqlSugarClient? sharedLocalClient, bool ownsLocalDb)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         if (string.IsNullOrWhiteSpace(_config.LocalDbPath))
             throw new ArgumentException("LocalDbPath 不能为空", nameof(config));
 
         _logger = logger ?? new Infrastructure.DebugLogger();
+        _ownsLocalDb = ownsLocalDb;
 
-        // P2-3 修复：复用 SqlSugarClient 而非每次创建新连接
-        _localDb = new SqlSugarClient(new ConnectionConfig
+        // 使用外部传入的共享连接，避免多客户端打开同一 SQLite 文件
+        _localDb = sharedLocalClient ?? new SqlSugarClient(new ConnectionConfig
         {
             DbType = DbType.Sqlite,
             ConnectionString = $"Data Source={_config.LocalDbPath}",
@@ -55,6 +71,18 @@ public sealed class SyncEngine : IDisposable
         _watermark = new WatermarkStore(_localDb);
         _watermark.EnsureTable();
         _status.Reset();
+        // 初始为空集合，Start() 中 DiscoverLocalTables() 会赋值
+        _discoveredTables = ImmutableHashSet<string>.Empty;
+    }
+
+    /// <summary>
+    /// 创建同步引擎（使用独立的本地连接，向后兼容）。
+    /// </summary>
+    /// <param name="config">同步配置</param>
+    /// <param name="logger">日志（null 时使用 DebugLogger）</param>
+    public SyncEngine(DataSyncConfig config, IStructuredLogger? logger)
+        : this(config, logger, null)
+    {
     }
 
     /// <summary>
@@ -117,7 +145,7 @@ public sealed class SyncEngine : IDisposable
         foreach (var task in runningTasks)
         {
             try { await Task.WhenAny(task, Task.Delay(10000)).ConfigureAwait(false); }
-            catch { }
+            catch (Exception ex) { _logger.Warning($"停止同步循环时异常: {ex.Message}"); }
         }
 
         // 清理策略
@@ -172,6 +200,14 @@ public sealed class SyncEngine : IDisposable
     //  核心循环
     // ═══════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// 单个目标的后台同步循环。
+    /// 按固定间隔轮询，异常时指数退避重试。
+    ///
+    /// 设计决策：
+    /// - 指数退避上限 = 2^8 * backoffSeconds = 256 * backoffSeconds，最大 300 秒
+    /// - 连续成功后 failStreak 清零，重新开始计数
+    /// </summary>
     private async Task RunTargetLoopAsync(RemoteTargetConfig target, ISyncStrategy strategy, CancellationToken ct)
     {
         int failStreak = 0;
@@ -189,8 +225,8 @@ public sealed class SyncEngine : IDisposable
                 {
                     failStreak = 0;
                     _status.FailStreak = failStreak;
-                    _status.TotalSynced += report.SyncedCount;
-                    _status.TotalFailed += report.FailedCount;
+                    _status.AddSynced(report.SyncedCount);
+                    _status.AddFailed(report.FailedCount);
                     _status.LastSyncTime = DateTime.UtcNow;
                     _status.StatusText = report.Success ? "同步中" : $"失败({report.FailedCount})";
                 }
@@ -206,6 +242,8 @@ public sealed class SyncEngine : IDisposable
                 _status.LastError = ex.Message;
                 _status.StatusText = $"异常({failStreak})";
 
+                // 指数退避：min(2^failStreak * backoffSeconds, 300秒)
+                // 限制最大指数为 8（2^8 = 256），避免无限增长
                 int wait = Math.Min(
                     (int)Math.Pow(2, Math.Min(failStreak, 8)) * _config.RetryBackoffSeconds,
                     300);
@@ -223,6 +261,7 @@ public sealed class SyncEngine : IDisposable
 
     /// <summary>
     /// 同步所有已发现的表到一个目标。
+    /// 支持并行同步（使用 SemaphoreSlim 限制并发度，避免资源耗尽）。
     /// </summary>
     private async Task<SyncReport> SyncAllTablesAsync(RemoteTargetConfig target, ISyncStrategy strategy, CancellationToken ct)
     {
@@ -232,12 +271,34 @@ public sealed class SyncEngine : IDisposable
         string? lastError = null;
         DateTime? lastWatermark = null;
 
-        foreach (var table in _discoveredTables)
+        var localClient = _localDb as SqlSugarClient ?? throw new InvalidOperationException("本地数据库必须是 SqlSugarClient");
+
+        // 限制并发度：最多同时同步 4 个表，避免 SQLite 和远程连接池被耗尽
+        const int MaxDegreeOfParallelism = 4;
+        var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism, MaxDegreeOfParallelism);
+
+        var tasks = _discoveredTables.Select(async table =>
+        {
+            await semaphore.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                if (ct.IsCancellationRequested)
+                    return SyncReport.Fail(table, 0, "取消", 0);
+
+                string? remoteTable = target.TableMappings.TryGetValue(table, out var alias) ? alias : null;
+                return await strategy.SyncTableAsync(table, remoteTable, _config.BatchSize, localClient, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        var reports = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        foreach (var report in reports)
         {
             if (ct.IsCancellationRequested) break;
-
-            string? remoteTable = target.TableMappings.TryGetValue(table, out var alias) ? alias : null;
-            var report = await strategy.SyncTableAsync(table, remoteTable, _config.BatchSize, _localDb, ct).ConfigureAwait(false);
 
             totalTarget += report.TargetCount;
             totalOk += report.SyncedCount;
@@ -333,8 +394,9 @@ public sealed class SyncEngine : IDisposable
                         parameters.ToArray()
                     ).ConfigureAwait(false);
 
+                    deleted += rowsAffected;
                     totalDeleted += rowsAffected;
-                } while (deleted < MaxCleanupBatchSize * 100); // 最多循环 100 轮（50 万条/表）
+                } while (deleted >= MaxCleanupBatchSize); // 持续循环直到本轮删除不足上限
             }
             catch (Exception ex)
             {
@@ -346,16 +408,16 @@ public sealed class SyncEngine : IDisposable
             _logger.Info($"数据清理完成: 删除 {totalDeleted} 条记录");
     }
 
-    private static bool HasColumn(SqlSugarClient db, string table, string colName)
+    private static bool HasColumn(ISqlSugarClient db, string table, string colName)
     {
         try
         {
             var cols = db.Ado.SqlQuery<ColumnInfoRow>($"PRAGMA table_info(\"{table}\")");
             return cols != null && cols.Any(r => r.Name == colName);
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return false; // PRAGMA 失败（表不存在等）不影响主流程
         }
     }
 
@@ -377,10 +439,10 @@ public sealed class SyncEngine : IDisposable
 
             if (tables != null)
             {
-                _discoveredTables = new HashSet<string>(
-                    tables.Select(t => t.Name ?? string.Empty)
-                        .Where(n => !string.IsNullOrWhiteSpace(n)),
-                    StringComparer.OrdinalIgnoreCase);
+                _discoveredTables = tables
+                    .Select(t => t.Name ?? string.Empty)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
                 _logger.Info($"发现 {_discoveredTables.Count} 个本地业务表: {string.Join(", ", _discoveredTables)}");
             }
         }
@@ -390,14 +452,23 @@ public sealed class SyncEngine : IDisposable
         }
     }
 
+    /// <summary>
+    /// 根据目标和策略类型创建对应的同步策略实例。
+    /// 注意：策略内部自行管理远程连接池（SqlSugarScope），无需外部传入。
+    /// </summary>
     private ISyncStrategy CreateStrategy(RemoteTargetConfig target)
     {
+        if (target.StrategyType == Config.SyncStrategyType.ProcessTime)
+        {
+            return new ProcessTimeSyncStrategy(target, _logger);
+        }
+
         return target.Type switch
         {
-            TargetType.MySql or TargetType.SqlServer or TargetType.PostgreSql or TargetType.Oracle =>
-                new DatabaseSyncStrategy(target, _localDb, _config.EnableUpsert, _logger),
-            TargetType.Http =>
-                new HttpSyncStrategy(target.HttpConfig ?? throw new InvalidOperationException($"HTTP 目标 {target.Name} 缺少 HttpConfig"),
+            Config.TargetType.MySql or Config.TargetType.SqlServer or Config.TargetType.PostgreSql or Config.TargetType.Oracle =>
+                new Pipeline.DatabaseSyncStrategy(target, _logger),
+            Config.TargetType.Http =>
+                new Pipeline.HttpSyncStrategy(target.HttpConfig ?? throw new InvalidOperationException($"HTTP 目标 {target.Name} 缺少 HttpConfig"),
                     target.Name, _logger),
             _ => throw new ArgumentOutOfRangeException(nameof(target.Type), $"不支持的目标类型: {target.Type}")
         };
@@ -408,10 +479,55 @@ public sealed class SyncEngine : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        // 安全释放：使用 Task.Wait 替代 .GetAwaiter().GetResult() 避免 SynchronizationContext 死锁
+        DisposeSynchronously();
 
-        _localDb?.Dispose();
+        // 仅在 ownsLocalDb 为 true 时才释放连接（由 SyncEngine 自己创建的连接才由它释放）
+        if (_ownsLocalDb)
+        {
+            _localDb?.Dispose();
+        }
         _watermark?.Dispose();
+    }
+
+    /// <summary>
+    /// 同步释放资源，避免 Dispose 中调用 async 方法导致的死锁。
+    /// 注意：_targetEntries 在第一个锁中已 Clear，所以需要在第一个锁中收集 strategies。
+    /// </summary>
+    private void DisposeSynchronously()
+    {
+        _cts.Cancel();
+
+        List<Task> runningTasks;
+        List<ISyncStrategy> strategies;
+
+        // 一次性收集任务和策略（_targetEntries 在锁内被清空）
+        lock (_strategyLock)
+        {
+            runningTasks = _targetEntries.Values.Select(e => e.Task).ToList();
+            strategies = _targetEntries.Values.Select(e => e.Strategy).ToList();
+            _targetEntries.Clear();
+        }
+
+        // 等待后台任务完成（最多 15 秒）
+        try
+        {
+            Task.WaitAll(runningTasks.ToArray(), TimeSpan.FromSeconds(15));
+        }
+        catch
+        {
+            // 忽略等待期间的异常
+        }
+
+        // 释放策略（包括远程 SqlSugarScope）
+        foreach (var s in strategies)
+        {
+            try { s.Dispose(); }
+            catch (Exception ex) { _logger.Warning($"释放策略时异常: {ex.Message}"); }
+        }
+
+        _status.IsRunning = false;
+        _status.StatusText = "已停止";
     }
 
     private sealed class TableInfoRow

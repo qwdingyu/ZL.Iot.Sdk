@@ -10,19 +10,27 @@ namespace ZL.DataSync.Tests.Infrastructure;
 /// </summary>
 public class WatermarkStoreTests : IDisposable
 {
+    private readonly SqlSugarClient _localDb;
     private readonly string _dbPath;
     private WatermarkStore? _store;
 
     public WatermarkStoreTests()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), $"wal_test_{Guid.NewGuid()}.db");
-        _store = new WatermarkStore(_dbPath);
+        _localDb = new SqlSugarClient(new ConnectionConfig
+        {
+            DbType = DbType.Sqlite,
+            ConnectionString = $"Data Source={_dbPath}",
+            IsAutoCloseConnection = false
+        });
+        _store = new WatermarkStore(_localDb);
         _store.EnsureTable();
     }
 
     public void Dispose()
     {
         _store?.Dispose();
+        _localDb.Dispose();
         if (File.Exists(_dbPath))
             File.Delete(_dbPath);
     }
@@ -39,7 +47,7 @@ public class WatermarkStoreTests : IDisposable
     public void WriteWatermark_StoresValue()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
 
         // Act
@@ -56,7 +64,7 @@ public class WatermarkStoreTests : IDisposable
     public void ReadWatermark_ReturnsNull_ForNonExistingKey()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
 
         // Act
@@ -72,7 +80,7 @@ public class WatermarkStoreTests : IDisposable
     public void WriteWatermark_UpdatesExistingValue()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
         wmStore.WriteWatermark("test_table", "target1", "initial");
 
@@ -90,7 +98,7 @@ public class WatermarkStoreTests : IDisposable
     public void WriteWatermark_SupportsMultipleKeys()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
 
         // Act
@@ -110,7 +118,7 @@ public class WatermarkStoreTests : IDisposable
     public void GetLastSyncTime_ReturnsTimestamp()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
         wmStore.WriteWatermark("test_table", "target1", "2025-01-01T00:00:00Z");
 
@@ -128,7 +136,7 @@ public class WatermarkStoreTests : IDisposable
     public void GetLastSyncTime_ReturnsNull_ForNonExistingKey()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
 
         // Act
@@ -144,7 +152,7 @@ public class WatermarkStoreTests : IDisposable
     public void WriteWatermark_HandlesEmptyValues()
     {
         // Arrange
-        var wmStore = new WatermarkStore(_dbPath);
+        var wmStore = new WatermarkStore(_localDb);
         wmStore.EnsureTable();
 
         // Act

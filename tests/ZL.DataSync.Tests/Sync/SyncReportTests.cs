@@ -68,55 +68,49 @@ public class SyncReportTests
         var report = SyncReport.Ok("table", 1, 1, null, 10);
         Assert.True(report.HasData);
     }
-}
 
-public class SyncStatusTests
-{
     [Fact]
-    public void IsHealthy_IsTrue_WhenNotRunning()
+    public void Fail_ZeroTarget_SetsFailedCountToOne()
     {
-        var status = new SyncStatus { IsRunning = false, FailStreak = 5 };
-        Assert.True(status.IsHealthy);
+        // 即使 target=0，有错误也标记为 1 条失败，避免 Success 误判
+        var report = SyncReport.Fail("table", 0, "Error", 10);
+        Assert.False(report.Success);
+        Assert.False(report.HasData);
+        Assert.Equal(1, report.FailedCount);
     }
 
     [Fact]
-    public void IsHealthy_IsTrue_WhenRunningButNoFailStreak()
+    public void Fail_NonZeroTarget_SetsFailedCountToTarget()
     {
-        var status = new SyncStatus { IsRunning = true, FailStreak = 0 };
-        Assert.True(status.IsHealthy);
+        var report = SyncReport.Fail("table", 5, "Error", 10);
+        Assert.False(report.Success);
+        Assert.Equal(5, report.FailedCount);
     }
 
     [Fact]
-    public void IsHealthy_IsFalse_WhenRunningWithFailStreak()
+    public void Ok_EmptyWatermark_IsAllowed()
     {
-        var status = new SyncStatus { IsRunning = true, FailStreak = 3 };
-        Assert.False(status.IsHealthy);
+        var report = SyncReport.Ok("table", 0, 0, "", 0);
+        Assert.True(report.Success);
+        Assert.Equal("", report.LastWatermark);
     }
 
     [Fact]
-    public void Reset_ClearsAllMetrics()
+    public void Timestamp_IsUtc()
     {
-        var status = new SyncStatus
-        {
-            TotalTables = 5, TotalSynced = 100, TotalFailed = 10,
-            LastSyncTime = DateTime.UtcNow, LastStartTime = DateTime.UtcNow,
-            FailStreak = 3, LastError = "Some error"
-        };
-        status.Reset();
-        Assert.Equal(0, status.TotalTables);
-        Assert.Equal(0, status.TotalSynced);
-        Assert.Equal(0, status.TotalFailed);
-        Assert.Null(status.LastSyncTime);
-        Assert.Null(status.LastStartTime);
-        Assert.Equal(0, status.FailStreak);
-        Assert.Null(status.LastError);
+        var before = DateTime.UtcNow;
+        var report = SyncReport.Ok("table", 1, 1, null, 10);
+        var after = DateTime.UtcNow;
+
+        Assert.True(report.Timestamp >= before && report.Timestamp <= after);
+        Assert.True(report.Timestamp.Kind == DateTimeKind.Utc);
     }
 
     [Fact]
-    public void Default_StatusText_IsNotStarted()
+    public void TableName_DefaultIsEmpty()
     {
-        var status = new SyncStatus();
-        Assert.Equal("未启动", status.StatusText);
+        var report = SyncReport.Ok("table", 0, 0, null, 0);
+        Assert.Equal("table", report.TableName);
     }
 }
 

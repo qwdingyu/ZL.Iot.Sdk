@@ -20,7 +20,7 @@ public static class TestHelpers
                 ConnectionString = "server=127.0.0.1;uid=root;password=mes;charset=utf8mb4;",
                 IsAutoCloseConnection = true
             });
-            conn.DbMaintenance.GetDatabaseList();
+            conn.Ado.ExecuteCommand("SELECT 1");
             return true;
         }
         catch

@@ -3,6 +3,7 @@ using ZL.DataSync.Config;
 using ZL.DataSync.Infrastructure;
 using ZL.DataSync.Pipeline;
 using SqlSugar;
+using Xunit.Abstractions;
 
 namespace ZL.DataSync.Tests.Integration;
 
@@ -14,9 +15,13 @@ public class DatabaseSyncIntegrationTests : IDisposable
     private readonly string _sqlitePath;
     private readonly string _mySqlDb = "zldatasync_test";
     private readonly string _mySqlConnectionString;
+    private bool _mySqlDbCreated;
 
-    public DatabaseSyncIntegrationTests()
+    private readonly ITestOutputHelper? _output;
+
+    public DatabaseSyncIntegrationTests(ITestOutputHelper? output = null)
     {
+        _output = output;
         _sqlitePath = Path.Combine(Path.GetTempPath(), $"e2e_test_{Guid.NewGuid()}.db");
         _mySqlConnectionString = $"server=127.0.0.1;database={_mySqlDb};uid=root;password=mes;charset=utf8mb4;Allow User Variables=True;";
     }
@@ -59,13 +64,27 @@ public class DatabaseSyncIntegrationTests : IDisposable
 
     private void SetupMySqlDatabase()
     {
+        if (_mySqlConnectionString == null) return;
+
+        if (!IsMySqlAvailable())
+            throw new Exception("MySQL 不可用，跳过集成测试");
+
         using var setupDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.MySql,
             ConnectionString = "server=127.0.0.1;uid=root;password=mes;charset=utf8mb4;",
             IsAutoCloseConnection = true
         });
+        
+        _output?.WriteLine($"[Setup] Creating database {_mySqlDb}...");
         setupDb.Ado.ExecuteCommand($"CREATE DATABASE IF NOT EXISTS `{_mySqlDb}` DEFAULT CHARACTER SET utf8mb4");
+        _output?.WriteLine($"[Setup] Database created.");
+        
+        // 验证数据库确实存在
+        var verify = setupDb.Ado.SqlQuery<string>($"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{_mySqlDb}'");
+        _output?.WriteLine($"[Setup] DB verify after CREATE: {(verify?.Count > 0 ? "EXISTS" : "NOT FOUND")}");
+        
+        _mySqlDbCreated = true;
     }
 
     private void SetupSQLite(string tableName, int recordCount = 5)
@@ -87,14 +106,12 @@ public class DatabaseSyncIntegrationTests : IDisposable
 
         for (int i = 1; i <= recordCount; i++)
         {
-            localDb.Insertable(new Dictionary<string, object?>
-            {
-                ["StationCode"] = $"STATION_{i}",
-                ["BarCode"] = $"BC_{i}",
-                ["ProcessTime"] = DateTime.UtcNow.AddMinutes(-i),
-                ["_Synced"] = false,
-                ["_SyncTime"] = null
-            }).AS(tableName).ExecuteCommand();
+            localDb.Ado.ExecuteCommand(
+                $"INSERT INTO `{tableName}` (`StationCode`, `BarCode`, `ProcessTime`, `_Synced`, `_SyncTime`) VALUES (@sc, @bc, @pt, 0, NULL)",
+                new SugarParameter("@sc", $"STATION_{i}"),
+                new SugarParameter("@bc", $"BC_{i}"),
+                new SugarParameter("@pt", DateTime.UtcNow.AddMinutes(-i))
+            );
         }
     }
 
@@ -148,15 +165,20 @@ public class DatabaseSyncIntegrationTests : IDisposable
             }
         };
 
-        using var strategy = new DatabaseSyncStrategy(target, _sqlitePath, true, new TestLogger());
         using var localDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.Sqlite,
             ConnectionString = $"Data Source={_sqlitePath}",
-            IsAutoCloseConnection = true
+            IsAutoCloseConnection = false
         });
 
+        using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
+
+        _output?.WriteLine("[Test2] Starting SyncTableAsync...");
         var report = strategy.SyncTableAsync("test_table", "synced_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
+
+        _output?.WriteLine($"[Test2] Report: Success={report.Success}, Synced={report.SyncedCount}, Failed={report.FailedCount}, Error={report.LastError}");
+        if (!report.Success) _output?.WriteLine($"[Test2] Logger messages: {string.Join("; ", strategy.Logger.Messages)}");
 
         Assert.True(report.Success, $"同步失败: {report.LastError}");
         Assert.True(report.HasData);
@@ -189,9 +211,9 @@ public class DatabaseSyncIntegrationTests : IDisposable
         {
             DbType = SqlSugar.DbType.Sqlite,
             ConnectionString = $"Data Source={_sqlitePath}",
-            IsAutoCloseConnection = true
+            IsAutoCloseConnection = false
         });
-        localDb.Ado.ExecuteCommand("CREATE TABLE IF NOT EXISTS `empty_table` (Id INTEGER PRIMARY KEY)");
+        localDb.Ado.ExecuteCommand("CREATE TABLE IF NOT EXISTS `empty_table` (Id INTEGER PRIMARY KEY, ProcessTime DATETIME, _Synced INTEGER DEFAULT 0)");
 
         var target = new RemoteTargetConfig
         {
@@ -200,7 +222,7 @@ public class DatabaseSyncIntegrationTests : IDisposable
             ConnectionString = _mySqlConnectionString
         };
 
-        using var strategy = new DatabaseSyncStrategy(target, _sqlitePath, true, new TestLogger());
+        using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
         var report = strategy.SyncTableAsync("empty_table", null, 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
 
         Assert.True(report.Success);
@@ -224,13 +246,14 @@ public class DatabaseSyncIntegrationTests : IDisposable
             ConnectionString = _mySqlConnectionString
         };
 
-        using var strategy = new DatabaseSyncStrategy(target, _sqlitePath, true, new TestLogger());
         using var localDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.Sqlite,
             ConnectionString = $"Data Source={_sqlitePath}",
-            IsAutoCloseConnection = true
+            IsAutoCloseConnection = false
         });
+
+        using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
 
         var report = strategy.SyncTableAsync("batch_table", null, 5, localDb, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -258,13 +281,14 @@ public class DatabaseSyncIntegrationTests : IDisposable
             }
         };
 
-        using var strategy = new DatabaseSyncStrategy(target, _sqlitePath, true, new TestLogger());
         using var localDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.Sqlite,
             ConnectionString = $"Data Source={_sqlitePath}",
-            IsAutoCloseConnection = true
+            IsAutoCloseConnection = false
         });
+
+        using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
 
         // 第一次同步
         var report1 = strategy.SyncTableAsync("upsert_table", "upsert_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();

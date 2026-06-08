@@ -10,14 +10,16 @@ namespace ZL.DataSync.Infrastructure;
 internal sealed class WatermarkStore : IDisposable
 {
     private readonly SqlSugarClient _localDb;
+    private readonly IStructuredLogger _logger;
     private bool _disposed;
 
     /// <summary>
-    /// 使用外部共享的 SqlSugarClient。
+    /// 使用外部共享的 ISqlSugarClient（自动适配 SqlSugarClient）。
     /// </summary>
-    public WatermarkStore(SqlSugarClient sharedLocalDb)
+    public WatermarkStore(ISqlSugarClient client, IStructuredLogger? logger = null)
     {
-        _localDb = sharedLocalDb;
+        _localDb = client as SqlSugarClient ?? throw new ArgumentNullException("client must be SqlSugarClient");
+        _logger = logger ?? new DebugLogger();
     }
 
     /// <summary>
@@ -28,7 +30,7 @@ internal sealed class WatermarkStore : IDisposable
         if (!_localDb.DbMaintenance.IsAnyTable("_SyncWatermark", false))
         {
             _localDb.Ado.ExecuteCommand(
-                "CREATE TABLE \"_SyncWatermark\" (" +
+                "CREATE TABLE IF NOT EXISTS \"_SyncWatermark\" (" +
                 "\"TableName\" TEXT NOT NULL, " +
                 "\"TargetName\" TEXT NOT NULL, " +
                 "\"WatermarkType\" TEXT NOT NULL DEFAULT 'DateTime', " +
@@ -46,19 +48,20 @@ internal sealed class WatermarkStore : IDisposable
     {
         try
         {
-            var result = _localDb.Ado.SqlQuery<WatermarkRow>(
-                "SELECT WatermarkValue FROM _SyncWatermark WHERE TableName = ? AND TargetName = ?",
-                new SugarParameter("p0", tableName),
-                new SugarParameter("p1", targetName)
+            var sql = "SELECT WatermarkValue FROM _SyncWatermark WHERE TableName = @tableName AND TargetName = @targetName";
+            var result = _localDb.Ado.SqlQuery<string>(sql,
+                new SugarParameter("@tableName", tableName),
+                new SugarParameter("@targetName", targetName)
             );
 
-            if (result != null && result.Count > 0)
-                return result[0]?.WatermarkValue;
+            if (result != null && result.Count > 0 && result[0] != null)
+                return result[0];
 
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.Warning($"读取水位线失败 [{tableName}/{targetName}]: {ex.Message}");
             return null;
         }
     }
@@ -70,40 +73,41 @@ internal sealed class WatermarkStore : IDisposable
     {
         try
         {
-            var existing = _localDb.Ado.SqlQuery<int>(
-                "SELECT COUNT(*) FROM _SyncWatermark WHERE TableName = ? AND TargetName = ?",
-                new SugarParameter("p0", tableName),
-                new SugarParameter("p1", targetName)
+            // 检查是否已存在
+            var count = _localDb.Ado.SqlQuery<int>(
+                "SELECT COUNT(*) FROM _SyncWatermark WHERE TableName = @tableName AND TargetName = @targetName",
+                new SugarParameter("@tableName", tableName),
+                new SugarParameter("@targetName", targetName)
             );
 
-            var hasRow = existing != null && existing.Count > 0 && existing[0] > 0;
+            var hasRow = count != null && count.Count > 0 && count[0] > 0;
 
             if (hasRow)
             {
                 _localDb.Ado.ExecuteCommand(
-                    "UPDATE _SyncWatermark SET WatermarkValue = ?, LastSyncTime = ? " +
-                    "WHERE TableName = ? AND TargetName = ?",
-                    new SugarParameter("p0", watermarkValue),
-                    new SugarParameter("p1", DateTime.UtcNow.ToString("O")),
-                    new SugarParameter("p2", tableName),
-                    new SugarParameter("p3", targetName)
+                    "UPDATE _SyncWatermark SET WatermarkValue = @wm, LastSyncTime = @now " +
+                    "WHERE TableName = @tableName AND TargetName = @targetName",
+                    new SugarParameter("@wm", watermarkValue),
+                    new SugarParameter("@now", DateTime.UtcNow.ToString("O")),
+                    new SugarParameter("@tableName", tableName),
+                    new SugarParameter("@targetName", targetName)
                 );
             }
             else
             {
                 _localDb.Ado.ExecuteCommand(
                     "INSERT INTO _SyncWatermark (TableName, TargetName, WatermarkType, WatermarkValue, LastSyncTime) " +
-                    "VALUES (?, ?, 'DateTime', ?, ?)",
-                    new SugarParameter("p0", tableName),
-                    new SugarParameter("p1", targetName),
-                    new SugarParameter("p2", watermarkValue),
-                    new SugarParameter("p3", DateTime.UtcNow.ToString("O"))
+                    "VALUES (@tableName, @targetName, 'DateTime', @wm, @now)",
+                    new SugarParameter("@tableName", tableName),
+                    new SugarParameter("@targetName", targetName),
+                    new SugarParameter("@wm", watermarkValue),
+                    new SugarParameter("@now", DateTime.UtcNow.ToString("O"))
                 );
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 写入失败不影响同步主流程
+            _logger.Warning($"写入水位线失败 [{tableName}/{targetName}]: {ex.Message}");
         }
     }
 
@@ -114,26 +118,22 @@ internal sealed class WatermarkStore : IDisposable
     {
         try
         {
-            var result = _localDb.Ado.SqlQuery<DateTime?>(
-                "SELECT LastSyncTime FROM _SyncWatermark WHERE TableName = ? AND TargetName = ?",
-                new SugarParameter("p0", tableName),
-                new SugarParameter("p1", targetName)
+            var sql = "SELECT LastSyncTime FROM _SyncWatermark WHERE TableName = @tableName AND TargetName = @targetName";
+            var result = _localDb.Ado.SqlQuery<DateTime?>(sql,
+                new SugarParameter("@tableName", tableName),
+                new SugarParameter("@targetName", targetName)
             );
 
-            if (result != null && result.Count > 0)
+            if (result != null && result.Count > 0 && result[0] != null)
                 return result[0];
 
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.Warning($"读取最后同步时间失败 [{tableName}/{targetName}]: {ex.Message}");
             return null;
         }
-    }
-
-    private sealed class WatermarkRow
-    {
-        public string? WatermarkValue { get; set; }
     }
 
     public void Dispose()

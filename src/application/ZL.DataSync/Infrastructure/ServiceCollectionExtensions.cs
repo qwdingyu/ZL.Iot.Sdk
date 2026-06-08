@@ -36,18 +36,66 @@ public static class DataSyncServiceCollectionExtensions
         var section = configuration.GetSection(sectionName);
         if (!section.Exists())
         {
-            // 配置不存在时不注册（允许可选配置）
-            return services;
+            throw new ArgumentException($"配置节 '{sectionName}' 不存在", nameof(sectionName));
         }
 
-        var json = section.Value;
-        if (string.IsNullOrEmpty(json))
+        // 手动从配置绑定
+        var config = new DataSyncConfig();
+
+        var localDbPath = section["LocalDbPath"];
+        if (!string.IsNullOrWhiteSpace(localDbPath))
+            config.LocalDbPath = localDbPath;
+
+        var batchSizeStr = section["BatchSize"];
+        if (int.TryParse(batchSizeStr, out var batchSize))
+            config.BatchSize = batchSize;
+
+        var intervalStr = section["SyncIntervalSeconds"];
+        if (int.TryParse(intervalStr, out var interval))
+            config.SyncIntervalSeconds = interval;
+
+        var retryStr = section["MaxRetryCount"];
+        if (int.TryParse(retryStr, out var retry))
+            config.MaxRetryCount = retry;
+
+        var upsertStr = section["EnableUpsert"];
+        if (bool.TryParse(upsertStr, out var enableUpsert))
+            config.EnableUpsert = enableUpsert;
+
+        var cleanupStr = section["EnableCleanup"];
+        if (bool.TryParse(cleanupStr, out var enableCleanup))
+            config.EnableCleanup = enableCleanup;
+
+        // 解析 RemoteTargets: DataSync:RemoteTargets:0:Name, DataSync:RemoteTargets:0:Type, ...
+        var targets = new List<RemoteTargetConfig>();
+        for (int i = 0; ; i++)
         {
-            return services;
-        }
+            var name = section[$"RemoteTargets:{i}:Name"];
+            if (string.IsNullOrWhiteSpace(name)) break;
 
-        var config = Newtonsoft.Json.JsonConvert.DeserializeObject<DataSyncConfig>(json)
-            ?? throw new ArgumentException($"配置节 '{sectionName}' 格式错误", nameof(sectionName));
+            var target = new RemoteTargetConfig { Name = name };
+            var typeStr = section[$"RemoteTargets:{i}:Type"];
+            if (Enum.TryParse(typeStr, ignoreCase: true, out TargetType type))
+                target.Type = type;
+
+            var connStr = section[$"RemoteTargets:{i}:ConnectionString"];
+            if (!string.IsNullOrWhiteSpace(connStr))
+                target.ConnectionString = connStr;
+
+            if (target.Type == TargetType.Http)
+            {
+                var httpEndpoint = section[$"RemoteTargets:{i}:HttpConfig:Endpoint"];
+                if (!string.IsNullOrWhiteSpace(httpEndpoint))
+                    target.HttpConfig = new HttpUploadConfig { Endpoint = httpEndpoint };
+
+                var httpTimeoutStr = section[$"RemoteTargets:{i}:HttpConfig:TimeoutSeconds"];
+                if (int.TryParse(httpTimeoutStr, out var httpTimeout) && target.HttpConfig != null)
+                    target.HttpConfig.TimeoutSeconds = httpTimeout;
+            }
+
+            targets.Add(target);
+        }
+        config.RemoteTargets = targets;
 
         ValidateConfig(config);
         services.AddSingleton(config);

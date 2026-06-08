@@ -5,35 +5,35 @@ using ZL.DataSync.Infrastructure;
 namespace ZL.DataSync.Pipeline;
 
 /// <summary>
-/// 基于 <c>_Synced = 0</c> 标记的数据库远程同步策略。
+/// 基于 <c>ProcessTime</c> 增量标记的同步策略。
 ///
 /// 工作流程：
 /// <code>
-/// 1. 读 SQLite: SELECT * FROM table WHERE _Synced = 0 ORDER BY ProcessTime LIMIT @batchSize
-/// 2. 确保远程表存在（自动建表）
-/// 3. 批量写入远程（每 50 条一批，失败逐条回退）
-/// 4. 标记本地: UPDATE table SET _Synced = 1 WHERE Id IN (...)
+/// 1. 读 _SyncLog 水位线: SELECT SyncTime FROM _SyncLog WHERE TableName = @tableName ORDER BY SyncTime DESC LIMIT 1
+/// 2. 增量读取: SELECT * FROM table WHERE ProcessTime > @lastTime ORDER BY ProcessTime LIMIT @batchSize
+/// 3. 批量写入远程
+/// 4. 原子更新水位线: INSERT OR REPLACE INTO _SyncLog (TableName, SyncTime)
 /// </code>
 ///
-/// 适用场景：MySQL / SQL Server / PostgreSQL / Oracle 等数据库远程同步。
+/// 适用场景：与 PcStationIot RemoteSyncService 集成的场景，不修改业务表中的任何标记字段。
 /// </summary>
-public sealed class DatabaseSyncStrategy : SyncStrategyBase
+public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
 {
     private readonly RemoteTargetConfig _target;
 
     /// <summary>
-    /// 创建数据库同步策略。
+    /// 创建 ProcessTime 同步策略。
     /// </summary>
     /// <param name="target">远程目标配置</param>
     /// <param name="logger">结构化日志</param>
-    public DatabaseSyncStrategy(RemoteTargetConfig target, IStructuredLogger logger)
+    public ProcessTimeSyncStrategy(RemoteTargetConfig target, IStructuredLogger logger)
         : base(target.Name, target.ConnectionString, SqlSugarHelpers.MapDbType(target.Type), logger)
     {
         _target = target ?? throw new ArgumentNullException(nameof(target));
     }
 
     /// <summary>
-    /// 同步单表数据到远程目标。
+    /// 同步单表数据到远程目标（基于 ProcessTime 增量）。
     /// </summary>
     /// <param name="tableName">本地表名</param>
     /// <param name="remoteTable">远程表名映射（可为 null，默认同本地表名）</param>
@@ -51,11 +51,14 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
         var sw = System.Diagnostics.Stopwatch.StartNew();
         string targetTable = string.IsNullOrWhiteSpace(remoteTable) ? tableName : remoteTable;
 
-        // 1. 读取未同步数据（基于 _Synced = 0 标记）
-        // 注意：SqlSugar 的 SqlQuery&lt;Dictionary&gt; 返回空 keys，必须用 SqlQuery&lt;dynamic&gt; 再转换
+        // 1. 读取 _SyncLog 水位线（与 PcStationIot RemoteSyncService.ReadSyncTimeAsync 一致）
+        DateTime? lastSyncTime = await ReadSyncLogAsync(localDb, tableName, ct).ConfigureAwait(false);
+
+        // 2. 读取未同步数据（基于 ProcessTime 增量）
         var dynamicRows = localDb.Ado.SqlQuery<dynamic>(
             $"SELECT * FROM {SqlSugarHelpers.QuoteIdentifier(tableName, SqlSugar.DbType.Sqlite)} " +
-            $"WHERE {SqlSugarHelpers.SyncColumn} = 0 ORDER BY ProcessTime LIMIT @limit",
+            $"WHERE ProcessTime > @lastTime ORDER BY ProcessTime LIMIT @limit",
+            new SugarParameter("@lastTime", lastSyncTime ?? DateTime.MinValue),
             new SugarParameter("@limit", batchSize)
         );
 
@@ -63,19 +66,14 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
         if (rows.Count == 0)
             return SyncReport.Ok(tableName, 0, 0, null, sw.Elapsed.TotalMilliseconds);
 
-        // 2. 应用数据过滤和转换（扩展点）
-        rows = ApplyFiltersAndTransforms(rows, _target);
-        if (rows.Count == 0)
-            return SyncReport.Ok(tableName, 0, 0, null, sw.Elapsed.TotalMilliseconds);
-
-        // 3. 确保远程表存在（DCL 双重检查锁）
+        // 3. 确保远程表存在
         await EnsureTableAsync(targetTable, rows[0], ct).ConfigureAwait(false);
 
         // 4. 批量写入远程（每 MaxRemoteBatchSize 条一批）
         const int MaxRemoteBatchSize = 50;
         int ok = 0;
         int fail = 0;
-        DateTime? maxWatermark = null;
+        DateTime maxProcessTime = DateTime.MinValue;
         var successRows = new List<Dictionary<string, object?>>(rows.Count);
 
         for (int i = 0; i < rows.Count; i += MaxRemoteBatchSize)
@@ -90,46 +88,91 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
                 {
                     await InsertRowsViaAdoAsync(targetTable, batchValidRows, ct).ConfigureAwait(false);
 
-                    // 写入成功后，累加成功行和最大水位
                     foreach (var row in batchValidRows)
                     {
                         ok++;
                         successRows.Add(row);
-                        if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && (maxWatermark == null || pt > maxWatermark.Value))
-                            maxWatermark = pt;
+                        if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxProcessTime)
+                            maxProcessTime = pt;
                     }
                 }
             }
             catch (Exception ex)
             {
                 Logger.Warning($"[{TargetName}] 批量写入失败 {targetTable}: {ex.Message}");
-                // 批量失败，逐条回退容错
+                // 批量失败，逐条回退
                 var result = await FailoverBatchAsync(targetTable, rows, i, batchEnd, successRows, ct).ConfigureAwait(false);
                 ok += result.Ok;
                 fail += result.Fail;
-                if (result.MaxWatermark.HasValue && (maxWatermark == null || result.MaxWatermark.Value > maxWatermark.Value))
-                    maxWatermark = result.MaxWatermark;
+                if (result.MaxProcessTime > maxProcessTime)
+                    maxProcessTime = result.MaxProcessTime;
             }
         }
 
-        // 5. 批量标记本地同步成功（先远程写入成功后，再统一标记 — 减少数据丢失风险）
-        if (successRows.Count > 0)
+        // 5. 原子更新 _SyncLog 水位线（不修改业务表中的任何标记字段）
+        if (successRows.Count > 0 && maxProcessTime > DateTime.MinValue)
         {
             try
             {
-                await BatchMarkSyncedAsync(localDb, tableName, successRows, ct).ConfigureAwait(false);
+                await WriteSyncLogAsync(localDb, tableName, maxProcessTime, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Logger.Warning($"[{TargetName}] 批量标记同步失败 {tableName}: {ex.Message}");
-                // 标记失败不影响主流程，下次循环会继续
+                Logger.Warning($"[{TargetName}] 写入 _SyncLog 水位线失败 {tableName}: {ex.Message}");
             }
         }
 
         int totalProcessed = ok + fail;
         return fail == 0 && totalProcessed > 0
-            ? SyncReport.Ok(tableName, rows.Count, ok, maxWatermark?.ToString("o"), sw.Elapsed.TotalMilliseconds)
+            ? SyncReport.Ok(tableName, rows.Count, ok, maxProcessTime.ToString("o"), sw.Elapsed.TotalMilliseconds)
             : SyncReport.Fail(tableName, rows.Count, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  _SyncLog 水位线读写
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 读取 _SyncLog 水位线。与 RemoteSyncService.ReadSyncTimeAsync 逻辑一致。
+    /// </summary>
+    private async Task<DateTime?> ReadSyncLogAsync(SqlSugarClient localDb, string tableName, CancellationToken ct)
+    {
+        try
+        {
+            var result = await localDb.Ado.SqlQueryAsync<string>(
+                "SELECT SyncTime FROM _SyncLog WHERE TableName = @tableName ORDER BY SyncTime DESC LIMIT 1",
+                new SugarParameter("@tableName", tableName)
+            );
+            if (result != null && result.Count > 0 && result[0] != null &&
+                DateTime.TryParse(result[0], out var d))
+                return d;
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"[{TargetName}] 读取 _SyncLog 水位线失败 {tableName}: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 原子写入 _SyncLog 水位线。使用 INSERT OR REPLACE 避免 COUNT+INSERT/UPDATE 的非原子问题。
+    /// 表结构: TableName (TEXT PK), SyncTime (TEXT ISO-8601)
+    /// </summary>
+    private async Task WriteSyncLogAsync(SqlSugarClient localDb, string tableName, DateTime processTime, CancellationToken ct)
+    {
+        try
+        {
+            await localDb.Ado.ExecuteCommandAsync(
+                "INSERT OR REPLACE INTO _SyncLog (TableName, SyncTime) VALUES (@tableName, @syncTime)",
+                new SugarParameter("@tableName", tableName),
+                new SugarParameter("@syncTime", processTime.ToString("o"))
+            );
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"[{TargetName}] 写入 _SyncLog 失败 {tableName}: {ex.Message}");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -139,8 +182,8 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
     /// <summary>
     /// 批量写入失败时逐条回退容错。
     /// </summary>
-    /// <returns>成功数、失败数、最大水位</returns>
-    private async Task<(int Ok, int Fail, DateTime? MaxWatermark)> FailoverBatchAsync(
+    /// <returns>成功数、失败数、最大 ProcessTime</returns>
+    private async Task<(int Ok, int Fail, DateTime MaxProcessTime)> FailoverBatchAsync(
         string targetTable,
         List<Dictionary<string, object?>> rows,
         int start,
@@ -150,7 +193,7 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
     {
         int ok = 0;
         int fail = 0;
-        DateTime? maxWm = null;
+        DateTime maxPt = DateTime.MinValue;
 
         for (int j = start; j < end; j++)
         {
@@ -162,8 +205,8 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
                 await InsertRowViaAdoAsync(targetTable, row, ct).ConfigureAwait(false);
                 ok++;
                 successRows.Add(row);
-                if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && (maxWm == null || pt > maxWm.Value))
-                    maxWm = pt;
+                if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxPt)
+                    maxPt = pt;
             }
             catch (Exception ex2)
             {
@@ -172,49 +215,6 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
             }
         }
 
-        return (ok, fail, maxWm);
-    }
-
-    /// <summary>
-    /// 将 dynamic 行过滤/转换为 Dictionary 列表。
-    /// </summary>
-    private static List<Dictionary<string, object?>> FilterValidRows(dynamic rows)
-    {
-        var result = new List<Dictionary<string, object?>>();
-        foreach (var row in rows)
-        {
-            if (row == null) continue;
-            var dict = row as Dictionary<string, object?>;
-            if (dict != null && dict.Count > 0)
-            {
-                result.Add(dict);
-            }
-            else
-            {
-                // 将 dynamic 转为 Dictionary
-                var d = new Dictionary<string, object?>();
-                foreach (System.ComponentModel.PropertyDescriptor pd in System.ComponentModel.TypeDescriptor.GetProperties(row))
-                {
-                    d[pd.Name] = pd.GetValue(row);
-                }
-                if (d.Count > 0) result.Add(d);
-            }
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// 从行列表中抽取指定范围的子集。
-    /// </summary>
-    private static List<Dictionary<string, object?>> ExtractValidRows(
-        List<Dictionary<string, object?>> rows, int start, int end)
-    {
-        var result = new List<Dictionary<string, object?>>();
-        for (int i = start; i < end; i++)
-        {
-            if (rows[i] != null && rows[i].Count > 0)
-                result.Add(rows[i]);
-        }
-        return result;
+        return (ok, fail, maxPt);
     }
 }

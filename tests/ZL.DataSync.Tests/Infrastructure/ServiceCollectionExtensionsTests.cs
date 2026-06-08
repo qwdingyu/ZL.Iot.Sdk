@@ -124,4 +124,108 @@ public class ServiceCollectionExtensionsTests
         Assert.NotNull(config);
         Assert.Empty(config!.RemoteTargets);
     }
+
+    [Fact]
+    public void AddDataSyncFromJsonFile_RegistersConfigAndEngine()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var json = """
+        {
+            "LocalDbPath": "/tmp/test_from_json.db",
+            "BatchSize": 256,
+            "SyncIntervalSeconds": 15,
+            "RemoteTargets": [
+                {
+                    "Name": "MySQL-Join",
+                    "Type": "MySql",
+                    "ConnectionString": "server=127.0.0.1;database=mydb;uid=root;password=pass;"
+                }
+            ]
+        }
+        """;
+        var jsonFile = Path.Combine(Path.GetTempPath(), $"json_test_{Guid.NewGuid()}.json");
+        File.WriteAllText(jsonFile, json);
+
+        try
+        {
+            // Act
+            services.AddDataSyncFromJsonFile(jsonFile, "DataSync");
+            var provider = services.BuildServiceProvider();
+
+            // Assert
+            var config = provider.GetService<DataSyncConfig>();
+            Assert.NotNull(config);
+            Assert.Equal("/tmp/test_from_json.db", config!.LocalDbPath);
+            Assert.Equal(256, config.BatchSize);
+            Assert.Equal(15, config.SyncIntervalSeconds);
+            Assert.Single(config.RemoteTargets!);
+            Assert.Equal("MySQL-Join", config.RemoteTargets![0].Name);
+
+            var engine = provider.GetService<SyncEngine>();
+            Assert.NotNull(engine);
+        }
+        finally
+        {
+            if (File.Exists(jsonFile))
+                File.Delete(jsonFile);
+        }
+    }
+
+    [Fact]
+    public void AddDataSyncFromJsonFile_ThrowsOnMissingFile()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var missingFile = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid()}.json");
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            services.AddDataSyncFromJsonFile(missingFile));
+        Assert.Contains("无法读取配置文件", ex.Message);
+    }
+
+    [Fact]
+    public void AddDataSyncFromJsonFile_ThrowsOnInvalidJson()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var jsonFile = Path.Combine(Path.GetTempPath(), $"invalid_json_{Guid.NewGuid()}.json");
+        File.WriteAllText(jsonFile, "{ this is not valid json [[[");
+
+        try
+        {
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                services.AddDataSyncFromJsonFile(jsonFile));
+            Assert.Contains("JSON 解析失败", ex.Message);
+        }
+        finally
+        {
+            if (File.Exists(jsonFile))
+                File.Delete(jsonFile);
+        }
+    }
+
+    [Fact]
+    public void AddDataSyncFromJsonFile_ThrowsOnEmptyConfig()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        var jsonFile = Path.Combine(Path.GetTempPath(), $"empty_json_{Guid.NewGuid()}.json");
+        File.WriteAllText(jsonFile, "{}");
+
+        try
+        {
+            // Act & Assert
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                services.AddDataSyncFromJsonFile(jsonFile));
+            Assert.Contains("配置文件为空或格式错误", ex.Message);
+        }
+        finally
+        {
+            if (File.Exists(jsonFile))
+                File.Delete(jsonFile);
+        }
+    }
 }
