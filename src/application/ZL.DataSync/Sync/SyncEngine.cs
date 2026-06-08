@@ -185,18 +185,14 @@ public sealed class SyncEngine : IDisposable
             try
             {
                 var report = await SyncAllTablesAsync(target, strategy, ct).ConfigureAwait(false);
-
                 if (report.TargetCount > 0)
                 {
                     failStreak = 0;
+                    _status.FailStreak = failStreak;
                     _status.TotalSynced += report.SyncedCount;
                     _status.TotalFailed += report.FailedCount;
                     _status.LastSyncTime = DateTime.UtcNow;
                     _status.StatusText = report.Success ? "同步中" : $"失败({report.FailedCount})";
-                }
-                else
-                {
-                    _status.StatusText = "空闲";
                 }
             }
             catch (OperationCanceledException)
@@ -309,7 +305,7 @@ public sealed class SyncEngine : IDisposable
                 {
                     var ids = await _localDb.Queryable<dynamic>()
                         .AS(table)
-                        .Where("_Synced = 1 AND OperateTime < @cutoff", cutoff)
+                        .Where("_Synced = 1 AND ProcessTime < @cutoff", cutoff)
                         .Select("Id")
                         .Take(MaxCleanupBatchSize)
                         .ToListAsync().ConfigureAwait(false);
@@ -337,7 +333,7 @@ public sealed class SyncEngine : IDisposable
                         parameters.ToArray()
                     ).ConfigureAwait(false);
 
-                    deleted += rowsAffected;
+                    totalDeleted += rowsAffected;
                 } while (deleted < MaxCleanupBatchSize * 100); // 最多循环 100 轮（50 万条/表）
             }
             catch (Exception ex)
