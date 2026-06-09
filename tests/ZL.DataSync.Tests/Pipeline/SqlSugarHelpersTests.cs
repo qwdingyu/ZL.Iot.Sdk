@@ -61,32 +61,32 @@ public class SqlSugarHelpersTests
     [Fact]
     public void MapDbType_MySql_ReturnsSqlSugarMySql()
     {
-        Assert.Equal(SqlSugar.DbType.MySql, SqlSugarHelpers.MapDbType(Config.TargetType.MySql));
+        Assert.Equal(SqlSugar.DbType.MySql, SqlSugarHelpers.MapDbType(ZL.DataSync.Config.TargetType.MySql));
     }
 
     [Fact]
     public void MapDbType_SQLServer_ReturnsSqlSugarSqlServer()
     {
-        Assert.Equal(SqlSugar.DbType.SqlServer, SqlSugarHelpers.MapDbType(Config.TargetType.SqlServer));
+        Assert.Equal(SqlSugar.DbType.SqlServer, SqlSugarHelpers.MapDbType(ZL.DataSync.Config.TargetType.SqlServer));
     }
 
     [Fact]
     public void MapDbType_PostgreSql_ReturnsSqlSugarPostgreSQL()
     {
-        Assert.Equal(SqlSugar.DbType.PostgreSQL, SqlSugarHelpers.MapDbType(Config.TargetType.PostgreSql));
+        Assert.Equal(SqlSugar.DbType.PostgreSQL, SqlSugarHelpers.MapDbType(ZL.DataSync.Config.TargetType.PostgreSql));
     }
 
     [Fact]
     public void MapDbType_Oracle_ReturnsSqlSugarOracle()
     {
-        Assert.Equal(SqlSugar.DbType.Oracle, SqlSugarHelpers.MapDbType(Config.TargetType.Oracle));
+        Assert.Equal(SqlSugar.DbType.Oracle, SqlSugarHelpers.MapDbType(ZL.DataSync.Config.TargetType.Oracle));
     }
 
     [Fact]
     public void MapDbType_Unknown_DefaultsToMySql()
     {
         // 使用反射创建一个不存在的枚举值来测试默认分支
-        var unknownType = (Config.TargetType)999;
+        var unknownType = (ZL.DataSync.Config.TargetType)999;
         Assert.Equal(SqlSugar.DbType.MySql, SqlSugarHelpers.MapDbType(unknownType));
     }
 
@@ -213,7 +213,9 @@ public class SqlSugarHelpersTests
             new() { ["c"] = 3 }
         };
         var result = SqlSugarHelpers.ExtractValidRows(rows, 0, 3);
-        Assert.Single(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0]["a"]);
+        Assert.Equal(3, result[1]["c"]);
     }
 
     [Fact]
@@ -349,7 +351,9 @@ public class SqlSugarHelpersTests
         var row = new Dictionary<string, object?> { ["Name"] = DBNull.Value };
         var (sql, parameters) = SqlSugarHelpers.BuildSingleInsertSql("users", SqlSugar.DbType.MySql, row);
 
-        Assert.Contains("DBNull.Value", sql);
+        Assert.NotEmpty(sql);
+        Assert.Single(parameters);
+        Assert.Equal(DBNull.Value, parameters[0].Value);
     }
 
     // ═══════════════════════════════════════════════════════════

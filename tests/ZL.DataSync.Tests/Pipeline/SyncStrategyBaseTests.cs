@@ -267,8 +267,8 @@ public class SyncStrategyBaseTests
         var result = strategy.TestApplyFiltersAndTransforms(rows, target);
 
         Assert.Equal(2, result.Count);
-        Assert.Contains(result, r => r["Name"]?.ToString() == "ALICE" && r["Transformed"] == true);
-        Assert.Contains(result, r => r["Name"]?.ToString() == "CHARLIE" && r["Transformed"] == true);
+        Assert.Contains(result, r => r["Name"]?.ToString() == "ALICE" && Convert.ToBoolean(r["Transformed"]));
+        Assert.Contains(result, r => r["Name"]?.ToString() == "CHARLIE" && Convert.ToBoolean(r["Transformed"]));
     }
 
     // ═══════════════════════════════════════════════════════════

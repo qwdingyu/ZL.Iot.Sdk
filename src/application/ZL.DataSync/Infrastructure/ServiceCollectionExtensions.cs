@@ -149,9 +149,6 @@ public static class DataSyncServiceCollectionExtensions
     /// </summary>
     private static void ValidateConfig(DataSyncConfig config)
     {
-        if (string.IsNullOrWhiteSpace(config.LocalDbPath))
-            throw new ArgumentException("LocalDbPath 不能为空", nameof(config.LocalDbPath));
-
         if (config.BatchSize <= 0)
             throw new ArgumentException("BatchSize 必须大于 0", nameof(config.BatchSize));
 

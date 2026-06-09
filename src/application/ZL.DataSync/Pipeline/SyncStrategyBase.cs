@@ -181,7 +181,14 @@ public abstract class SyncStrategyBase : ISyncStrategy
         {
             if (_disposed) return;
             _disposed = true;
-            RemoteScope?.Dispose();
+            try
+            {
+                RemoteScope?.Dispose();
+            }
+            catch
+            {
+                // SqlSugarScope.Dispose 可能在连接字符串无效时抛出，忽略
+            }
         }
     }
 }

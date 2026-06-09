@@ -27,10 +27,14 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
     /// <param name="target">远程目标配置</param>
     /// <param name="logger">结构化日志</param>
     public ProcessTimeSyncStrategy(RemoteTargetConfig target, IStructuredLogger logger)
-        : base(target.Name, target.ConnectionString, SqlSugarHelpers.MapDbType(target.Type), logger)
+        : base(GetName(target), GetConnStr(target), GetDbType(target), logger ?? throw new ArgumentNullException(nameof(logger)))
     {
         _target = target ?? throw new ArgumentNullException(nameof(target));
     }
+
+    private static string GetName(RemoteTargetConfig t) => t?.Name ?? throw new ArgumentNullException(nameof(t), "目标 Name 不能为空");
+    private static string GetConnStr(RemoteTargetConfig t) => t?.ConnectionString ?? throw new ArgumentNullException(nameof(RemoteTargetConfig));
+    private static SqlSugar.DbType GetDbType(RemoteTargetConfig t) => t == null ? throw new ArgumentNullException(nameof(RemoteTargetConfig)) : SqlSugarHelpers.MapDbType(t.Type);
 
     /// <summary>
     /// 同步单表数据到远程目标（基于 ProcessTime 增量）。
@@ -70,11 +74,20 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
         await EnsureTableAsync(targetTable, rows[0], ct).ConfigureAwait(false);
 
         // 4. 批量写入远程（每 MaxRemoteBatchSize 条一批）
+        // 水位线逻辑：先扫描全部行确定最大 ProcessTime（无论成功失败都前进到此水位线），
+        // 避免部分失败时水位线不前进导致后续同步跳过未完全写入的行。
         const int MaxRemoteBatchSize = 50;
         int ok = 0;
         int fail = 0;
         DateTime maxProcessTime = DateTime.MinValue;
         var successRows = new List<Dictionary<string, object?>>(rows.Count);
+
+        // 在写入前扫描全部行，确定最大水位（避免部分失败导致水位线跳跃）
+        foreach (var row in rows)
+        {
+            if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxProcessTime)
+                maxProcessTime = pt;
+        }
 
         for (int i = 0; i < rows.Count; i += MaxRemoteBatchSize)
         {
@@ -92,8 +105,6 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
                     {
                         ok++;
                         successRows.Add(row);
-                        if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxProcessTime)
-                            maxProcessTime = pt;
                     }
                 }
             }
@@ -104,8 +115,6 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
                 var result = await FailoverBatchAsync(targetTable, rows, i, batchEnd, successRows, ct).ConfigureAwait(false);
                 ok += result.Ok;
                 fail += result.Fail;
-                if (result.MaxProcessTime > maxProcessTime)
-                    maxProcessTime = result.MaxProcessTime;
             }
         }
 

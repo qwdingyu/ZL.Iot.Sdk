@@ -72,11 +72,20 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
         await EnsureTableAsync(targetTable, rows[0], ct).ConfigureAwait(false);
 
         // 4. 批量写入远程（每 MaxRemoteBatchSize 条一批）
+        // 水位线逻辑：先扫描全部行确定最大 ProcessTime（无论成功失败都前进到此水位线），
+        // 避免部分失败时水位线不前进导致后续同步跳过未完全写入的行。
         const int MaxRemoteBatchSize = 50;
         int ok = 0;
         int fail = 0;
         DateTime? maxWatermark = null;
         var successRows = new List<Dictionary<string, object?>>(rows.Count);
+
+        // 在写入前扫描全部行，确定最大水位（避免部分失败导致水位线跳跃）
+        foreach (var row in rows)
+        {
+            if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && (maxWatermark == null || pt > maxWatermark.Value))
+                maxWatermark = pt;
+        }
 
         for (int i = 0; i < rows.Count; i += MaxRemoteBatchSize)
         {
@@ -90,13 +99,11 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
                 {
                     await InsertRowsViaAdoAsync(targetTable, batchValidRows, ct).ConfigureAwait(false);
 
-                    // 写入成功后，累加成功行和最大水位
+                    // 写入成功后，累加成功行
                     foreach (var row in batchValidRows)
                     {
                         ok++;
                         successRows.Add(row);
-                        if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && (maxWatermark == null || pt > maxWatermark.Value))
-                            maxWatermark = pt;
                     }
                 }
             }
@@ -107,8 +114,6 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
                 var result = await FailoverBatchAsync(targetTable, rows, i, batchEnd, successRows, ct).ConfigureAwait(false);
                 ok += result.Ok;
                 fail += result.Fail;
-                if (result.MaxWatermark.HasValue && (maxWatermark == null || result.MaxWatermark.Value > maxWatermark.Value))
-                    maxWatermark = result.MaxWatermark;
             }
         }
 

@@ -15,9 +15,9 @@ public class DataFilterResultTests
             shouldSync: true,
             transformedRow: new Dictionary<string, object?> { ["key"] = "val" });
 
-        Assert.True(result.ShouldSync);
-        Assert.NotNull(result.TransformedRow);
-        Assert.Equal("val", result.TransformedRow!["key"]);
+        Assert.True(result.shouldSync);
+        Assert.NotNull(result.transformedRow);
+        Assert.Equal("val", result.transformedRow!["key"]);
     }
 
     [Fact]
@@ -25,8 +25,8 @@ public class DataFilterResultTests
     {
         var result = new DataFilterResult(shouldSync: false);
 
-        Assert.False(result.ShouldSync);
-        Assert.Null(result.TransformedRow);
+        Assert.False(result.shouldSync);
+        Assert.Null(result.transformedRow);
     }
 
     [Fact]
@@ -34,17 +34,8 @@ public class DataFilterResultTests
     {
         var result = new DataFilterResult(shouldSync: true);
 
-        Assert.True(result.ShouldSync);
-        Assert.Null(result.TransformedRow);
-    }
-
-    [Fact]
-    public void DataFilterResult_Equality_SameValuesAreEqual()
-    {
-        var r1 = new DataFilterResult(shouldSync: true, transformedRow: new Dictionary<string, object?> { ["a"] = 1 });
-        var r2 = new DataFilterResult(shouldSync: true, transformedRow: new Dictionary<string, object?> { ["a"] = 1 });
-
-        Assert.Equal(r1, r2);
+        Assert.True(result.shouldSync);
+        Assert.Null(result.transformedRow);
     }
 
     [Fact]

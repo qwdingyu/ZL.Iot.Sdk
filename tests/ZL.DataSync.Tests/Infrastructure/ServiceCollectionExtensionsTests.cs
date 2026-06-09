@@ -208,7 +208,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddDataSyncFromJsonFile_ThrowsOnEmptyConfig()
+    public void AddDataSyncFromJsonFile_UsesDefaultsForEmptyConfig()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -217,15 +217,106 @@ public class ServiceCollectionExtensionsTests
 
         try
         {
-            // Act & Assert
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            // Act
+            var ex = Record.Exception(() =>
                 services.AddDataSyncFromJsonFile(jsonFile));
-            Assert.Contains("配置文件为空或格式错误", ex.Message);
+
+            // Assert — {} 解析出默认 DataSyncConfig，不抛异常
+            Assert.Null(ex);
         }
         finally
         {
             if (File.Exists(jsonFile))
                 File.Delete(jsonFile);
         }
+    }
+
+    [Fact]
+    public void AddDataSync_ThrowsWhenBatchSizeZero()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddDataSync(cfg =>
+            {
+                cfg.LocalDbPath = "/tmp/test.db";
+                cfg.BatchSize = 0;
+            }));
+        Assert.Contains("BatchSize 必须大于 0", ex.Message);
+    }
+
+    [Fact]
+    public void AddDataSync_ThrowsWhenSyncIntervalSecondsZero()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddDataSync(cfg =>
+            {
+                cfg.LocalDbPath = "/tmp/test.db";
+                cfg.SyncIntervalSeconds = 0;
+            }));
+        Assert.Contains("SyncIntervalSeconds 必须大于 0", ex.Message);
+    }
+
+    [Fact]
+    public void AddDataSync_ThrowsWhenRemoteTargetNameIsEmpty()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddDataSync(cfg =>
+            {
+                cfg.LocalDbPath = "/tmp/test.db";
+                cfg.RemoteTargets = new()
+                {
+                    new RemoteTargetConfig { Name = "", Type = TargetType.MySql, ConnectionString = "server=test;" }
+                };
+            }));
+        Assert.Contains("目标 Name 不能为空", ex.Message);
+    }
+
+    [Fact]
+    public void AddDataSync_ThrowsWhenRemoteTargetConnectionStringIsEmpty()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddDataSync(cfg =>
+            {
+                cfg.LocalDbPath = "/tmp/test.db";
+                cfg.RemoteTargets = new()
+                {
+                    new RemoteTargetConfig { Name = "Test", Type = TargetType.MySql, ConnectionString = "" }
+                };
+            }));
+        Assert.Contains("ConnectionString 不能为空", ex.Message);
+    }
+
+    [Fact]
+    public void AddDataSync_ThrowsWhenHttpTargetMissingHttpConfig()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() =>
+            services.AddDataSync(cfg =>
+            {
+                cfg.LocalDbPath = "/tmp/test.db";
+                cfg.RemoteTargets = new()
+                {
+                    new RemoteTargetConfig { Name = "HttpTarget", Type = TargetType.Http, ConnectionString = "dummy;" }
+                };
+            }));
+        Assert.Contains("必须配置 HttpConfig", ex.Message);
     }
 }

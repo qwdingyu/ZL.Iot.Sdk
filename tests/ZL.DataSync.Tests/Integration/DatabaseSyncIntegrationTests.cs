@@ -9,33 +9,42 @@ namespace ZL.DataSync.Tests.Integration;
 
 /// <summary>
 /// 端到端集成测试：使用真实 SQLite 和 MySQL。
+///
+/// 设计原则：
+/// - 每个测试使用唯一的 SQLite 文件和独立的 MySQL 表名，避免竞争
+/// - 测试目标明确：Test1=配置创建，Test2=建表+同步，Test3=空数据，
+///   Test4=分批限制，Test5=_Synced 标记验证
+/// - MySQL 连接字符串集中管理，密码通过环境变量 DATASYNC_MYSQL_PWD 覆盖（默认 mes）
 /// </summary>
 public class DatabaseSyncIntegrationTests : IDisposable
 {
     private readonly string _sqlitePath;
-    private readonly string _mySqlDb = "zldatasync_test";
+    private readonly string _mySqlDb;
     private readonly string _mySqlConnectionString;
-    private bool _mySqlDbCreated;
 
     private readonly ITestOutputHelper? _output;
 
     public DatabaseSyncIntegrationTests(ITestOutputHelper? output = null)
     {
         _output = output;
-        _sqlitePath = Path.Combine(Path.GetTempPath(), $"e2e_test_{Guid.NewGuid()}.db");
-        _mySqlConnectionString = $"server=127.0.0.1;database={_mySqlDb};uid=root;password=mes;charset=utf8mb4;Allow User Variables=True;";
+        _sqlitePath = Path.Combine(Path.GetTempPath(), $"e2e_{GetType().Name}_{Guid.NewGuid():N}.db");
+        _mySqlDb = $"zldatasync_{GetType().Name}_{Guid.NewGuid():N}";
+        var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
+        _mySqlConnectionString = $"server=127.0.0.1;database={_mySqlDb};uid=root;password={pwd};charset=utf8mb4;Allow User Variables=True;";
     }
 
     public void Dispose()
     {
         if (File.Exists(_sqlitePath))
             File.Delete(_sqlitePath);
+
+        var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
         try
         {
             using var setupDb = new SqlSugarClient(new ConnectionConfig
             {
                 DbType = SqlSugar.DbType.MySql,
-                ConnectionString = "server=127.0.0.1;uid=root;password=mes;charset=utf8mb4;",
+                ConnectionString = $"server=127.0.0.1;uid=root;password={pwd};charset=utf8mb4;",
                 IsAutoCloseConnection = true
             });
             setupDb.Ado.ExecuteCommand($"DROP DATABASE IF EXISTS `{_mySqlDb}`");
@@ -47,10 +56,11 @@ public class DatabaseSyncIntegrationTests : IDisposable
     {
         try
         {
+            var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
             using var conn = new SqlSugarClient(new ConnectionConfig
             {
                 DbType = SqlSugar.DbType.MySql,
-                ConnectionString = "server=127.0.0.1;uid=root;password=mes;charset=utf8mb4;",
+                ConnectionString = $"server=127.0.0.1;uid=root;password={pwd};charset=utf8mb4;",
                 IsAutoCloseConnection = true
             });
             conn.Ado.ExecuteCommand("SELECT 1");
@@ -65,28 +75,26 @@ public class DatabaseSyncIntegrationTests : IDisposable
     private void SetupMySqlDatabase()
     {
         if (_mySqlConnectionString == null) return;
-
         if (!IsMySqlAvailable())
             throw new Exception("MySQL 不可用，跳过集成测试");
 
+        var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
         using var setupDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.MySql,
-            ConnectionString = "server=127.0.0.1;uid=root;password=mes;charset=utf8mb4;",
+            ConnectionString = $"server=127.0.0.1;uid=root;password={pwd};charset=utf8mb4;",
             IsAutoCloseConnection = true
         });
-        
+
         _output?.WriteLine($"[Setup] Creating database {_mySqlDb}...");
         setupDb.Ado.ExecuteCommand($"CREATE DATABASE IF NOT EXISTS `{_mySqlDb}` DEFAULT CHARACTER SET utf8mb4");
-        _output?.WriteLine($"[Setup] Database created.");
-        
-        // 验证数据库确实存在
-        var verify = setupDb.Ado.SqlQuery<string>($"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{_mySqlDb}'");
-        _output?.WriteLine($"[Setup] DB verify after CREATE: {(verify?.Count > 0 ? "EXISTS" : "NOT FOUND")}");
-        
-        _mySqlDbCreated = true;
+        _output?.WriteLine($"[Setup] Done.");
     }
 
+    /// <summary>
+    /// 创建 SQLite 表并插入测试数据。
+    /// 表结构：Id (PK AUTOINCREMENT), StationCode, BarCode, ProcessTime, _Synced, _SyncTime
+    /// </summary>
     private void SetupSQLite(string tableName, int recordCount = 5)
     {
         using var localDb = new SqlSugarClient(new ConnectionConfig
@@ -118,6 +126,7 @@ public class DatabaseSyncIntegrationTests : IDisposable
     [Fact]
     public void Test1_Configuration_CanBeCreated()
     {
+        // 目标：验证 DataSyncConfig 可正常设置所有属性
         var config = new DataSyncConfig
         {
             LocalDbPath = _sqlitePath,
@@ -148,6 +157,7 @@ public class DatabaseSyncIntegrationTests : IDisposable
     [Fact]
     public void Test2_DatabaseSyncStrategy_CreatesTableAndSyncsData()
     {
+        // 目标：验证数据库策略能自动建表并同步数据，正确标记 _Synced
         if (!IsMySqlAvailable())
             throw new Exception("MySQL 不可用，跳过集成测试");
 
@@ -173,12 +183,7 @@ public class DatabaseSyncIntegrationTests : IDisposable
         });
 
         using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
-
-        _output?.WriteLine("[Test2] Starting SyncTableAsync...");
         var report = strategy.SyncTableAsync("test_table", "synced_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
-
-        _output?.WriteLine($"[Test2] Report: Success={report.Success}, Synced={report.SyncedCount}, Failed={report.FailedCount}, Error={report.LastError}");
-        if (!report.Success) _output?.WriteLine($"[Test2] Logger messages: {string.Join("; ", strategy.Logger.Messages)}");
 
         Assert.True(report.Success, $"同步失败: {report.LastError}");
         Assert.True(report.HasData);
@@ -186,24 +191,23 @@ public class DatabaseSyncIntegrationTests : IDisposable
         Assert.Equal(5, report.SyncedCount);
         Assert.Equal(0, report.FailedCount);
 
-        // 验证 MySQL 中数据已写入
+        // 验证 MySQL 远程表中有数据
         using var mySqlDb = new SqlSugarClient(new ConnectionConfig
         {
             DbType = SqlSugar.DbType.MySql,
             ConnectionString = _mySqlConnectionString,
             IsAutoCloseConnection = true
         });
-        var mysqlCount = mySqlDb.Queryable<dynamic>().AS("synced_data").Count();
-        Assert.Equal(5, mysqlCount);
+        Assert.Equal(5, mySqlDb.Queryable<dynamic>().AS("synced_data").Count());
 
-        // 验证本地 _Synced 标记已更新
-        var syncedCount = localDb.Queryable<dynamic>().AS("test_table").Where("_Synced = 1").Count();
-        Assert.Equal(5, syncedCount);
+        // 验证本地 _Synced 已更新
+        Assert.Equal(5, localDb.Queryable<dynamic>().AS("test_table").Where("_Synced = 1").Count());
     }
 
     [Fact]
     public void Test3_DatabaseSyncStrategy_HandlesNoData()
     {
+        // 目标：验证空表场景返回成功但无数据
         if (!IsMySqlAvailable())
             throw new Exception("MySQL 不可用，跳过集成测试");
 
@@ -233,6 +237,7 @@ public class DatabaseSyncIntegrationTests : IDisposable
     [Fact]
     public void Test4_DatabaseSyncStrategy_BatchSize_LimitsRecords()
     {
+        // 目标：验证 batchSize 参数限制单次同步上限
         if (!IsMySqlAvailable())
             throw new Exception("MySQL 不可用，跳过集成测试");
 
@@ -254,7 +259,6 @@ public class DatabaseSyncIntegrationTests : IDisposable
         });
 
         using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
-
         var report = strategy.SyncTableAsync("batch_table", null, 5, localDb, CancellationToken.None).GetAwaiter().GetResult();
 
         Assert.True(report.Success);
@@ -262,22 +266,23 @@ public class DatabaseSyncIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void Test5_DatabaseSyncStrategy_Upsert_Works()
+    public void Test5_DatabaseSyncStrategy_SyncedMark_Verification()
     {
+        // 目标：验证 _Synced 标记在第一次同步后正确更新，第二次同步无新数据
         if (!IsMySqlAvailable())
             throw new Exception("MySQL 不可用，跳过集成测试");
 
         SetupMySqlDatabase();
-        SetupSQLite("upsert_table", 3);
+        SetupSQLite("sync_mark_table", 3);
 
         var target = new RemoteTargetConfig
         {
-            Name = "MySQL-Upsert",
+            Name = "MySQL-SyncMark",
             Type = TargetType.MySql,
             ConnectionString = _mySqlConnectionString,
             TableMappings = new Dictionary<string, string>
             {
-                { "upsert_table", "upsert_data" }
+                { "sync_mark_table", "sync_mark_data" }
             }
         };
 
@@ -290,13 +295,26 @@ public class DatabaseSyncIntegrationTests : IDisposable
 
         using var strategy = new DatabaseSyncStrategy(target, new TestLogger());
 
-        // 第一次同步
-        var report1 = strategy.SyncTableAsync("upsert_table", "upsert_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
+        // 第一次同步：3 条记录
+        var report1 = strategy.SyncTableAsync("sync_mark_table", "sync_mark_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(report1.Success);
         Assert.Equal(3, report1.SyncedCount);
 
-        // 再次同步（应该没有新数据）
-        var report2 = strategy.SyncTableAsync("upsert_table", "upsert_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
+        // 验证 _Synced = 1 的记录数
+        var syncedCount = localDb.Queryable<dynamic>().AS("sync_mark_table").Where("_Synced = 1").Count();
+        Assert.Equal(3, syncedCount);
+
+        // 验证 MySQL 端有 3 条
+        using var mySqlDb = new SqlSugarClient(new ConnectionConfig
+        {
+            DbType = SqlSugar.DbType.MySql,
+            ConnectionString = _mySqlConnectionString,
+            IsAutoCloseConnection = true
+        });
+        Assert.Equal(3, mySqlDb.Queryable<dynamic>().AS("sync_mark_data").Count());
+
+        // 第二次同步：无新数据
+        var report2 = strategy.SyncTableAsync("sync_mark_table", "sync_mark_data", 100, localDb, CancellationToken.None).GetAwaiter().GetResult();
         Assert.True(report2.Success);
         Assert.Equal(0, report2.TargetCount);
     }

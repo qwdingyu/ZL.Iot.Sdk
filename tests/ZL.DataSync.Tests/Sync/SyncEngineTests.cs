@@ -107,7 +107,7 @@ public class SyncEngineTests
         }
         finally
         {
-            _ = engine.StopAsync().GetAwaiter().GetResult();
+            engine.StopAsync().GetAwaiter().GetResult();
         }
     }
 
@@ -124,7 +124,7 @@ public class SyncEngineTests
         }
         finally
         {
-            _ = engine.StopAsync().GetAwaiter().GetResult();
+            engine.StopAsync().GetAwaiter().GetResult();
         }
     }
 
@@ -153,7 +153,7 @@ public class SyncEngineTests
         }
         finally
         {
-            _ = engine.StopAsync().GetAwaiter().GetResult();
+            engine.StopAsync().GetAwaiter().GetResult();
         }
     }
 
