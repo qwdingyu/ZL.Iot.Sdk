@@ -103,7 +103,7 @@ namespace ZL.Iot.Runner.Runtime
             {
                 try
                 {
-                    var singleRunner = SingleDeviceRunner.Create(profile, _loggerFactory);
+                    var singleRunner = SingleDeviceRunner.Create(profile, _loggerFactory, _config.Runner?.DataStorage);
                     _deviceRunners[profile.Code] = singleRunner;
 
                     _logger.LogInformation("[{Code}] 设备运行器创建成功（协议={Protocol}, IP={Ip}:{Port}, 标签数={TagCount}）",

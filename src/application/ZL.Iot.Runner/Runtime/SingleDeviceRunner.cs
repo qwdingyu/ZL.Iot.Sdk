@@ -5,9 +5,13 @@
 // ============================================================
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ZL.Biz.Execute.Biz;
+using ZL.Biz.Execute.Conditions;
+using ZL.Iot.Interface;
 using ZL.Iot.Runner.Configuration;
 using ZL.IotHub.Core;
 using ZL.IotHub.Hsl;
@@ -100,7 +104,10 @@ namespace ZL.Iot.Runner.Runtime
         /// <summary>
         /// 创建设备驱动：使用 HslDriverFactory.Create(config) 创建 HslUnifiedDriver
         /// </summary>
-        public static SingleDeviceRunner Create(DeviceProfile profile, ILoggerFactory loggerFactory)
+        public static SingleDeviceRunner Create(
+            DeviceProfile profile,
+            ILoggerFactory loggerFactory,
+            DataStorageOptions? storage = null)
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
 
@@ -125,13 +132,73 @@ namespace ZL.Iot.Runner.Runtime
 
             // 5. 创建执行器（传入 runner 自身作为 ITagValueProvider）
             var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
-            // Phase 2: 当 storage 配置了数据库时，可通过完整构造传入 ISqlExecutor 启用真实写入
-            // 当前使用简化构造（Phase 1 记录日志，Phase 2 数据存储待 DeviceRunner 层集成）
-            var executor = new TriggerExecutor(profile.Executors, executorLogger,
-                tagValueProvider: runner);
+            var sqlExecutor = CreateSqlExecutor(storage, loggerFactory, logger);
+            var executor = sqlExecutor != null && storage != null
+                ? new TriggerExecutor(
+                    profile.Executors,
+                    storage,
+                    new ScribanScriptEngine(
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<ScribanScriptEngine>.Instance),
+                    new RulesEngineAdapter(
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<RulesEngineAdapter>.Instance),
+                    sqlExecutor,
+                    executorLogger,
+                    tagValueProvider: runner)
+                : new TriggerExecutor(profile.Executors, executorLogger,
+                    tagValueProvider: runner);
             runner._executor = executor;
 
             return runner;
+        }
+
+        /// <summary>
+        /// 根据 Runner DataStorage 创建 SQL 执行器；当前生产闭环优先支持 SQLite。
+        /// </summary>
+        private static ISqlExecutor? CreateSqlExecutor(
+            DataStorageOptions? storage,
+            ILoggerFactory loggerFactory,
+            ILogger<SingleDeviceRunner> logger)
+        {
+            if (storage == null || string.Equals(storage.Type, "None", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogInformation("Runner DataStorage 未启用，FieldMapping/SQL 将写入 JSONL 降级文件");
+                return null;
+            }
+
+            if (!string.Equals(storage.Type, "Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Runner DataStorage 类型 {Type} 暂未接入，FieldMapping/SQL 将写入 JSONL 降级文件", storage.Type);
+                return null;
+            }
+
+            var dbPath = ResolveSqlitePath(storage.ConnectionString);
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath) ?? AppContext.BaseDirectory);
+
+            logger.LogInformation("Runner DataStorage 已启用 SQLite: {Path}", dbPath);
+            return new SqliteExecutor(loggerFactory.CreateLogger<SqliteExecutor>(), dbPath);
+        }
+
+        /// <summary>
+        /// 兼容完整连接串和裸路径，统一提取 SQLite 文件路径。
+        /// </summary>
+        private static string ResolveSqlitePath(string? connectionString)
+        {
+            var raw = string.IsNullOrWhiteSpace(connectionString)
+                ? "./data/iot_runner.db"
+                : connectionString.Trim();
+
+            const string dataSourcePrefix = "Data Source=";
+            if (raw.StartsWith(dataSourcePrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw[dataSourcePrefix.Length..].Split(';', 2)[0].Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                raw = "./data/iot_runner.db";
+            }
+
+            return Path.GetFullPath(raw, AppContext.BaseDirectory);
         }
 
         /// <summary>

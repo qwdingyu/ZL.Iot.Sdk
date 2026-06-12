@@ -32,26 +32,34 @@ public class SqlExecutorFieldMappingSink : IFieldMappingSink
         // - REAL：SQLite REAL = MySQL FLOAT/DOUBLE = SQL Server FLOAT = PostgreSQL REAL/DOUBLE
         // - TEXT：所有数据库通用
         // - TIMESTAMP：ISO 8601 文本格式，所有数据库通用
-        var sql = $"CREATE TABLE IF NOT EXISTS {tableName} (";
-        sql += "ID INTEGER PRIMARY KEY,";       // SQLite 自动递增；其他 DB 由应用或序列管理
-        sql += "ProcessTime TEXT NOT NULL,";     // ISO 8601 文本，跨数据库兼容
-
-        foreach (var col in columns)
+        var columnDefinitions = new List<string>
         {
+            "ID INTEGER PRIMARY KEY",
+            "ProcessTime TEXT NOT NULL"
+        };
+
+        foreach (var col in columns.Where(c => !string.IsNullOrWhiteSpace(c.Name)))
+        {
+            if (string.Equals(col.Name, "ID", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(col.Name, "ProcessTime", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var type = col.DataType?.ToLowerInvariant() switch
             {
                 "int32" or "int" or "int16" or "short" => "INTEGER",
                 "int64" or "long" => "BIGINT",
                 "float" or "single" => "REAL",
                 "double" or "float64" => "REAL",
-                "datetime" => "TEXT",     // ISO 8601
-                "bool" or "boolean" => "INTEGER",  // 0/1
+                "datetime" => "TEXT",
+                "bool" or "boolean" => "INTEGER",
                 _ => "TEXT"
             };
-            sql += $"{col.Name} {type},";
+            columnDefinitions.Add($"{col.Name} {type}");
         }
 
-        sql += "ProcessTime);"; // 逗号分隔处理完，最后用 ProcessTime 凑语法
+        var sql = $"CREATE TABLE IF NOT EXISTS {tableName} ({string.Join(", ", columnDefinitions)});";
 
         _sqlExecutor.ExecuteNonQueryAsync(sql).GetAwaiter().GetResult();
         _logger.LogInformation("[FieldMappingSink] 已确保表存在: {TableName}", tableName);
