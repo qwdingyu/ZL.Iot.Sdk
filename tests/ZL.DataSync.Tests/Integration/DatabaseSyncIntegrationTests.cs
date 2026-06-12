@@ -28,7 +28,9 @@ public class DatabaseSyncIntegrationTests : IDisposable
     {
         _output = output;
         _sqlitePath = Path.Combine(Path.GetTempPath(), $"e2e_{GetType().Name}_{Guid.NewGuid():N}.db");
-        _mySqlDb = $"zldatasync_{GetType().Name}_{Guid.NewGuid():N}";
+        // MySQL 数据库名限制 64 字符（63 安全），用 hash 截短
+        var rawName = $"zldatasync_{GetType().Name}_{Guid.NewGuid():N}";
+        _mySqlDb = rawName.Length > 63 ? $"zldatasync_{Math.Abs(GetType().Name.GetHashCode()):X8}_{Guid.NewGuid():N}"[..63] : rawName;
         var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
         _mySqlConnectionString = $"server=127.0.0.1;database={_mySqlDb};uid=root;password={pwd};charset=utf8mb4;Allow User Variables=True;";
     }

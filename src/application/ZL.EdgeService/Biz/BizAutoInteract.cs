@@ -8,8 +8,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using ZL.Iot.Interface;
 using ZL.Dao.IotDevice;
-using ZL.PlcBase.Core;
-using ZL.PlcBase.Models;
+using ZL.IotHub.Core;
+using ZL.IotHub.Models;
 using ZL.Tag;
 using Newtonsoft.Json;
 
@@ -34,7 +34,7 @@ namespace ZL.EdgeService
 
     /// <summary>
     /// 自动交互业务处理器
-    /// <para>继承自 ZL.PlcBase.Core.DeviceBase，利用其高性能采集与队列写入能力</para>
+    /// <para>继承自 ZL.IotHub.Core.DeviceBase，利用其高性能采集与队列写入能力</para>
     /// </summary>
     /// <remarks>
     /// 架构说明：
@@ -52,7 +52,7 @@ namespace ZL.EdgeService
     /// - 工站级自动交互（计划下达、扫码触发、BOM 校验等）
     /// - 作为 EdgeExecutorKernel 的补充，处理特定工站的业务规则
     /// </remarks>
-    public class BizAutoInteract : ZL.PlcBase.Core.DeviceBase
+    public class BizAutoInteract : ZL.IotHub.Core.DeviceBase
     {
         #region 私有字段
         
@@ -202,7 +202,7 @@ namespace ZL.EdgeService
         /// </remarks>
         public override bool Connect()
         {
-            var descriptor = HslProtocolRegistry.Resolve(this.deviceConfig);
+            var descriptor = ZL.IotHub.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
             var client = descriptor.ClientFactory(this.deviceConfig);
             if (client is HslCommunication.Core.IReadWriteNet rw)
             {

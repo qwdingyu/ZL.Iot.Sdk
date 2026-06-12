@@ -115,7 +115,10 @@ public class ProjectGenerator : IProjectGenerator
     /// </summary>
     private static async Task RenderTemplatesAsync(GenerateRequest request, string workDir, CancellationToken ct)
     {
-        var platformDir = TemplateRenderer.GetPlatformDir(request.Platform);
+        // CS 继承模式使用专用模板（替代平台默认模板）
+        var platformDir = request.InheritanceMode == InheritanceMode.CSharpInheritance
+            ? "cs-inheritance"
+            : TemplateRenderer.GetPlatformDir(request.Platform);
         var templateFiles = GetTemplateFiles(platformDir);
 
         foreach (var fileName in templateFiles)

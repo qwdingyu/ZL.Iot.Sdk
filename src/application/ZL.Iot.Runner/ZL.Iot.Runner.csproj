@@ -8,7 +8,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <!-- 解决 CLI 引用时与 AssemblyName 同名导致的 NuGet 歧义 -->
-        <PackageId>ZL.Iot.Runner.Lib</PackageId>
+        <PackageId>ZL.Iot.Runner</PackageId>
     </PropertyGroup>
 
     <!-- 复用已有类库，不重复造轮子 -->
@@ -19,9 +19,9 @@
         <PackageReference Include="ZL.Iot.Interface" />
         <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
         <!-- 始终使用 PackageReference：Condition-based ProjectReference 在 pack 时
-             会引用本地源码的 Version（ZL.PlcBase.csproj 无 Version 标签），
+             会引用本地源码的 Version（ZL.IotHub.csproj 无 Version 标签），
              导致 nuspec 写入不存在的 1.0.4 版本，下游 restore 失败（NU1605）。 -->
-        <PackageReference Include="ZL.PlcBase" />
+        <PackageReference Include="ZL.IotHub" />
         <!-- PFLite（DeviceConfig/SharedTagValueCache 等基础工具） -->
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>

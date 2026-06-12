@@ -2,7 +2,7 @@
 name: csharp-distributed-sync-patterns
 description: 跨数据库/HTTP 数据同步管道的设计模式，包括策略分发、水位线管理、批量写入容错
 source: auto-skill
-extracted_at: '2026-06-08T12:21:03.755Z'
+extracted_at: '2026-06-09T08:20:00.000Z'
 ---
 
 # C# 分布式数据同步管道模式
@@ -17,6 +17,68 @@ extracted_at: '2026-06-08T12:21:03.755Z'
 ## Core Principle
 
 **每个策略只替换增量查询逻辑，复用公共基础设施（建表、批量写入、标记同步）。编译验证是完成的标准，不是起点。**
+
+## ⚠️ Critical Bug Lessons (2026-06-09 Review)
+
+The following bugs were discovered during a thorough code review with test verification. These are **design anti-patterns to avoid**:
+
+### Bug 1: Watermark Must Be Computed from SuccessRows, Not AllRows
+
+**WRONG** — scanning all rows before write, then using max watermark on success:
+```csharp
+DateTime maxProcessTime = DateTime.MinValue;
+foreach (var row in rows)  // ← ALL rows, including failures
+{
+    if (TryGetProcessTime(row, out var pt) && pt > maxProcessTime)
+        maxProcessTime = pt;
+}
+// ... write rows, some may fail ...
+if (successRows.Count > 0)
+    await WriteSyncLogAsync(localDb, tableName, maxProcessTime, ct);  // ← uses ALL-rows max
+```
+
+**Result**: If the last N rows fail but have the highest ProcessTime, the watermark advances past them. Next sync skips them forever → **silent data loss**.
+
+**CORRECT**: Compute watermark from `successRows` only, or track it incrementally during the write loop:
+```csharp
+DateTime? maxProcessTime = null;
+// inside the write loop, after each successful insert:
+if (TryGetProcessTime(row, out var pt) && (maxProcessTime == null || pt > maxProcessTime.Value))
+    maxProcessTime = pt;
+
+// Only write watermark if we actually wrote something:
+if (successRows.Count > 0 && maxProcessTime.HasValue)
+    await WriteSyncLogAsync(localDb, tableName, maxProcessTime.Value, ct);
+```
+
+### Bug 2: ProcessTime Fallback for Marking Is Fragile
+
+**WRONG** — when `Id` column is missing, fallback to marking by ProcessTime:
+```sql
+UPDATE table SET _Synced = 1 WHERE ProcessTime IN (@p0, @p1, ...)
+```
+After `.Distinct()` on ProcessTime values from `successRows`.
+
+**Result**: If two rows share the same ProcessTime (common in SQLite where timestamps have second precision), the query marks **ALL rows with that timestamp** as synced — including rows that failed to write remotely → **silent data loss**.
+
+**CORRECT**: Either:
+- (a) Require `Id` column; throw if missing (fail-fast, no silent fallback)
+- (b) Use composite key: `UPDATE table SET _Synced = 1 WHERE Id IN (...) OR (ProcessTime IN (...) AND RowIndex IN (...))`
+
+### Bug 3: Shared SQLite Connection Is Not Thread-Safe for Concurrent Writes
+
+**WRONG** — `SyncAllTablesAsync` uses `SemaphoreSlim(4,4)` to limit concurrency but all tasks share the same `_localDb` (`SqlSugarClient`) connection:
+```csharp
+var tasks = _discoveredTables.Select(async table =>
+{
+    await semaphore.WaitAsync(ct);
+    return await strategy.SyncTableAsync(table, ..., localClient, ct);  // ← shared connection
+});
+```
+
+**Result**: Concurrent `ADO.ExecuteCommandAsync` writes to `_Synced` or `_SyncLog` can cause `database is locked` errors, even in WAL mode (because `IsAutoCloseConnection = false` doesn't equal true connection pooling).
+
+**CORRECT**: Either serialize all table syncs (single-threaded), or create per-task local connections.
 
 ## Procedure
 
@@ -46,7 +108,9 @@ public interface ISyncStrategy
 
 适用场景：本地表有 `_Synced` 字段，用于标记是否已同步。
 
-#### 策略 B: ProcessTimeSyncStrategy（基于 `_UploadFlag` / `_SyncLog`）
+> **⚠️ Important**: When falling back to ProcessTime-based marking (if Id is missing), NEVER use `.Distinct()` on ProcessTime values before building the UPDATE WHERE clause. Same-timestamp rows will be over-marked.
+
+#### 策略 B: ProcessTimeSyncStrategy（基于 `_SyncLog` 水位线）
 
 ```
 读取: SELECT * FROM table WHERE ProcessTime > @lastTime ORDER BY ProcessTime LIMIT @limit
@@ -55,6 +119,8 @@ public interface ISyncStrategy
 ```
 
 适用场景：与 PcStationIot RemoteSyncService 集成，使用 `_SyncLog` 水位线表，不修改业务表。
+
+> **⚠️ Critical**: Watermark must be computed from `successRows` after write, NOT from `rows` before write. See Bug 1 above.
 
 #### 策略 C: HttpSyncStrategy（基于 HTTP POST）
 
@@ -71,18 +137,15 @@ public interface ISyncStrategy
 ```csharp
 private ISyncStrategy CreateStrategy(RemoteTargetConfig target)
 {
-    var localClient = _localDb as SqlSugarClient 
-        ?? throw new InvalidOperationException("本地数据库必须是 SqlSugarClient");
-
     if (target.StrategyType == Config.SyncStrategyType.ProcessTime)
-        return new ProcessTimeSyncStrategy(target, localClient, _logger);
+        return new ProcessTimeSyncStrategy(target, _logger);
 
     return target.Type switch
     {
         Config.TargetType.MySql or Config.TargetType.SqlServer or Config.TargetType.PostgreSql or Config.TargetType.Oracle =>
-            new Pipeline.DatabaseSyncStrategy(target, localClient, _logger),
+            new DatabaseSyncStrategy(target, _logger),
         Config.TargetType.Http =>
-            new Pipeline.HttpSyncStrategy(target.HttpConfig ?? throw new InvalidOperationException(...), target.Name, _logger),
+            new HttpSyncStrategy(target.HttpConfig ?? throw new InvalidOperationException(...), target.Name, _logger),
         _ => throw new ArgumentOutOfRangeException(nameof(target.Type))
     };
 }
@@ -143,6 +206,9 @@ catch (Exception ex)
 | 批量写入失败后继续标记成功 | 数据不一致 | 只有写入成功后才更新成功计数 |
 | 每个目标创建独立的 `SqlSugarClient` | SQLite 并发锁死 | 共享本地连接，远程各自创建 `SqlSugarScope` |
 | 水位线用 COUNT + INSERT/UPDATE | 非原子操作，并发冲突 | 用 `INSERT OR REPLACE` 原子 UPSERT |
+| **水位线从全部行（含失败）取值** | **失败数据永久跳过** | **水位线只从成功写入的行取值** |
+| **按 ProcessTime 去重后标记** | **同时间戳未同步行被误标记** | **按 Id 标记为主，Id 缺失时不静默回退** |
+| **共享 SQLite 连接多任务并发写** | **database is locked** | **串行化写操作或为每个并发任务创建独立连接** |
 
 ## Key Patterns
 
@@ -203,3 +269,6 @@ await Task.Delay(TimeSpan.FromSeconds(wait), ct).ConfigureAwait(false);
 - [ ] 水位线使用原子 UPSERT（INSERT OR REPLACE）
 - [ ] 无 Skip/Take O(n²) 循环
 - [ ] `dotnet build` 零错误 + 零新增 CS 警告
+- [ ] **水位线只从 successRows（成功写入的行）取值，而非从全部 rows 取值**
+- [ ] **按 ProcessTime 标记时必须保证唯一性，不能对 ProcessTime 做 .Distinct() 后 UPDATE**
+- [ ] **共享 SQLite 连接不应被多任务并发写操作共享**

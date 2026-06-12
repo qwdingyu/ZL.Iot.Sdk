@@ -74,20 +74,12 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
         await EnsureTableAsync(targetTable, rows[0], ct).ConfigureAwait(false);
 
         // 4. 批量写入远程（每 MaxRemoteBatchSize 条一批）
-        // 水位线逻辑：先扫描全部行确定最大 ProcessTime（无论成功失败都前进到此水位线），
-        // 避免部分失败时水位线不前进导致后续同步跳过未完全写入的行。
+        // 水位线逻辑：只从 successRows 中提取最大 ProcessTime，
+        // 避免写入失败的数据导致水位线误推进（否则失败数据会被永久跳过）。
         const int MaxRemoteBatchSize = 50;
         int ok = 0;
         int fail = 0;
-        DateTime maxProcessTime = DateTime.MinValue;
         var successRows = new List<Dictionary<string, object?>>(rows.Count);
-
-        // 在写入前扫描全部行，确定最大水位（避免部分失败导致水位线跳跃）
-        foreach (var row in rows)
-        {
-            if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxProcessTime)
-                maxProcessTime = pt;
-        }
 
         for (int i = 0; i < rows.Count; i += MaxRemoteBatchSize)
         {
@@ -118,12 +110,22 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
             }
         }
 
-        // 5. 原子更新 _SyncLog 水位线（不修改业务表中的任何标记字段）
-        if (successRows.Count > 0 && maxProcessTime > DateTime.MinValue)
+        // 5. 原子更新 _SyncLog 水位线（只从成功写入的行中提取最大 ProcessTime）
+        DateTime? maxProcessTime = null;
+        if (successRows.Count > 0)
+        {
+            foreach (var row in successRows)
+            {
+                if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && (maxProcessTime == null || pt > maxProcessTime.Value))
+                    maxProcessTime = pt;
+            }
+        }
+
+        if (successRows.Count > 0 && maxProcessTime.HasValue)
         {
             try
             {
-                await WriteSyncLogAsync(localDb, tableName, maxProcessTime, ct).ConfigureAwait(false);
+                await WriteSyncLogAsync(localDb, tableName, maxProcessTime.Value, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -133,7 +135,7 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
 
         int totalProcessed = ok + fail;
         return fail == 0 && totalProcessed > 0
-            ? SyncReport.Ok(tableName, rows.Count, ok, maxProcessTime.ToString("o"), sw.Elapsed.TotalMilliseconds)
+            ? SyncReport.Ok(tableName, rows.Count, ok, maxProcessTime?.ToString("o"), sw.Elapsed.TotalMilliseconds)
             : SyncReport.Fail(tableName, rows.Count, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
     }
 
@@ -191,8 +193,8 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
     /// <summary>
     /// 批量写入失败时逐条回退容错。
     /// </summary>
-    /// <returns>成功数、失败数、最大 ProcessTime</returns>
-    private async Task<(int Ok, int Fail, DateTime MaxProcessTime)> FailoverBatchAsync(
+    /// <returns>成功数、失败数</returns>
+    private async Task<(int Ok, int Fail)> FailoverBatchAsync(
         string targetTable,
         List<Dictionary<string, object?>> rows,
         int start,
@@ -202,7 +204,6 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
     {
         int ok = 0;
         int fail = 0;
-        DateTime maxPt = DateTime.MinValue;
 
         for (int j = start; j < end; j++)
         {
@@ -214,8 +215,6 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
                 await InsertRowViaAdoAsync(targetTable, row, ct).ConfigureAwait(false);
                 ok++;
                 successRows.Add(row);
-                if (SqlSugarHelpers.TryGetProcessTime(row, out var pt) && pt > maxPt)
-                    maxPt = pt;
             }
             catch (Exception ex2)
             {
@@ -224,6 +223,6 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
             }
         }
 
-        return (ok, fail, maxPt);
+        return (ok, fail);
     }
 }

@@ -9,15 +9,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ZL.Iot.Runner.Configuration;
-using ZL.PlcBase.Core;
-using ZL.PlcBase.Devices;
+using ZL.IotHub.Core;
+using ZL.IotHub.Hsl;
 using ZL.Tag;
 
 namespace ZL.Iot.Runner.Runtime
 {
     /// <summary>
     /// 单设备生命周期管理器
-    /// 
+    ///
+    /// 实现 ITagValueProvider，为 TriggerExecutor 提供标签读取和反馈写回能力
+    ///
     /// 职责：
     /// 1. 使用 HslDriverFactory.Create(config) 创建 DeviceRoot 驱动实例
     /// 2. 加载标签列表到 driver.Tags
@@ -29,11 +31,11 @@ namespace ZL.Iot.Runner.Runtime
     /// - 一行代码创建，支持 15+ PLC 协议
     /// - 更换协议无需修改代码，只需改配置文件
     /// </summary>
-    public class SingleDeviceRunner : IDisposable
+    public class SingleDeviceRunner : ITagValueProvider, IDisposable
     {
         private readonly string _deviceCode;
         private readonly DeviceRoot _driver;
-        private readonly TriggerExecutor _executor;
+        private TriggerExecutor _executor;  // 非 readonly：Create 工厂方法先构造再赋值
         private readonly ILogger<SingleDeviceRunner> _logger;
         private CancellationTokenSource? _cts;
         private bool _isRunning = false;
@@ -97,11 +99,7 @@ namespace ZL.Iot.Runner.Runtime
 
         /// <summary>
         /// 创建设备驱动：使用 HslDriverFactory.Create(config) 创建 HslUnifiedDriver
-        /// 此方法是 SingleDeviceRunner 的标准创建方式
         /// </summary>
-        /// <param name="profile">设备配置 Profile</param>
-        /// <param name="loggerFactory">日志工厂（共享 NLog 配置）</param>
-        /// <returns>创建的 SingleDeviceRunner 实例</returns>
         public static SingleDeviceRunner Create(DeviceProfile profile, ILoggerFactory loggerFactory)
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
@@ -121,16 +119,19 @@ namespace ZL.Iot.Runner.Runtime
                 driver.Tags.TryAdd(kvp.Key, kvp.Value);
             }
 
-            // 4. 创执行执行器（从配置文件加载，不依赖数据库）
-            var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
-            var executor = new TriggerExecutor(profile.Executors, executorLogger);
+            // 4. 先创建 Runner（executor 暂时为 null，后面赋值）
+            var runner = new SingleDeviceRunner(profile.Code, driver, null!, logger,
+                protocol: profile.Protocol, ip: profile.Ip, port: profile.Port);
 
-            // 5. 创建运行器（传入 profile 元数据用于状态显示）
-            return new SingleDeviceRunner(
-                profile.Code, driver, executor, logger,
-                protocol: profile.Protocol,
-                ip: profile.Ip,
-                port: profile.Port);
+            // 5. 创建执行器（传入 runner 自身作为 ITagValueProvider）
+            var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
+            // Phase 2: 当 storage 配置了数据库时，可通过完整构造传入 ISqlExecutor 启用真实写入
+            // 当前使用简化构造（Phase 1 记录日志，Phase 2 数据存储待 DeviceRunner 层集成）
+            var executor = new TriggerExecutor(profile.Executors, executorLogger,
+                tagValueProvider: runner);
+            runner._executor = executor;
+
+            return runner;
         }
 
         /// <summary>
@@ -219,6 +220,55 @@ namespace ZL.Iot.Runner.Runtime
                 LastCollectTime = DateTime.Now,
                 ErrorMessage = null
             };
+        }
+
+        // ============================================================
+        //  ITagValueProvider 实现
+        //  供 TriggerExecutor fieldmapping 分支使用
+        // ============================================================
+
+        /// <summary>
+        /// 读取标签当前值（优先从驱动缓存，fallback 实时读取）
+        /// </summary>
+        public object? ReadTag(string tagId)
+        {
+            try
+            {
+                // 从驱动缓存读取（TagItem.CurrentValue）
+                if (_driver.Tags.TryGetValue(tagId, out var tagItem))
+                {
+                    if (!string.IsNullOrEmpty(tagItem.CurrentValue))
+                        return tagItem.CurrentValue;
+                }
+
+                // fallback：通过 dynamic 调用 Read 方法
+                dynamic d = _driver;
+                return d.Read(tagId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[{Code}] 读取标签失败: {TagId}", _deviceCode, tagId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 写入标签值到 PLC（FieldMapping 反馈写回使用）
+        /// </summary>
+        public bool WriteTag(string tagId, object value)
+        {
+            try
+            {
+                dynamic d = _driver;
+                d.Write(tagId, value);
+                _logger.LogInformation("[{Code}] 写入标签成功: {TagId}={Value}", _deviceCode, tagId, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[{Code}] 写入标签失败: {TagId}", _deviceCode, tagId);
+                return false;
+            }
         }
 
         /// <summary>

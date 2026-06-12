@@ -51,6 +51,11 @@ public class GenerateRequest
     public ConfigFormat ConfigFormat { get; set; } = ConfigFormat.Json;
 
     /// <summary>
+    /// 继承模式：Standard（默认，使用 DeviceRunner）/ CSharpInheritance（CS 继承模式，Source 专用）
+    /// </summary>
+    public InheritanceMode InheritanceMode { get; set; } = InheritanceMode.Standard;
+
+    /// <summary>
     /// 版本号（注入到 .csproj 的 Version 标签）
     /// </summary>
     public string Version { get; set; } = "1.0.0";
@@ -65,6 +70,10 @@ public class GenerateRequest
 
         if (Sku == SkuMode.Binary && string.IsNullOrWhiteSpace(RuntimeIdentifier))
             throw new ArgumentException("Binary 模式下 RuntimeIdentifier 不能为空", nameof(RuntimeIdentifier));
+
+        // CS 继承模式仅支持 Source SKU
+        if (InheritanceMode == InheritanceMode.CSharpInheritance && Sku != SkuMode.Source)
+            throw new ArgumentException("CS 继承模式仅支持 Source SKU（付费授权）", nameof(Sku));
 
         if (Sku == SkuMode.Binary && !AllowedRids.Contains(RuntimeIdentifier!))
             throw new ArgumentException(
@@ -194,4 +203,15 @@ public enum ConfigFormat
 {
     Json = 0,
     Xml = 1
+}
+
+/// <summary>
+/// 继承模式
+/// </summary>
+public enum InheritanceMode
+{
+    /// <summary>标准模式，使用 DeviceRunner（默认，也是 Binary 模式唯一选项）</summary>
+    Standard = 0,
+    /// <summary>CS 继承模式，每个设备生成一个继承 SimpleDeviceBase 的类（仅 Source 模式）</summary>
+    CSharpInheritance = 1
 }

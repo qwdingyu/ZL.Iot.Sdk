@@ -5,7 +5,7 @@ using System.Linq;
 using ZL.Dao.IotDevice;
 using ZL.Iot.Interface;
 using ZL.PFLite.Common;
-using ZL.PlcBase.Core;
+using ZL.IotHub.Core;
 
 namespace ZL.EdgeService
 {

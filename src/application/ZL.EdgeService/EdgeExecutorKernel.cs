@@ -8,8 +8,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using ZL.Iot.Interface;
 using ZL.Dao.IotDevice;
-using ZL.PlcBase.Core;
-using ZL.PlcBase.Models;
+using ZL.IotHub;
+using ZL.IotHub.Core;
+using ZL.IotHub.Models;
 using ZL.Tag;
 using Newtonsoft.Json;
 
@@ -35,7 +36,7 @@ namespace ZL.EdgeService
     /// - [ ] 触发器参数完善 (TriggerMode/DebounceMs/MinIntervalMs)
     /// - [x] 完整的 Tag -> BizCode 配置映射装载 (LoadTagTriggerBindingsFromDb)
     /// </remarks>
-    public class EdgeExecutorKernel : ZL.PlcBase.Core.DeviceBase, IDisposable
+    public class EdgeExecutorKernel : ZL.IotHub.Core.DeviceBase, IDisposable
     {
         #region 私有字段
 
@@ -357,12 +358,12 @@ namespace ZL.EdgeService
         {
             try
             {
-                var descriptor = ZL.PlcBase.Core.HslProtocolRegistry.Resolve(this.deviceConfig);
+                var descriptor = ZL.IotHub.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
                 var client = descriptor.ClientFactory(this.deviceConfig);
                 
                 if (client is HslCommunication.Core.IReadWriteNet rw)
                 {
-                    this.Device = rw;
+                    this.Device = new ZL.IotHub.Hsl.HslToDeviceAdapter(rw);
                     // 使用反射尝试连接，因为 NetworkBase 类型可能不存在
                     try
                     {
@@ -596,14 +597,23 @@ namespace ZL.EdgeService
         // 兼容性读写方法（使用内部驱动）
         private Task<HslCommunication.OperateResult<byte[]>> ReadRawAsync(string address, ushort length, CancellationToken token)
         {
-            return this.Device?.ReadAsync(address, length)
-                ?? Task.FromResult(new HslCommunication.OperateResult<byte[]> { Message = "Driver not initialized" });
+            return this.Device != null ? this.Device.ReadBytesAsync(address, length).ContinueWith(t => new HslCommunication.OperateResult<byte[]>
+                {
+                    IsSuccess = t.IsCompletedSuccessfully,
+                    Message = t.Result?.Message,
+                    Content = t.Result?.Content?.ToArray()
+                })
+                : Task.FromResult(new HslCommunication.OperateResult<byte[]> { Message = "Driver not initialized" });
         }
 
         private Task<HslCommunication.OperateResult> WriteRawAsync(string address, byte[] data, CancellationToken token)
         {
-            return this.Device?.WriteAsync(address, data)
-                ?? Task.FromResult(new HslCommunication.OperateResult { Message = "Driver not initialized" });
+            return this.Device != null ? this.Device.WriteBytesAsync(address, data).ContinueWith(t => new HslCommunication.OperateResult
+                {
+                    IsSuccess = t.IsCompletedSuccessfully,
+                    Message = t.Result?.Message
+                })
+                : Task.FromResult(new HslCommunication.OperateResult { Message = "Driver not initialized" });
         }
 
         public new void Dispose()

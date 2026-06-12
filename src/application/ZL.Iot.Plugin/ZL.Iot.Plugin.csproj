@@ -19,7 +19,7 @@
         <PackageReference Include="ZL.Iot.Interface" />
         <PackageReference Include="ZL.Dao.IotDevice" />
         <PackageReference Include="ZL.DB.Acc" />
-        <PackageReference Include="ZL.PlcBase" />
+        <PackageReference Include="ZL.IotHub" />
     </ItemGroup>
 
 </Project>

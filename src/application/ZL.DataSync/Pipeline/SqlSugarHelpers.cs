@@ -212,20 +212,34 @@ internal static class SqlSugarHelpers
     {
         if (rows.Count == 0) return;
 
-        // 优先按 Id 批量标记（分批，防止参数过多）
-        const int MaxBatchSize = 500; // SQLite 参数上限很高，但 500 是安全值
-        var ids = rows
-            .Select(r => r.TryGetValue(IdColumn, out var id) && id != null ? id : null)
-            .Where(id => id != null)
-            .Distinct()
-            .Cast<object?>()
-            .ToList();
+        // 收集 Id（优先方式）和 ProcessTime（回退方式）
+        var ids = new List<object?>();
+        var processTimeById = new Dictionary<object, DateTime>();
 
+        foreach (var r in rows)
+        {
+            if (r.TryGetValue(IdColumn, out var id) && id != null)
+            {
+                ids.Add(id);
+            }
+
+            if (r.TryGetValue(ProcessTimeColumn, out var ptVal) && ptVal is DateTime dt && dt > DateTime.MinValue)
+            {
+                // 用第一个遇到的 Id 绑定该 ProcessTime；如果同一个 Id 有多个值，取最后一个
+                var boundId = r.TryGetValue(IdColumn, out var bId) && bId != null ? bId : null;
+                if (boundId != null)
+                {
+                    processTimeById[boundId] = dt;
+                }
+            }
+        }
+
+        // 优先按 Id 批量标记（分批，防止参数过多）
         if (ids.Count > 0)
         {
             try
             {
-                // 分批标记，每批最多 MaxBatchSize 个 ID
+                const int MaxBatchSize = 500;
                 for (int i = 0; i < ids.Count; i += MaxBatchSize)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -237,21 +251,42 @@ internal static class SqlSugarHelpers
             }
             catch
             {
-                // 退化为按 ProcessTime 标记（调用方已有日志）
+                // 退化为按 ProcessTime + Id 组合标记
             }
         }
 
-        var processTimes = rows
-            .Select(r => r.TryGetValue(ProcessTimeColumn, out var v) && v is DateTime dt ? dt : (DateTime?)null)
-            .Where(t => t.HasValue && t.Value > DateTime.MinValue)
-            .Distinct()
+        // Id 缺失时回退：每条记录按 (Id OR ProcessTime) 分别标记
+        // 对没有 Id 的记录，按 ProcessTime 标记（可能误标记同时间的其他行，这是已知的已知风险）
+        var rowsWithoutId = rows
+            .Where(r => !r.ContainsKey(IdColumn) || r[IdColumn] == null)
             .ToList();
 
-        if (processTimes.Count > 0)
+        if (processTimeById.Count > 0)
         {
-            var nonNullTimes = processTimes.Where(t => t.HasValue).Select(t => t.Value).ToList();
-            var (sql, parameters) = BuildMarkSyncedSql(tableName, sqliteDbType, null, nonNullTimes);
-            await localDb.Ado.ExecuteCommandAsync(sql, parameters.ToArray()).ConfigureAwait(false);
+            // 有 Id + ProcessTime 绑定的记录：逐条按 Id 标记
+            foreach (var kvp in processTimeById)
+            {
+                ct.ThrowIfCancellationRequested();
+                var (sql, parameters) = BuildMarkSyncedSql(tableName, sqliteDbType, new List<object?> { kvp.Key }, null);
+                await localDb.Ado.ExecuteCommandAsync(sql, parameters.ToArray()).ConfigureAwait(false);
+            }
+        }
+
+        if (rowsWithoutId.Count > 0)
+        {
+            // 完全无 Id 的记录：回退到按 ProcessTime 标记
+            var ptTimes = rowsWithoutId
+                .Select(r => r.TryGetValue(ProcessTimeColumn, out var v) && v is DateTime dt && dt > DateTime.MinValue ? (DateTime?)dt : null)
+                .Where(t => t.HasValue)
+                .Distinct()
+                .Select(t => t!.Value)
+                .ToList();
+
+            if (ptTimes.Count > 0)
+            {
+                var (sql, parameters) = BuildMarkSyncedSql(tableName, sqliteDbType, null, ptTimes);
+                await localDb.Ado.ExecuteCommandAsync(sql, parameters.ToArray()).ConfigureAwait(false);
+            }
         }
     }
 

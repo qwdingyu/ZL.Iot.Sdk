@@ -7,8 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using ZL.Dao.IotDevice;
 using ZL.Iot.Interface;
-using ZL.PlcBase.Core;
-using ZL.PlcBase.Models;
+using ZL.IotHub.Core;
+using ZL.IotHub.Models;
 using ZL.Tag;
 
 namespace ZL.Iot.Plugin
@@ -16,7 +16,7 @@ namespace ZL.Iot.Plugin
     /// <summary>
     /// 自动交互插件（已迁移至 PlcBase 架构）
     /// </summary>
-    public class AutoInteract : ZL.PlcBase.Core.DeviceBase
+    public class AutoInteract : ZL.IotHub.Core.DeviceBase
     {
         private DataTable _dtGeneralParamValue = new DataTable();
         DataTable dtGeneralParam = new DataTable();

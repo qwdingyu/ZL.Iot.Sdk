@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>{{ namespace }}</RootNamespace>
+    <AssemblyName>{{ project_name }}</AssemblyName>
+    <Version>{{ version }}</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Source 模式：不发布为单文件，用户自行编译 -->
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ZL.IotHub 驱动库（含 SimpleDeviceBase / HslUnifiedDriver） -->
+    <PackageReference Include="ZL.IotHub" Version="2.0.3" />
+    <!-- NLog 结构化日志 -->
+    <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
+    <!-- 配置加载器（json/xml） -->
+    <PackageReference Include="ZL.Iot.Runner.Configuration" Version="{{ runner_version }}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="runner.config.{{ format }}">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

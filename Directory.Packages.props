@@ -7,7 +7,7 @@
   <ItemGroup>
     <!-- ZL 自有包（NuGet 上的包，不是本地引用） -->
     <PackageVersion Include="ZL.PFLite" Version="2.0.1" />
-    <PackageVersion Include="ZL.PlcBase" Version="2.0.1" />
+    <PackageVersion Include="ZL.IotHub" Version="2.0.1" />
     <PackageVersion Include="ZL.Tag" Version="2.0.1" />
     <PackageVersion Include="ProtocolGateway" Version="1.1.0" />
     <PackageVersion Include="ProtocolGateway.Scripting" Version="1.1.0" />

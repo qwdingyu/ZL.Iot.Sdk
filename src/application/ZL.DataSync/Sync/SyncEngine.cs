@@ -261,7 +261,7 @@ public sealed class SyncEngine : IDisposable
 
     /// <summary>
     /// 同步所有已发现的表到一个目标。
-    /// 支持并行同步（使用 SemaphoreSlim 限制并发度，避免资源耗尽）。
+    /// 串行执行（SQLite 单写者模型，并发写入会导致 database is locked）。
     /// </summary>
     private async Task<SyncReport> SyncAllTablesAsync(RemoteTargetConfig target, ISyncStrategy strategy, CancellationToken ct)
     {
@@ -273,28 +273,16 @@ public sealed class SyncEngine : IDisposable
 
         var localClient = _localDb as SqlSugarClient ?? throw new InvalidOperationException("本地数据库必须是 SqlSugarClient");
 
-        // 限制并发度：最多同时同步 4 个表，避免 SQLite 和远程连接池被耗尽
-        const int MaxDegreeOfParallelism = 4;
-        var semaphore = new SemaphoreSlim(MaxDegreeOfParallelism, MaxDegreeOfParallelism);
-
-        var tasks = _discoveredTables.Select(async table =>
+        // 串行同步所有表（SQLite 不支持多写者，并发写入会导致 database is locked）
+        var reports = new List<SyncReport>();
+        foreach (var table in _discoveredTables)
         {
-            await semaphore.WaitAsync(ct).ConfigureAwait(false);
-            try
-            {
-                if (ct.IsCancellationRequested)
-                    return SyncReport.Fail(table, 0, "取消", 0);
+            if (ct.IsCancellationRequested) break;
 
-                string? remoteTable = target.TableMappings.TryGetValue(table, out var alias) ? alias : null;
-                return await strategy.SyncTableAsync(table, remoteTable, _config.BatchSize, localClient, ct).ConfigureAwait(false);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-
-        var reports = await Task.WhenAll(tasks).ConfigureAwait(false);
+            string? remoteTable = target.TableMappings.TryGetValue(table, out var alias) ? alias : null;
+            var report = await strategy.SyncTableAsync(table, remoteTable, _config.BatchSize, localClient, ct).ConfigureAwait(false);
+            reports.Add(report);
+        }
 
         foreach (var report in reports)
         {
@@ -316,7 +304,7 @@ public sealed class SyncEngine : IDisposable
             return SyncReport.Ok($"[{target.Name}] 汇总", totalTarget, totalOk, lastWatermark?.ToString("O") ?? "success", 0);
         }
 
-        return SyncReport.Fail($"[{target.Name}] 汇总", totalTarget, lastError ?? "未知错误", 0);
+        return SyncReport.Fail($"[{target.Name}] 汇总", totalTarget, totalFail, lastError ?? "未知错误", 0);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -434,8 +422,9 @@ public sealed class SyncEngine : IDisposable
     {
         try
         {
-            // 排除所有下划线开头的系统表（如 _SyncWatermark）
-            var tables = _localDb.Ado.SqlQuery<TableInfoRow>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_%' ORDER BY name");
+            // 排除系统表（_SyncWatermark, _SyncLog）
+            var tables = _localDb.Ado.SqlQuery<TableInfoRow>(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_Sync%' ORDER BY name");
 
             if (tables != null)
             {

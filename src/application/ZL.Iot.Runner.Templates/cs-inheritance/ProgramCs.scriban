@@ -1,0 +1,165 @@
+// ============================================================
+//  项目：{{ project_name }}
+//  命名空间：{{ namespace }}
+//  描述：由 ZL.Iot.Runner.Generator 自动生成
+//  用户可在生成的设备驱动类中覆写 OnTriggerDataChange
+//  实现自定义 PLC 业务逻辑
+// ============================================================
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+using ZL.IotHub.Core;
+using ZL.IotHub.Hsl;
+using ZL.Tag;
+
+namespace {{ namespace }};
+
+class Program
+{
+    static int Main(string[] args)
+    {
+        var configPath = args.Length > 0 ? args[0] : "./runner.config.{{ format }}";
+        var config = ConfigLoader.Load(configPath);
+
+        var loggerFactory = LoggerFactory.Create(b =>
+            b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+        var logger = loggerFactory.CreateLogger("Program");
+
+        logger.LogInformation("正在启动 {Project}，共 {Count} 个设备",
+            "{{ project_name }}", config.Devices?.Count ?? 0);
+
+        // 为每个设备创建驱动实例
+        var drivers = new List<IDisposable>();
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (s, e) => { e.Cancel = true; cts.Cancel(); };
+
+        foreach (var profile in config.Devices ?? new List<DeviceProfile>())
+        {
+            try
+            {
+                // 将 Profile 转换为 DeviceConfig
+                var deviceConfig = new DeviceConfig();
+                deviceConfig.SetParam("DeviceId", profile.Code);
+                deviceConfig.SetParam("DeviceIp", profile.Ip);
+                deviceConfig.SetParam("Protocol", profile.Protocol);
+                deviceConfig.SetParam("Port", profile.Port);
+                if (profile.Rack > 0 || profile.Slot > 0)
+                {
+                    deviceConfig.SetParam("Rack", profile.Rack);
+                    deviceConfig.SetParam("Slot", profile.Slot);
+                }
+                deviceConfig.SetParam("ConnectTimeOut",
+                    profile.ConnectTimeout > 0 ? profile.ConnectTimeout : 5000);
+                deviceConfig.SetParam("ReadInterval",
+                    profile.ReadInterval > 0 ? profile.ReadInterval : 200);
+
+                // ★ 使用 SimpleDeviceBase 创建设备驱动类
+                // ★ 用户可在此处替换为自己的设备类（继承 SimpleDeviceBase）
+                var driver = new Device_{{ profile.Code }}(deviceConfig);
+                driver.LoadSelfConfig();
+
+                // 加载标签
+                foreach (var tag in profile.Tags ?? new List<TagProfile>())
+                {
+                    if (!tag.Enable || string.IsNullOrWhiteSpace(tag.Id)) continue;
+                    driver.Tags[tag.Id] = new TagItem
+                    {
+                        Id = tag.Id,
+                        Description = tag.Description,
+                        Address = tag.Address,
+                        DataTypeCode = tag.DataType,
+                        Length = tag.Length,
+                        TagType = tag.TagType,
+                        Deadband = tag.Deadband,
+                        ScanRate = tag.ScanRate
+                    };
+                }
+
+                driver.Initialize();
+                driver.StartBackgroundTasks();
+                drivers.Add(driver);
+
+                logger.LogInformation("[{Code}] 设备已启动（{Protocol}@{Ip}:{Port}）",
+                    profile.Code, profile.Protocol, profile.Ip, profile.Port);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "[{Code}] 设备启动失败", profile.Code);
+            }
+        }
+
+        logger.LogInformation("所有设备已启动，共 {Count} 个驱动实例", drivers.Count);
+
+        // 阻塞直到 Ctrl+C
+        try { cts.Token.WaitHandle.WaitOne(); }
+        catch (OperationCanceledException) { }
+
+        // 优雅退出
+        foreach (var d in drivers)
+        {
+            try { d.Dispose(); }
+            catch { }
+        }
+        LogManager.Shutdown();
+
+        return 0;
+    }
+}
+
+// ============================================================
+//  ★ 用户自定义设备驱动类
+//  每个设备一个类，继承 SimpleDeviceBase
+//  覆写 OnTriggerDataChange 实现自定义业务逻辑
+//
+//  使用方式：
+//    protected override void OnTriggerDataChange(string id, object value, TagItem tag)
+//    {
+//        // 在此处编写您的业务逻辑
+//        // id: 标签ID, value: 当前值, tag: 标签元数据
+//        // 例如：值变化时写入其他标签、调用 REST API、保存到数据库等
+//    }
+// ============================================================
+{{~ for device in config.devices ~}}
+public class Device_{{ device.code }} : SimpleDeviceBase
+{
+    public Device_{{ device.code }}(DeviceConfig config) : base(config)
+    {
+    }
+
+    public override void Connect()
+    {
+        // 默认连接逻辑由 SimpleDeviceBase 的基类处理
+        base.Connect();
+    }
+
+    /// <summary>
+    /// 标签值变化时触发 — 用户在此处编写自定义业务逻辑
+    /// </summary>
+    /// <param name="id">触发标签的 Id（BizTagName）</param>
+    /// <param name="value">当前值</param>
+    /// <param name="tag">标签元数据</param>
+    protected override void OnTriggerDataChange(string id, object value, TagItem tag)
+    {
+        // TODO: 在此处编写您的自定义业务逻辑
+        // 例如：当 UPLOAD_REQ=1 时，采集所有质量标签并写入数据库
+        // if (id == "PRESS-A_UPLOAD_REQ" && Convert.ToInt32(value) == 1)
+        // {
+        //     var torque = GetCachedValue("PRESS-A_TORQUE");
+        //     var angle = GetCachedValue("PRESS-A_ANGLE");
+        //     // ...写入数据库或调用外部API
+        // }
+
+        // 如果不需要自定义逻辑，可调用默认处理（执行 iot_exe 规则）
+        // base.OnTriggerDataChange(id, value, tag);
+
+        System.Console.WriteLine($"[{DeviceCode}] 标签变化: {id} = {value}");
+    }
+}
+
+{{~ end ~}}

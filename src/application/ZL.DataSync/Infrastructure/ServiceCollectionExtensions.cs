@@ -58,6 +58,10 @@ public static class DataSyncServiceCollectionExtensions
         if (int.TryParse(retryStr, out var retry))
             config.MaxRetryCount = retry;
 
+        var backoffStr = section["RetryBackoffSeconds"];
+        if (int.TryParse(backoffStr, out var backoff))
+            config.RetryBackoffSeconds = backoff;
+
         var upsertStr = section["EnableUpsert"];
         if (bool.TryParse(upsertStr, out var enableUpsert))
             config.EnableUpsert = enableUpsert;

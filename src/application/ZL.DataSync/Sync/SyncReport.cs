@@ -47,6 +47,21 @@ public sealed class SyncReport
             LastError = error,
             ElapsedMs = elapsedMs
         };
+
+    /// <summary>
+    /// 同步失败报告（可指定实际失败数）。
+    /// </summary>
+    public static SyncReport Fail(string tableName, int target, int failedCount, string? error, double elapsedMs)
+        => new()
+        {
+            Timestamp = DateTime.UtcNow,
+            TableName = tableName,
+            TargetCount = target,
+            SyncedCount = 0,
+            FailedCount = failedCount,
+            LastError = error,
+            ElapsedMs = elapsedMs
+        };
 }
 
 /// <summary>

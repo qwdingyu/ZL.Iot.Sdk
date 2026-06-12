@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -40,21 +41,21 @@ namespace ZL.Iot.Runner.Runtime
         private readonly ILogger<TriggerExecutor> _logger;
 
         /// <summary>
+        /// 标签值提供者（用于 fieldmapping 分支读取各标签值和写回反馈信号）
+        /// </summary>
+        private readonly ITagValueProvider? _tagValueProvider;
+
+        /// <summary>
         /// 触发执行器构造方法（支持依赖注入）
         /// </summary>
-        /// <param name="executors">执行器配置列表</param>
-        /// <param name="storage">数据存储配置（Phase 1 传入 null）</param>
-        /// <param name="scriptEngine">脚本引擎（从 DI 容器获取 ScribanScriptEngine）</param>
-        /// <param name="ruleEngine">规则引擎（从 DI 容器获取 RulesEngineAdapter）</param>
-        /// <param name="sqlExecutor">SQL 执行器（从 DI 容器获取 SqliteExecutor）</param>
-        /// <param name="logger">日志记录器</param>
         public TriggerExecutor(
             List<ExecutorProfile> executors,
             DataStorageOptions storage,
             IScriptEngine scriptEngine,
             IRuleEngine ruleEngine,
             ISqlExecutor sqlExecutor,
-            ILogger<TriggerExecutor> logger)
+            ILogger<TriggerExecutor> logger,
+            ITagValueProvider? tagValueProvider = null)
         {
             _executors = executors ?? new List<ExecutorProfile>();
             _storage = storage;
@@ -62,16 +63,17 @@ namespace ZL.Iot.Runner.Runtime
             _ruleEngine = ruleEngine ?? throw new ArgumentNullException(nameof(ruleEngine));
             _sqlExecutor = sqlExecutor ?? throw new ArgumentNullException(nameof(sqlExecutor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _tagValueProvider = tagValueProvider;
         }
 
         /// <summary>
         /// 触发执行器构造方法（Phase 1 简化构造，无需 SQL 执行器）
-        /// 仅记录日志，不连接数据库
         /// </summary>
-        /// <param name="executors">执行器配置列表</param>
-        /// <param name="logger">日志记录器（由调用方通过共享 LoggerFactory 提供）</param>
-        /// <param name="scriptEngine">可选的脚本引擎，未提供时内部创建默认 ScribanScriptEngine</param>
-        public TriggerExecutor(List<ExecutorProfile> executors, ILogger<TriggerExecutor> logger, IScriptEngine? scriptEngine = null)
+        public TriggerExecutor(
+            List<ExecutorProfile> executors,
+            ILogger<TriggerExecutor> logger,
+            IScriptEngine? scriptEngine = null,
+            ITagValueProvider? tagValueProvider = null)
         {
             _executors = executors ?? new List<ExecutorProfile>();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -81,6 +83,7 @@ namespace ZL.Iot.Runner.Runtime
             _ruleEngine = new RulesEngineAdapter(
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<RulesEngineAdapter>.Instance
             );
+            _tagValueProvider = tagValueProvider;
         }
 
         /// <summary>
@@ -110,6 +113,13 @@ namespace ZL.Iot.Runner.Runtime
                     if (!EvaluateCondition(exe, value))
                     {
                         _logger.LogDebug("[{BizCode}] 条件判断未通过，跳过执行", exe.BizCode);
+                        continue;
+                    }
+
+                    // ★ FieldMapping 分支：exe_type = "fieldmapping" 时执行配置驱动采集
+                    if (string.Equals(exe.ExeType, "fieldmapping", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ExecuteFieldMapping(exe.Script, tagId);
                         continue;
                     }
 
@@ -241,44 +251,342 @@ namespace ZL.Iot.Runner.Runtime
         }
 
         /// <summary>
-        /// 执行 SQL
-        /// Phase 1: 仅记录日志（不连接数据库）
-        /// Phase 2: 接入 SqliteExecutor 或 MySqlExecutor
+        /// 执行 FieldMapping 配置驱动采集
+        /// 数据流：解析 JSON → 发现轴列表 → 展开多行 → 自动建表 → INSERT → 反馈写回
         /// </summary>
-        private void ExecuteSql(ExecutorProfile exe, string renderedScript)
+        private void ExecuteFieldMapping(string? jsonConfig, string triggerTagId)
         {
-            _logger.LogInformation(
-                "[{BizCode}] 执行 {ExeType} SQL | TagId={TagId} | SQL: {Sql}",
-                exe.BizCode, exe.ExeType, exe.TagId, renderedScript);
+            if (string.IsNullOrWhiteSpace(jsonConfig))
+            {
+                _logger.LogWarning("[FieldMapping] 配置为空，跳过执行");
+                return;
+            }
 
-            // Phase 2: 接入真实的 SQL 执行器
-            // if (_sqlExecutor != null && _storage?.Type != "None")
-            // {
-            //     var affected = await _sqlExecutor.ExecuteNonQueryAsync(renderedScript);
-            //     _logger.LogInformation("[{BizCode}] 执行完成，影响行数: {Rows}", exe.BizCode, affected);
-            // }
+            var config = FieldMappingConfig.FromJson(jsonConfig);
+            if (config?.Columns == null || config.Columns.Count == 0)
+            {
+                _logger.LogWarning("[FieldMapping] JSON 解析失败或缺少 columns");
+                return;
+            }
+
+            // 1. 发现轴列表
+            var axes = DiscoverAxes(config.PerAxis);
+            if (axes.Count == 0) axes = [""]; // 非 perAxis 模式：一行
+
+            // 2. 为每个轴展开一行
+            var rows = new List<Dictionary<string, object?>>();
+            var now = DateTime.Now;
+
+            foreach (var axis in axes)
+            {
+                var row = new Dictionary<string, object?>();
+
+                foreach (var col in config.Columns)
+                {
+                    // 非 perAxis 字段且已在前面轴处理过，跳过
+                    if (col.PerAxis && axis == "") continue;
+                    if (!col.PerAxis && axis != "" && rows.Count > 0) continue;
+
+                    row[col.Name] = ResolveFieldValue(col, axis, triggerTagId);
+                }
+
+                // 只有需要添加的行（非 perAxis 或 perAxis 有轴）
+                if (row.Count > 0)
+                {
+                    row["ProcessTime"] = now;
+                    rows.Add(row);
+                }
+            }
+
+            if (rows.Count == 0) return;
+
+            _logger.LogInformation("[FieldMapping] 展开完成: {Rows} 行, 目标表={Table}", rows.Count, config.TableName);
+
+            // 3. 写入数据库（使用 ISqlExecutor 或 fallback JSON Lines）
+            if (_sqlExecutor != null && _storage?.Type != "None")
+            {
+                WriteFieldMappingRows(config, rows);
+            }
+            else
+            {
+                // 降级策略：写入本地 JSON Lines 文件（保证数据不丢）
+                WriteFieldMappingFallback(config, rows);
+            }
+
+            // 4. 反馈写回
+            if (!string.IsNullOrEmpty(config.FeedbackTag) && _tagValueProvider != null)
+            {
+                _tagValueProvider.WriteTag(config.FeedbackTag, 1);
+                _logger.LogInformation("[FieldMapping] 反馈已写回: Tag={FeedbackTag}, Value=1", config.FeedbackTag);
+            }
         }
 
         /// <summary>
-        /// 异步执行 SQL（Phase 2 使用）
+        /// 发现轴列表
+        /// </summary>
+        private static List<string> DiscoverAxes(PerAxisConfig? perAxis)
+        {
+            if (perAxis?.Enabled != true)
+                return []; // 单行模式
+
+            var discovery = perAxis.AxisDiscovery;
+            if (discovery == null) return [];
+
+            return discovery.Mode?.ToLowerInvariant() switch
+            {
+                "explicit" => discovery.Axes ?? [],
+                "range" => DiscoverAxesByRange(discovery),
+                _ => [] // auto 模式需要全量标签名列表，Runner 中暂不支持
+            };
+        }
+
+        private static List<string> DiscoverAxesByRange(AxisDiscoveryConfig discovery)
+        {
+            var axes = new List<string>();
+            int start = discovery.Start ?? 1;
+            int end = discovery.End ?? 1;
+            int step = discovery.Step > 0 ? discovery.Step : 1;
+
+            for (int i = start; i <= end; i += step)
+            {
+                axes.Add(discovery.Format != null ? string.Format(discovery.Format, i) : i.ToString());
+            }
+            return axes;
+        }
+
+        /// <summary>
+        /// 解析单个字段的值
+        /// </summary>
+        private object? ResolveFieldValue(FieldMappingRule col, string currentAxis, string triggerTagId)
+        {
+            object? rawValue = null;
+
+            switch (col.SourceType)
+            {
+                case "AxisNumber":
+                    rawValue = currentAxis;
+                    break;
+
+                case "AxisValue":
+                    if (currentAxis != null && !string.IsNullOrEmpty(col.SourceField))
+                    {
+                        var tagName = col.SourceField.Replace("{0}", currentAxis);
+                        rawValue = ReadTagValue(tagName);
+                    }
+                    else if (!string.IsNullOrEmpty(col.SourceTag))
+                    {
+                        rawValue = ReadTagValue(col.SourceTag);
+                    }
+                    break;
+
+                case "TagValue":
+                    if (!string.IsNullOrEmpty(col.SourceTag))
+                        rawValue = ReadTagValue(col.SourceTag);
+                    break;
+
+                case "StationProperty":
+                    rawValue = col.SourceField;
+                    break;
+
+                case "FixedValue":
+                    rawValue = col.SourceField;
+                    break;
+
+                case "SystemVariable":
+                    rawValue = col.SourceField?.ToLowerInvariant() switch
+                    {
+                        "now" => DateTime.Now,
+                        "utcnow" => DateTime.UtcNow,
+                        "guid" => Guid.NewGuid().ToString(),
+                        _ => col.SourceField
+                    };
+                    break;
+            }
+
+            // 值转换
+            if (rawValue != null && col.Transform != null && col.Transform.Count > 0)
+            {
+                var key = rawValue.ToString()?.Trim();
+                if (key != null && col.Transform.TryGetValue(key, out var transformed))
+                    rawValue = transformed;
+            }
+
+            // 缩放
+            if (rawValue is IConvertible conv && col.ScaleFactor != 1.0)
+            {
+                try { rawValue = Convert.ToDouble(conv) * col.ScaleFactor; }
+                catch { }
+            }
+
+            return rawValue ?? col.DefaultValue;
+        }
+
+        /// <summary>
+        /// 读取标签值：优先通过 ITagValueProvider，fallback 返回 null
+        /// </summary>
+        private object? ReadTagValue(string tagId)
+        {
+            if (_tagValueProvider != null)
+            {
+                try { return _tagValueProvider.ReadTag(tagId); }
+                catch { }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 将 FieldMapping 行写入本地 JSON Lines 文件（降级策略）
+        /// 当无数据库可用时，确保采集数据不丢失
+        /// </summary>
+        private void WriteFieldMappingFallback(FieldMappingConfig config, List<Dictionary<string, object?>> rows)
+        {
+            try
+            {
+                var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+                Directory.CreateDirectory(dataDir);
+                var filePath = Path.Combine(dataDir, $"{config.TableName}.jsonl");
+
+                foreach (var row in rows)
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(row);
+                    File.AppendAllText(filePath, json + Environment.NewLine);
+                }
+
+                _logger.LogInformation("[FieldMapping] 已写入 JSON Lines: {FilePath} ({Rows} 行)", filePath, rows.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FieldMapping] 降级写入失败: {TableName}", config.TableName);
+            }
+        }
+
+        /// <summary>
+        /// 将 FieldMapping 行写入数据库（通过 ISqlExecutor）
+        /// </summary>
+        private void WriteFieldMappingRows(FieldMappingConfig config, List<Dictionary<string, object?>> rows)
+        {
+            try
+            {
+                // 自动建表（CREATE TABLE IF NOT EXISTS）
+                var createSql = BuildCreateTableSql(config.TableName, config.Columns);
+                _sqlExecutor!.ExecuteNonQueryAsync(createSql).GetAwaiter().GetResult();
+
+                // 批量 INSERT
+                foreach (var row in rows)
+                {
+                    var colNames = string.Join(", ", row.Keys);
+                    var colParams = string.Join(", ", row.Keys.Select(k => $"@{k}"));
+                    var insertSql = $"INSERT INTO {config.TableName} ({colNames}) VALUES ({colParams})";
+
+                    var parameters = row.ToDictionary(kv => kv.Key, kv => kv.Value ?? DBNull.Value);
+                    _sqlExecutor.ExecuteNonQueryAsync(insertSql, parameters).GetAwaiter().GetResult();
+                }
+
+                _logger.LogInformation("[FieldMapping] 已写入 {TableName}: {Rows} 行", config.TableName, rows.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FieldMapping] 写入失败: {TableName}", config.TableName);
+            }
+        }
+
+        /// <summary>
+        /// 生成 CREATE TABLE SQL（从字段映射规则推断列类型）
+        /// </summary>
+        private static string BuildCreateTableSql(string tableName, List<FieldMappingRule> columns)
+        {
+            var sql = $"CREATE TABLE IF NOT EXISTS {tableName} (";
+            sql += "ID BIGINT AUTO_INCREMENT PRIMARY KEY,";
+            sql += "ProcessTime DATETIME NOT NULL,";
+
+            foreach (var col in columns)
+            {
+                var type = col.DataType?.ToLowerInvariant() switch
+                {
+                    "int32" or "int" or "int16" or "short" => "INT",
+                    "int64" or "long" => "BIGINT",
+                    "float" or "single" => "FLOAT",
+                    "double" => "DOUBLE",
+                    "datetime" => "DATETIME",
+                    "bool" or "boolean" => "TINYINT(1)",
+                    _ => "VARCHAR(255)"
+                };
+                sql += $"{col.Name} {type} NULL,";
+            }
+
+            sql += $"INDEX idx_process_time (ProcessTime)";
+            sql += ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+            return sql;
+        }
+
+        /// <summary>
+        /// 执行 SQL — 有 ISqlExecutor 时真实执行，否则仅记录日志
+        /// </summary>
+        private void ExecuteSql(ExecutorProfile exe, string renderedScript)
+        {
+            if (_sqlExecutor != null && _storage?.Type != "None")
+            {
+                // Phase 2：真实执行
+                try
+                {
+                    int affected = _sqlExecutor.ExecuteNonQueryAsync(renderedScript).GetAwaiter().GetResult();
+                    _logger.LogInformation("[{BizCode}] 执行完成 | Type={ExeType} | 影响行数: {Rows}",
+                        exe.BizCode, exe.ExeType, affected);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{BizCode}] SQL 执行异常 | SQL: {Sql}", exe.BizCode, renderedScript);
+                }
+            }
+            else
+            {
+                // Phase 1 / 降级：写入 JSON Lines 文件
+                try
+                {
+                    var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+                    Directory.CreateDirectory(dataDir);
+                    var filePath = Path.Combine(dataDir, $"sql_exec_{DateTime.Now:yyyyMMdd}.jsonl");
+                    var entry = new { time = DateTime.Now, bizCode = exe.BizCode, exeType = exe.ExeType, sql = renderedScript };
+                    var json = System.Text.Json.JsonSerializer.Serialize(entry);
+                    File.AppendAllText(filePath, json + Environment.NewLine);
+                }
+                catch { }
+                _logger.LogInformation("[{BizCode}] 模拟执行 {ExeType} | TagId={TagId} | SQL: {Sql}",
+                    exe.BizCode, exe.ExeType, exe.TagId, renderedScript);
+            }
+        }
+
+        /// <summary>
+        /// 异步执行 SQL（Phase 1 记录日志，Phase 2 真实执行）
         /// </summary>
         public async Task ExecuteSqlAsync(ExecutorProfile exe, string renderedScript)
         {
             if (_sqlExecutor == null || _storage?.Type == "None")
             {
-                ExecuteSql(exe, renderedScript);
+                // 降级：写入 JSON Lines 文件
+                try
+                {
+                    var dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+                    Directory.CreateDirectory(dataDir);
+                    var filePath = Path.Combine(dataDir, $"sql_exec_{DateTime.Now:yyyyMMdd}.jsonl");
+                    var entry = new { time = DateTime.Now, bizCode = exe.BizCode, exeType = exe.ExeType, sql = renderedScript };
+                    var json = System.Text.Json.JsonSerializer.Serialize(entry);
+                    File.AppendAllText(filePath, json + Environment.NewLine);
+                }
+                catch { }
+                _logger.LogInformation("[{BizCode}] 模拟执行 {ExeType} | TagId={TagId} | SQL: {Sql}",
+                    exe.BizCode, exe.ExeType, exe.TagId, renderedScript);
                 return;
             }
 
-            _logger.LogInformation(
-                "[{BizCode}] 执行 {ExeType} SQL | TagId={TagId} | SQL: {Sql}",
+            _logger.LogInformation("[{BizCode}] 执行 {ExeType} | TagId={TagId} | SQL: {Sql}",
                 exe.BizCode, exe.ExeType, exe.TagId, renderedScript);
 
             try
             {
                 int affected = exe.ExeType?.ToUpperInvariant() switch
                 {
-                    "S" or "Q" => 0, // Select/Query 不影响行数
+                    "S" or "Q" => 0,
                     _ => await _sqlExecutor.ExecuteNonQueryAsync(renderedScript)
                 };
 

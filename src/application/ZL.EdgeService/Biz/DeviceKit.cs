@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using ZL.Dao.IotDevice;
 using ZL.Iot.Interface;
 using ZL.PFLite.Common;
-using ZL.PlcBase.Core;
+using ZL.IotHub.Core;
 
 namespace ZL.EdgeService
 {
@@ -191,7 +191,7 @@ namespace ZL.EdgeService
 
         public object CreateInstance(Type type, IotDeviceDriverDto it)
         {
-            if (typeof(ZL.PlcBase.Core.IPlcDriver).IsAssignableFrom(type) || typeof(ZL.PlcBase.Core.DeviceBase).IsAssignableFrom(type))
+            if (typeof(ZL.IotHub.Core.IPlcDriver).IsAssignableFrom(type) || typeof(ZL.IotHub.Core.DeviceBase).IsAssignableFrom(type))
             {
                 try
                 {
