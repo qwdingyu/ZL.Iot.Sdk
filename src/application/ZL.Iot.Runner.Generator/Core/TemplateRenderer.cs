@@ -25,16 +25,35 @@ public static class TemplateRenderer
     /// <returns>模板文本，未找到返回 null</returns>
     public static string? ReadTemplate(TargetPlatform platform, string fileName)
     {
-        var templatesAssembly = LoadTemplatesAssembly();
-        if (templatesAssembly == null)
-            throw new InvalidOperationException("ZL.Iot.Runner.Templates 程序集未找到，请确认项目引用正确");
-
-        // .NET 将嵌入资源的目录分隔符 '-' 规范化为 '_'
         var dir = GetPlatformDir(platform).Replace('-', '_');
+        return ReadTemplateFromDir(dir, fileName);
+    }
+
+    /// <summary>
+    /// 读取模板文件（按指定目录名）
+    /// 用于 CS 继承模式等不按 TargetPlatform 分目录的场景
+    /// </summary>
+    public static string? ReadTemplateFromDir(string dirName, string fileName)
+    {
+        var templatesAssembly = LoadTemplatesAssembly();
+
+        var dir = dirName.Replace('-', '_');
         var templateName = $"ZL.Iot.Runner.Templates.{dir}.{fileName}";
 
         using var stream = templatesAssembly.GetManifestResourceStream(templateName);
-        if (stream == null) return null;
+        if (stream == null)
+        {
+            var all = templatesAssembly.GetManifestResourceNames()
+                .Where(r => r.Contains(dir) && r.EndsWith(fileName)).ToList();
+            if (all.Count == 1)
+            {
+                using var fallback = templatesAssembly.GetManifestResourceStream(all[0]);
+                if (fallback != null)
+                    using var fallbackReader = new StreamReader(fallback);
+                    return fallbackReader.ReadToEnd();
+            }
+            return null;
+        }
 
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();

@@ -46,6 +46,11 @@ namespace ZL.Iot.Runner.Runtime
         private readonly ITagValueProvider? _tagValueProvider;
 
         /// <summary>
+        /// FieldMapping 数据写入器（有 ISqlExecutor 时使用，否则用 JSONL 降级）
+        /// </summary>
+        private readonly IFieldMappingSink? _fieldMappingSink;
+
+        /// <summary>
         /// 触发执行器构造方法（支持依赖注入）
         /// </summary>
         public TriggerExecutor(
@@ -64,6 +69,9 @@ namespace ZL.Iot.Runner.Runtime
             _sqlExecutor = sqlExecutor ?? throw new ArgumentNullException(nameof(sqlExecutor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _tagValueProvider = tagValueProvider;
+            _fieldMappingSink = sqlExecutor != null && storage?.Type != "None"
+                ? new SqlExecutorFieldMappingSink(sqlExecutor, logger)
+                : null;
         }
 
         /// <summary>
@@ -302,10 +310,11 @@ namespace ZL.Iot.Runner.Runtime
 
             _logger.LogInformation("[FieldMapping] 展开完成: {Rows} 行, 目标表={Table}", rows.Count, config.TableName);
 
-            // 3. 写入数据库（使用 ISqlExecutor 或 fallback JSON Lines）
-            if (_sqlExecutor != null && _storage?.Type != "None")
+            // 3. 写入（IFieldMappingSink → DB / JSONL 降级）
+            if (_fieldMappingSink != null)
             {
-                WriteFieldMappingRows(config, rows);
+                _fieldMappingSink.EnsureTable(config.TableName, config.Columns);
+                _fieldMappingSink.InsertRows(config.TableName, rows);
             }
             else
             {
@@ -461,66 +470,7 @@ namespace ZL.Iot.Runner.Runtime
         }
 
         /// <summary>
-        /// 将 FieldMapping 行写入数据库（通过 ISqlExecutor）
-        /// </summary>
-        private void WriteFieldMappingRows(FieldMappingConfig config, List<Dictionary<string, object?>> rows)
-        {
-            try
-            {
-                // 自动建表（CREATE TABLE IF NOT EXISTS）
-                var createSql = BuildCreateTableSql(config.TableName, config.Columns);
-                _sqlExecutor!.ExecuteNonQueryAsync(createSql).GetAwaiter().GetResult();
-
-                // 批量 INSERT
-                foreach (var row in rows)
-                {
-                    var colNames = string.Join(", ", row.Keys);
-                    var colParams = string.Join(", ", row.Keys.Select(k => $"@{k}"));
-                    var insertSql = $"INSERT INTO {config.TableName} ({colNames}) VALUES ({colParams})";
-
-                    var parameters = row.ToDictionary(kv => kv.Key, kv => kv.Value ?? DBNull.Value);
-                    _sqlExecutor.ExecuteNonQueryAsync(insertSql, parameters).GetAwaiter().GetResult();
-                }
-
-                _logger.LogInformation("[FieldMapping] 已写入 {TableName}: {Rows} 行", config.TableName, rows.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[FieldMapping] 写入失败: {TableName}", config.TableName);
-            }
-        }
-
-        /// <summary>
-        /// 生成 CREATE TABLE SQL（从字段映射规则推断列类型）
-        /// </summary>
-        private static string BuildCreateTableSql(string tableName, List<FieldMappingRule> columns)
-        {
-            var sql = $"CREATE TABLE IF NOT EXISTS {tableName} (";
-            sql += "ID BIGINT AUTO_INCREMENT PRIMARY KEY,";
-            sql += "ProcessTime DATETIME NOT NULL,";
-
-            foreach (var col in columns)
-            {
-                var type = col.DataType?.ToLowerInvariant() switch
-                {
-                    "int32" or "int" or "int16" or "short" => "INT",
-                    "int64" or "long" => "BIGINT",
-                    "float" or "single" => "FLOAT",
-                    "double" => "DOUBLE",
-                    "datetime" => "DATETIME",
-                    "bool" or "boolean" => "TINYINT(1)",
-                    _ => "VARCHAR(255)"
-                };
-                sql += $"{col.Name} {type} NULL,";
-            }
-
-            sql += $"INDEX idx_process_time (ProcessTime)";
-            sql += ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-            return sql;
-        }
-
-        /// <summary>
-        /// 执行 SQL — 有 ISqlExecutor 时真实执行，否则仅记录日志
+        /// 执行 SQL — 有 ISqlExecutor 时真实执行，否则写入 JSONL 降级
         /// </summary>
         private void ExecuteSql(ExecutorProfile exe, string renderedScript)
         {

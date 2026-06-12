@@ -125,7 +125,9 @@ public class ProjectGenerator : IProjectGenerator
         {
             ct.ThrowIfCancellationRequested();
 
-            var templateText = TemplateRenderer.ReadTemplate(request.Platform, fileName);
+            var templateText = request.InheritanceMode == InheritanceMode.CSharpInheritance
+                ? TemplateRenderer.ReadTemplateFromDir("cs-inheritance", fileName)
+                : TemplateRenderer.ReadTemplate(request.Platform, fileName);
             if (templateText == null)
                 throw new FileNotFoundException($"模板文件未找到: {platformDir}/{fileName}");
 

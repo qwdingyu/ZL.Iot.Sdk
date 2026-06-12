@@ -42,6 +42,9 @@
     <EmbeddedResource Include="winform/MainFormCs.scriban" />
     <EmbeddedResource Include="winform/TagGridViewCs.scriban" />
     <EmbeddedResource Include="winform/ExecutorPanelCs.scriban" />
+    <!-- CS Inheritance (Source 继承模式) -->
+    <EmbeddedResource Include="cs-inheritance/MyApp.csproj.scriban" />
+    <EmbeddedResource Include="cs-inheritance/ProgramCs.scriban" />
     <!-- Web (预留) -->
     <EmbeddedResource Include="web/*" />
   </ItemGroup>
