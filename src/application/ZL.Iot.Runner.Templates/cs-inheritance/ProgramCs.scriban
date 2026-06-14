@@ -28,7 +28,7 @@ class Program
         var config = ConfigLoader.Load(configPath);
 
         var loggerFactory = LoggerFactory.Create(b =>
-            b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+            b.AddNLog("NLog.config").SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information));
         var logger = loggerFactory.CreateLogger("Program");
 
         logger.LogInformation("正在启动 {Project}，共 {Count} 个设备",

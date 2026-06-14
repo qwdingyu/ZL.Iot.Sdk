@@ -1,15 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    
+
     <AssemblyName>ZL.Iot.Runner.Templates</AssemblyName>
     <RootNamespace>ZL.Iot.Runner.Templates</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
+    <IsPackable>true</IsPackable>
     <!-- 禁用 SDK 默认的 EmbeddedResource 自动包含，手动指定模板目录 -->
     <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <!-- NuGet 包元数据 -->
+    <PackageId>ZL.Iot.Runner.Templates</PackageId>
+    <Description>Scriban templates for ZL.Iot.Runner code generation</Description>
+    <PackageTags>iot;runner;templates;scriban</PackageTags>
   </PropertyGroup>
 
   <!--

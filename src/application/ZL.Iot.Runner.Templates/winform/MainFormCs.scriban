@@ -109,7 +109,7 @@ public partial class MainForm : Form
             var configPath = "./runner.config.{{ format }}";
             var config = ConfigLoader.Load(configPath);
 
-            var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+            var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information));
             _runner = new DeviceRunner(config, loggerFactory);
 
             // 加载执行器信息

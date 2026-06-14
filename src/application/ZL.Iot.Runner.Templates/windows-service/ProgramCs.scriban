@@ -15,7 +15,7 @@ public static class Program
         var config = ConfigLoader.Load(configPath);
 
         // 使用 NLog 作为日志提供者（生产级结构化日志）
-        var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(LogLevel.Information));
+        var loggerFactory = LoggerFactory.Create(b => b.AddNLog("NLog.config").SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information));
         var runner = new DeviceRunner(config, loggerFactory);
 
         using var cts = new CancellationTokenSource();
