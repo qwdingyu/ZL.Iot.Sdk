@@ -17,23 +17,24 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
 {
     private readonly ILogger<RunnerStorageCoordinator> _logger;
 
-    // P0-1：本地执行器用 SerializedSqlExecutor 包裹，把所有数据库访问串行化，
-    // 避免历史消费者线程与多设备采集触发线程并发共享非线程安全的 SqlSugarClient。
-    private readonly SerializedSqlExecutor<SqlSugarExecutor>? _localExecutor;
-    private readonly HistoryStoragePipeline? _historyStorage;
+    // P1-1：单写入器架构。本地执行器恢复为裸 SqlSugarExecutor——因为现在只有
+    // RunnerWriteQueue 的单消费者线程触碰它，不再有跨线程并发，无需 SerializedSqlExecutor。
+    private readonly SqlSugarExecutor? _localExecutor;
+    // 统一写入队列：历史/规则SQL/FieldMapping 三条路径的唯一落库出口。
+    private readonly RunnerWriteQueue? _writeQueue;
     private readonly SyncEngine? _syncEngine;
     private bool _disposed;
 
     private RunnerStorageCoordinator(
         DataStorageOptions storage,
-        SerializedSqlExecutor<SqlSugarExecutor>? localExecutor,
-        HistoryStoragePipeline? historyStorage,
+        SqlSugarExecutor? localExecutor,
+        RunnerWriteQueue? writeQueue,
         SyncEngine? syncEngine,
         ILogger<RunnerStorageCoordinator> logger)
     {
         Storage = storage;
         _localExecutor = localExecutor;
-        _historyStorage = historyStorage;
+        _writeQueue = writeQueue;
         _syncEngine = syncEngine;
         _logger = logger;
     }
@@ -43,6 +44,9 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
     public ISqlExecutor? SqlExecutor => _localExecutor;
 
     public ITableStorageExecutor? TableStorage => _localExecutor;
+
+    /// <summary>统一写入队列；无本地 DB（None/不支持类型）时为 null（走 JSONL 降级或丢弃）。</summary>
+    public RunnerWriteQueue? WriteQueue => _writeQueue;
 
     public static RunnerStorageCoordinator Create(DataStorageOptions? storage, ILoggerFactory loggerFactory)
     {
@@ -54,26 +58,41 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
         };
 
         var localExecutor = CreateLocalExecutor(normalizedStorage, loggerFactory, logger);
-        var historyStorage = normalizedStorage.History?.Enabled == true && localExecutor is not null
-            ? new HistoryStoragePipeline(
-                normalizedStorage.History,
-                localExecutor,
-                loggerFactory.CreateLogger<HistoryStoragePipeline>())
-            : null;
+
+        // P1-1：统一写入队列总是创建——有本地 DB 走数据库，无 DB 走 JSONL 降级。
+        // 历史落库是否启用单独由 History.Enabled 门控（见 TryEnqueueHistory）。
+        var historyOptions = normalizedStorage.History ?? new StorageOptions();
+        var writeQueue = new RunnerWriteQueue(
+            historyOptions,
+            localExecutor,
+            localExecutor,
+            loggerFactory.CreateLogger<RunnerWriteQueue>());
+
         var syncEngine = CreateRemoteSyncEngine(normalizedStorage, logger);
         syncEngine?.Start();
 
-        return new RunnerStorageCoordinator(normalizedStorage, localExecutor, historyStorage, syncEngine, logger);
+        return new RunnerStorageCoordinator(normalizedStorage, localExecutor, writeQueue, syncEngine, logger);
     }
 
+    /// <summary>
+    /// 入队历史采集写入。仅当 History.Enabled 时实际入队；否则忽略。
+    /// </summary>
     public bool TryEnqueueHistory(string deviceCode, string tagId, object? value, TagItem? tag)
     {
-        if (_disposed)
+        if (_disposed || _writeQueue is null || Storage.History?.Enabled != true)
         {
             return false;
         }
 
-        return _historyStorage?.TryEnqueue(deviceCode, tagId, value, tag) == true;
+        return _writeQueue.TryEnqueue(new HistoryWriteCommand
+        {
+            DeviceCode = deviceCode,
+            TagId = tagId,
+            TagType = tag?.TagType ?? string.Empty,
+            Value = value,
+            DataType = tag?.DataTypeCode ?? string.Empty,
+            EventTime = DateTimeOffset.Now
+        });
     }
 
     /// <summary>
@@ -89,9 +108,10 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
 
         _disposed = true;
 
-        if (_historyStorage is not null)
+        // 先停写入队列（flush 完所有在途命令），再释放底层执行器——消费者依赖它。
+        if (_writeQueue is not null)
         {
-            await _historyStorage.StopAsync().ConfigureAwait(false);
+            await _writeQueue.StopAsync().ConfigureAwait(false);
         }
 
         if (_syncEngine is not null)
@@ -127,7 +147,8 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
         }
 
         _disposed = true;
-        _historyStorage?.Dispose();
+        // 先停写入队列（flush 在途命令），再释放底层执行器。
+        _writeQueue?.Dispose();
         if (_syncEngine is not null)
         {
             try
@@ -150,7 +171,7 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
         _localExecutor?.Dispose();
     }
 
-    private static SerializedSqlExecutor<SqlSugarExecutor>? CreateLocalExecutor(
+    private static SqlSugarExecutor? CreateLocalExecutor(
         DataStorageOptions storage,
         ILoggerFactory loggerFactory,
         ILogger<RunnerStorageCoordinator> logger)
@@ -170,9 +191,8 @@ public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
 
         var connectionString = ResolveConnectionString(storage.Type, storage.ConnectionString);
         logger.LogInformation("Runner 本地数据库已启用: Type={Type}", storage.Type);
-        var sqlSugar = new SqlSugarExecutor(loggerFactory.CreateLogger<SqlSugarExecutor>(), dbType.Value, connectionString);
-        // 串行化包装：止住多线程共享 SqlSugarClient 的并发缺陷（见 SerializedSqlExecutor 注释）。
-        return new SerializedSqlExecutor<SqlSugarExecutor>(sqlSugar);
+        // P1-1：单写入器架构下只有 RunnerWriteQueue 的单消费者线程访问它，无需串行化包装。
+        return new SqlSugarExecutor(loggerFactory.CreateLogger<SqlSugarExecutor>(), dbType.Value, connectionString);
     }
 
     private static SqlSugar.DbType? ResolveSqlSugarDbType(string? storageType)

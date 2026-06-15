@@ -10,6 +10,10 @@ namespace ZL.Iot.Runner.Runtime;
 
 /// <summary>
 /// 配置驱动的采集历史存储管线。
+///
+/// 【已被取代】P1-1 起，历史落库已统一并入 <see cref="RunnerWriteQueue"/> 的单写入器
+/// （历史/规则SQL/FieldMapping 三路共用一个消费者）。本类不再参与 Runner 现场装配，
+/// 仅保留作为历史批处理逻辑的参考与既有单元测试基线，新代码请使用 RunnerWriteQueue。
 /// </summary>
 public sealed class HistoryStoragePipeline : IDisposable
 {

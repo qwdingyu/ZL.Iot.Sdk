@@ -51,6 +51,13 @@ namespace ZL.Iot.Runner.Runtime
         private readonly IFieldMappingSink? _fieldMappingSink;
 
         /// <summary>
+        /// P1-1 统一写入队列。非空时，规则 SQL 与 FieldMapping 改为投递到单消费者
+        /// 队列异步落库，采集线程不再阻塞在 DB I/O；为空时回退到原同步落库/JSONL 行为
+        /// （供无队列的单元测试与简化构造使用）。
+        /// </summary>
+        private readonly RunnerWriteQueue? _writeQueue;
+
+        /// <summary>
         /// 触发执行器构造方法（支持依赖注入）
         /// </summary>
         public TriggerExecutor(
@@ -60,7 +67,8 @@ namespace ZL.Iot.Runner.Runtime
             IRuleEngine ruleEngine,
             ISqlExecutor sqlExecutor,
             ILogger<TriggerExecutor> logger,
-            ITagValueProvider? tagValueProvider = null)
+            ITagValueProvider? tagValueProvider = null,
+            RunnerWriteQueue? writeQueue = null)
         {
             _executors = executors ?? new List<ExecutorProfile>();
             _storage = storage;
@@ -69,6 +77,7 @@ namespace ZL.Iot.Runner.Runtime
             _sqlExecutor = sqlExecutor ?? throw new ArgumentNullException(nameof(sqlExecutor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _tagValueProvider = tagValueProvider;
+            _writeQueue = writeQueue;
             _fieldMappingSink = sqlExecutor != null && storage?.Type != "None"
                 ? new SqlExecutorFieldMappingSink(sqlExecutor, logger)
                 : null;
@@ -310,7 +319,29 @@ namespace ZL.Iot.Runner.Runtime
 
             _logger.LogInformation("[FieldMapping] 展开完成: {Rows} 行, 目标表={Table}", rows.Count, config.TableName);
 
-            // 3. 写入（IFieldMappingSink → DB / JSONL 降级）
+            // 反馈写回动作：落库成功后才执行（防丢数据——PLC 收到“采集完成”信号时数据已落库）。
+            Action? feedback = (!string.IsNullOrEmpty(config.FeedbackTag) && _tagValueProvider != null)
+                ? () =>
+                {
+                    _tagValueProvider.WriteTag(config.FeedbackTag!, 1);
+                    _logger.LogInformation("[FieldMapping] 反馈已写回: Tag={FeedbackTag}, Value=1", config.FeedbackTag);
+                }
+                : null;
+
+            // P1-1：有统一写入队列时，投递表插入命令异步落库，落库成功后由消费者触发反馈写回。
+            if (_writeQueue != null)
+            {
+                _writeQueue.TryEnqueue(new TableInsertCommand
+                {
+                    TableName = config.TableName,
+                    Columns = config.Columns,
+                    Rows = rows,
+                    OnCommitted = feedback
+                });
+                return;
+            }
+
+            // 兼容路径（无队列）：同步落库后立即反馈写回。
             if (_fieldMappingSink != null)
             {
                 _fieldMappingSink.EnsureTable(config.TableName, config.Columns);
@@ -322,12 +353,7 @@ namespace ZL.Iot.Runner.Runtime
                 WriteFieldMappingFallback(config, rows);
             }
 
-            // 4. 反馈写回
-            if (!string.IsNullOrEmpty(config.FeedbackTag) && _tagValueProvider != null)
-            {
-                _tagValueProvider.WriteTag(config.FeedbackTag, 1);
-                _logger.LogInformation("[FieldMapping] 反馈已写回: Tag={FeedbackTag}, Value=1", config.FeedbackTag);
-            }
+            feedback?.Invoke();
         }
 
         /// <summary>
@@ -474,9 +500,22 @@ namespace ZL.Iot.Runner.Runtime
         /// </summary>
         private void ExecuteSql(ExecutorProfile exe, string renderedScript)
         {
+            // P1-1：有统一写入队列时，把渲染后的 SQL 投递到单消费者异步落库，
+            // 采集线程立即返回，不阻塞在 DB I/O，也不再 sync-over-async。
+            if (_writeQueue != null)
+            {
+                _writeQueue.TryEnqueue(new RawSqlCommand
+                {
+                    BizCode = exe.BizCode,
+                    ExeType = exe.ExeType ?? string.Empty,
+                    Sql = renderedScript
+                });
+                return;
+            }
+
             if (_sqlExecutor != null && _storage?.Type != "None")
             {
-                // Phase 2：真实执行
+                // 兼容路径（无队列）：直接执行。
                 try
                 {
                     int affected = _sqlExecutor.ExecuteNonQueryAsync(renderedScript).GetAwaiter().GetResult();

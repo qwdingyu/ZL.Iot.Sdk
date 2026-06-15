@@ -144,6 +144,7 @@ namespace ZL.Iot.Runner.Runtime
             var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
             var sqlExecutor = storageCoordinator?.SqlExecutor;
             var storage = storageCoordinator?.Storage;
+            var writeQueue = storageCoordinator?.WriteQueue;
             var executor = sqlExecutor != null && storage != null
                 ? new TriggerExecutor(
                     profile.Executors,
@@ -154,7 +155,8 @@ namespace ZL.Iot.Runner.Runtime
                         Microsoft.Extensions.Logging.Abstractions.NullLogger<RulesEngineAdapter>.Instance),
                     sqlExecutor,
                     executorLogger,
-                    tagValueProvider: runner)
+                    tagValueProvider: runner,
+                    writeQueue: writeQueue)
                 : new TriggerExecutor(profile.Executors, executorLogger,
                     tagValueProvider: runner);
             runner._executor = executor;

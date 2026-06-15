@@ -34,6 +34,10 @@ namespace ZL.Iot.Runner.Runtime;
 /// 把同一个底层执行器的所有数据库访问串行化的装饰器。
 /// 同时实现 <see cref="ISqlExecutor"/> 与 <see cref="ITableStorageExecutor"/>，
 /// 因此 SqlExecutor / TableStorage 两个视图仍指向同一序列化边界。
+///
+/// 【已被取代】这是 P0-1 的并发止血方案。P1-1 完成单写入器（<see cref="RunnerWriteQueue"/>）
+/// 后，只有单一消费者线程访问底层执行器，不再有跨线程并发，本装饰器已退出 Runner 装配，
+/// 仅保留类与单元测试作为串行化语义的参考。
 /// </summary>
 /// <typeparam name="TInner">
 /// 被装饰的底层执行器，必须同时是 SQL 执行器与表存储执行器，且可释放
