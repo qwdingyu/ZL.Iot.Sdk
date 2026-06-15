@@ -9,6 +9,8 @@ packages/
 *.nupkg
 artifacts/
 obfuscated/
+# NuGet 局部还原缓存（--packages .nuget-test-cache 产生），不应进版本库
+.nuget-test-cache/
 
 # IDE
 .vs/
