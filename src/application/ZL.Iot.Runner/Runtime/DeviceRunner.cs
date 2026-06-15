@@ -35,7 +35,7 @@ namespace ZL.Iot.Runner.Runtime
     /// await Task.Delay(Timeout.Infinite);
     /// </code>
     /// </summary>
-    public class DeviceRunner : IDisposable
+    public class DeviceRunner : IDisposable, IAsyncDisposable
     {
         private readonly RunnerConfig _config;
         private readonly ILogger<DeviceRunner> _logger;
@@ -279,6 +279,26 @@ namespace ZL.Iot.Runner.Runtime
             _deviceRunners.Clear();
             _storageCoordinator?.Dispose();
             _storageCoordinator = null;
+            _cts.Dispose();
+        }
+
+        /// <summary>
+        /// 异步释放（推荐）：宿主可 <c>await using</c>，使存储协调器异步停止历史管线/远端同步，
+        /// 避免同步 Dispose 路径在特定上下文（如 WinForm UI 线程）上 sync-over-async。
+        /// </summary>
+        public async ValueTask DisposeAsync()
+        {
+            Stop();
+            foreach (var runner in _deviceRunners.Values)
+            {
+                (runner as IDisposable)?.Dispose();
+            }
+            _deviceRunners.Clear();
+            if (_storageCoordinator is not null)
+            {
+                await _storageCoordinator.DisposeAsync().ConfigureAwait(false);
+                _storageCoordinator = null;
+            }
             _cts.Dispose();
         }
     }

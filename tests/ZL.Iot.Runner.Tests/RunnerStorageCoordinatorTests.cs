@@ -280,6 +280,28 @@ public sealed class RunnerStorageCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task DisposeAsync_WithHistoryAndRemoteSync_DoesNotThrow()
+    {
+        var coordinator = RunnerStorageCoordinator.Create(new DataStorageOptions
+        {
+            Type = "Sqlite",
+            ConnectionString = $"Data Source={_dbPath}",
+            History = new StorageOptions { Enabled = true, TableName = "iot_tag_history" },
+            RemoteSync = new RemoteSyncOptions
+            {
+                Enabled = true,
+                Type = "mysql",
+                ConnectionString = "Server=192.168.1.10;Port=3306;Database=iot_edge;Uid=root;Pwd=remote;"
+            }
+        }, NullLoggerFactory.Instance);
+
+        // 异步释放路径不应抛出；后续同步 Dispose 也应幂等。
+        await coordinator.DisposeAsync();
+        await coordinator.DisposeAsync();
+        coordinator.Dispose();
+    }
+
+    [Fact]
     public void Create_RemoteSyncSkipped_ForUnsupportedDbType()
     {
         // 本地类型为 SqlServer 但 RemoteSync 启用了 → 应跳过（只有 SQLite 做源库才能配合 SyncEngine）

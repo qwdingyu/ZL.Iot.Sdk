@@ -58,13 +58,34 @@ public sealed class SqlSugarExecutor : ISqlExecutor, ITableStorageExecutor, IDis
             return 0;
         }
 
-        var affected = 0;
-        foreach (var parameters in parameterList)
+        var batches = parameterList as IReadOnlyCollection<Dictionary<string, object>> ?? parameterList.ToList();
+        if (batches.Count == 0)
         {
-            affected += await ExecuteNonQueryAsync(sql, parameters).ConfigureAwait(false);
+            return 0;
         }
 
-        return affected;
+        // 整批包裹在单个事务中：任一条失败则整批回滚，避免部分写入导致数据不一致。
+        // UseTranAsync 自动 Commit/Rollback 并管理连接生命周期（兼容 IsAutoCloseConnection）。
+        var result = await _db.Ado.UseTranAsync(async () =>
+        {
+            var affected = 0;
+            foreach (var parameters in batches)
+            {
+                affected += await _db.Ado
+                    .ExecuteCommandAsync(sql, ToSugarParameters(parameters))
+                    .ConfigureAwait(false);
+            }
+
+            return affected;
+        }).ConfigureAwait(false);
+
+        if (!result.IsSuccess)
+        {
+            _logger.LogError(result.ErrorException, "[SqlSugarExecutor] 批量执行失败已回滚: {Message}", result.ErrorMessage);
+            throw new InvalidOperationException($"批量执行失败已回滚: {result.ErrorMessage}", result.ErrorException);
+        }
+
+        return result.Data;
     }
 
     public async Task<object> ExecuteScalarAsync(string sql, Dictionary<string, object> parameters = null)

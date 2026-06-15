@@ -13,7 +13,7 @@ namespace ZL.Iot.Runner.Runtime;
 /// <summary>
 /// Runner 级共享存储协调器。
 /// </summary>
-public sealed class RunnerStorageCoordinator : IDisposable
+public sealed class RunnerStorageCoordinator : IDisposable, IAsyncDisposable
 {
     private readonly ILogger<RunnerStorageCoordinator> _logger;
 
@@ -76,6 +76,49 @@ public sealed class RunnerStorageCoordinator : IDisposable
         return _historyStorage?.TryEnqueue(deviceCode, tagId, value, tag) == true;
     }
 
+    /// <summary>
+    /// 异步释放（推荐路径）：宿主应优先 <c>await using</c> 走此路径，
+    /// 真正 await 历史管线与远端同步引擎的停止，不阻塞、不 sync-over-async。
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+
+        if (_historyStorage is not null)
+        {
+            await _historyStorage.StopAsync().ConfigureAwait(false);
+        }
+
+        if (_syncEngine is not null)
+        {
+            try
+            {
+                await _syncEngine.StopAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Runner RemoteSync 停止异常");
+            }
+            finally
+            {
+                _syncEngine.Dispose();
+            }
+        }
+
+        _localExecutor?.Dispose();
+    }
+
+    /// <summary>
+    /// 同步释放（兼容路径）：保留给 <c>using</c> 与 IDisposable 链。
+    /// 远端同步引擎的停止改为在线程池线程上执行并设超时上限，
+    /// 脱离调用方可能持有的 SynchronizationContext（如 WinForm UI 线程），
+    /// 从根上规避 sync-over-async 死锁，同时避免无限阻塞。
+    /// </summary>
     public void Dispose()
     {
         if (_disposed)
@@ -89,7 +132,11 @@ public sealed class RunnerStorageCoordinator : IDisposable
         {
             try
             {
-                _syncEngine.StopAsync().GetAwaiter().GetResult();
+                // Task.Run 把异步停止派发到线程池线程，不在调用方上下文上等待，避免经典死锁。
+                if (!Task.Run(() => _syncEngine.StopAsync()).Wait(TimeSpan.FromSeconds(10)))
+                {
+                    _logger.LogWarning("Runner RemoteSync 停止超时（10s），继续释放");
+                }
             }
             catch (Exception ex)
             {
