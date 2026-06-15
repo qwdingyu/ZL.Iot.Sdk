@@ -45,7 +45,7 @@ namespace ZL.Iot.Runner.Configuration
 
     /// <summary>
     /// 数据存储配置
-    /// Phase 1 支持 Sqlite，Phase 2 支持 MySql
+    /// Phase 1 支持 SQLite 本地历史存储；远端同步配置先随包下发，运行时后续接线。
     /// </summary>
     public class DataStorageOptions
     {
@@ -58,6 +58,69 @@ namespace ZL.Iot.Runner.Configuration
         /// MySql 示例：Server=192.168.1.10;Port=3306;Database=iot_edge;Uid=root;Pwd=123456;
         /// </summary>
         public string ConnectionString { get; set; } = "Data Source=./data/iot_runner.db";
+
+        /// <summary>采集历史存储配置，由配置决定是否落库，不由 TagType 决定。</summary>
+        public StorageOptions History { get; set; } = new();
+
+        /// <summary>远端异步同步配置；当前 Runner 只保留模型，不阻塞本地采集。</summary>
+        public RemoteSyncOptions RemoteSync { get; set; } = new();
+    }
+
+    /// <summary>
+    /// 采集历史存储配置。
+    /// </summary>
+    public class StorageOptions
+    {
+        /// <summary>是否启用采集历史存储。</summary>
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>目标历史表名。</summary>
+        public string TableName { get; set; } = "iot_tag_history";
+
+        /// <summary>批量写入大小。</summary>
+        public int BatchSize { get; set; } = 100;
+
+        /// <summary>批量写入最大等待毫秒数。</summary>
+        public int FlushIntervalMs { get; set; } = 1000;
+
+        /// <summary>有界队列容量，防止现场异常数据风暴拖垮采集进程。</summary>
+        public int QueueCapacity { get; set; } = 10000;
+
+        /// <summary>需要落库的标签映射；为空表示存储所有启用标签。</summary>
+        public List<StorageMapping> Mappings { get; set; } = new();
+    }
+
+    /// <summary>
+    /// 单标签历史存储映射。
+    /// </summary>
+    public class StorageMapping
+    {
+        /// <summary>设备编码；为空表示匹配任意设备。</summary>
+        public string DeviceCode { get; set; } = "";
+
+        /// <summary>标签 Id，对应 TagProfile.Id。</summary>
+        public string TagId { get; set; } = "";
+
+        /// <summary>业务语义标签类型，仅随历史记录保存，不参与落库开关判断。</summary>
+        public string TagType { get; set; } = "";
+
+        /// <summary>目标列名；通用历史表模式下默认写入 tag_id/value 等标准列。</summary>
+        public string ColumnName { get; set; } = "";
+    }
+
+    /// <summary>
+    /// 远端异步同步配置。
+    /// </summary>
+    public class RemoteSyncOptions
+    {
+        /// <summary>是否启用远端同步。</summary>
+        public bool Enabled { get; set; }
+
+        /// <summary>远端数据库类型。</summary>
+        public string Type { get; set; } = "";
+
+        /// <summary>远端数据库连接串。</summary>
+        public string ConnectionString { get; set; } = "";
     }
 
     /// <summary>

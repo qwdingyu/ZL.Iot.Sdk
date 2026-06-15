@@ -42,6 +42,10 @@ namespace ZL.Iot.Runner.Tests
             var storage = new DataStorageOptions();
             Assert.Equal("Sqlite", storage.Type);
             Assert.Equal("Data Source=./data/iot_runner.db", storage.ConnectionString);
+            Assert.True(storage.History.Enabled);
+            Assert.Equal("iot_tag_history", storage.History.TableName);
+            Assert.Empty(storage.History.Mappings);
+            Assert.False(storage.RemoteSync.Enabled);
         }
 
         [Fact]

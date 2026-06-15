@@ -27,8 +27,8 @@ namespace ZL.Biz.Execute.Biz
             _logger = logger;
             // 工业级加固：
             // 1. Default Timeout=30: 增加繁忙超时，预防 "Database is locked"
-            // 2. Journal Mode=WAL: 启用预写日志模式，允许并发读写，显著提升边缘侧吞吐量
-            _connectionString = $"Data Source={dbPath};Cache=Shared;Default Timeout=30;Journal Mode=WAL";
+            // 2. WAL 通过 InitializeDatabase 中的 PRAGMA journal_mode 设置，避免使用 Microsoft.Data.Sqlite 不支持的连接串关键字
+            _connectionString = $"Data Source={dbPath};Cache=Shared;Default Timeout=30";
             
             InitializeDatabase();
         }
@@ -41,11 +41,15 @@ namespace ZL.Biz.Execute.Biz
                 connection.Open();
                 using var command = connection.CreateCommand();
                 
-                // 1. 自动清理碎片：设置为 INCREMENTAL 配合定期 VACUUM，保护 Flash 寿命
+                // 1. 启用 WAL：允许并发读写，提升边缘侧吞吐量
+                command.CommandText = "PRAGMA journal_mode = WAL;";
+                command.ExecuteNonQuery();
+
+                // 2. 自动清理碎片：设置为 INCREMENTAL 配合定期 VACUUM，保护 Flash 寿命
                 command.CommandText = "PRAGMA auto_vacuum = INCREMENTAL;";
                 command.ExecuteNonQuery();
-                
-                // 2. 同步模式：NORMAL 在 WAL 模式下兼顾安全与性能
+
+                // 3. 同步模式：NORMAL 在 WAL 模式下兼顾安全与性能
                 command.CommandText = "PRAGMA synchronous = NORMAL;";
                 command.ExecuteNonQuery();
                 

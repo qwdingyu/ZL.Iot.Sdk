@@ -40,6 +40,7 @@ namespace ZL.Iot.Runner.Runtime
         private readonly string _deviceCode;
         private readonly DeviceRoot _driver;
         private TriggerExecutor _executor;  // 非 readonly：Create 工厂方法先构造再赋值
+        private HistoryStoragePipeline? _historyStorage;
         private readonly ILogger<SingleDeviceRunner> _logger;
         private CancellationTokenSource? _cts;
         private bool _isRunning = false;
@@ -76,11 +77,13 @@ namespace ZL.Iot.Runner.Runtime
             ILogger<SingleDeviceRunner> logger,
             string protocol = "",
             string ip = "",
-            int port = 0)
+            int port = 0,
+            HistoryStoragePipeline? historyStorage = null)
         {
             _deviceCode = deviceCode ?? throw new ArgumentNullException(nameof(deviceCode));
             _driver = driver ?? throw new ArgumentNullException(nameof(driver));
             _executor = executor ?? throw new ArgumentNullException(nameof(executor));
+            _historyStorage = historyStorage;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // 缓存设备元数据（用于状态显示，不依赖 driver 反射）
@@ -126,13 +129,20 @@ namespace ZL.Iot.Runner.Runtime
                 driver.Tags.TryAdd(kvp.Key, kvp.Value);
             }
 
-            // 4. 先创建 Runner（executor 暂时为 null，后面赋值）
-            var runner = new SingleDeviceRunner(profile.Code, driver, null!, logger,
+            // 4. 先创建 Runner（使用空执行器占位，后面替换为带 SQL/Provider 的执行器）
+            var placeholderExecutor = new TriggerExecutor(
+                profile.Executors,
+                loggerFactory.CreateLogger<TriggerExecutor>());
+            var runner = new SingleDeviceRunner(profile.Code, driver, placeholderExecutor, logger,
                 protocol: profile.Protocol, ip: profile.Ip, port: profile.Port);
 
             // 5. 创建执行器（传入 runner 自身作为 ITagValueProvider）
             var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
             var sqlExecutor = CreateSqlExecutor(storage, loggerFactory, logger);
+            var historyLogger = loggerFactory.CreateLogger<HistoryStoragePipeline>();
+            var historyStorage = storage?.History?.Enabled == true && sqlExecutor != null
+                ? new HistoryStoragePipeline(profile.Code, storage.History, sqlExecutor, historyLogger)
+                : null;
             var executor = sqlExecutor != null && storage != null
                 ? new TriggerExecutor(
                     profile.Executors,
@@ -147,6 +157,7 @@ namespace ZL.Iot.Runner.Runtime
                 : new TriggerExecutor(profile.Executors, executorLogger,
                     tagValueProvider: runner);
             runner._executor = executor;
+            runner._historyStorage = historyStorage;
 
             return runner;
         }
@@ -246,6 +257,8 @@ namespace ZL.Iot.Runner.Runtime
         {
             if (!_isRunning)
             {
+                _historyStorage?.Dispose();
+                _historyStorage = null;
                 return;
             }
 
@@ -256,6 +269,8 @@ namespace ZL.Iot.Runner.Runtime
             {
                 // 释放驱动资源（HslUnifiedDriver 实现了 IDisposable）
                 (_driver as IDisposable)?.Dispose();
+                _historyStorage?.Dispose();
+                _historyStorage = null;
                 _logger.LogInformation("[{Code}] 设备驱动已停止", _deviceCode);
             }
             catch (Exception ex)
@@ -291,7 +306,7 @@ namespace ZL.Iot.Runner.Runtime
 
         // ============================================================
         //  ITagValueProvider 实现
-        //  供 TriggerExecutor fieldmapping 分支使用
+        //  供 TriggerExecutor F 分支使用
         // ============================================================
 
         /// <summary>
@@ -350,6 +365,7 @@ namespace ZL.Iot.Runner.Runtime
 
             try
             {
+                _historyStorage?.TryEnqueue(tagId, value, tag);
                 _executor.OnTagChanged(tagId, value, quality: 0);
             }
             catch (Exception ex)
