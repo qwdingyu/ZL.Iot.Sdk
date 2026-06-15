@@ -241,7 +241,8 @@ namespace ZL.Iot.Runner.Runtime
             };
 
             // judgeExp 作为 ruleJson 传入（ConditionTree JSON 格式）
-            var result = _ruleEngine.EvaluateAsync(judgeExp, facts).GetAwaiter().GetResult();
+            // 使用 Task.Run 避免在无 SynchronizationContext 环境下阻塞采集线程
+            var result = Task.Run(() => _ruleEngine.EvaluateAsync(judgeExp, facts)).GetAwaiter().GetResult();
             return result.IsMatch;
         }
 
@@ -516,9 +517,10 @@ namespace ZL.Iot.Runner.Runtime
             if (_sqlExecutor != null && _storage?.Type != "None")
             {
                 // 兼容路径（无队列）：直接执行。
+                // 使用 Task.Run 避免阻塞采集线程，将异步工作移至线程池
                 try
                 {
-                    int affected = _sqlExecutor.ExecuteNonQueryAsync(renderedScript).GetAwaiter().GetResult();
+                    int affected = Task.Run(() => _sqlExecutor.ExecuteNonQueryAsync(renderedScript)).GetAwaiter().GetResult();
                     _logger.LogInformation("[{BizCode}] 执行完成 | Type={ExeType} | 影响行数: {Rows}",
                         exe.BizCode, exe.ExeType, affected);
                 }

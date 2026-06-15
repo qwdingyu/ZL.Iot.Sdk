@@ -187,7 +187,9 @@ public sealed class SqlSugarExecutor : ISqlExecutor, ITableStorageExecutor, IDis
 
     private static ISqlSugarClient CreateClient(SqlSugar.DbType dbType, string connectionString)
     {
-        return new SqlSugarClient(new ConnectionConfig
+        // 使用 SqlSugarScope（线程安全）替代 SqlSugarClient（非线程安全）。
+        // SqlSugarScope 按线程/异步上下文隔离连接与命令对象，可安全被多设备共享。
+        return new SqlSugarScope(new ConnectionConfig
         {
             DbType = dbType,
             ConnectionString = connectionString,
