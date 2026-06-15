@@ -24,12 +24,12 @@ namespace ZL.Iot.Runner.Runtime
     /// 2. 当 DeviceRoot.TriggerDataChanged 事件触发时，查找匹配的触发器
     /// 3. 使用 ConditionTreeEvaluator/JudgeType 进行条件判断
     /// 4. 使用 ScribanScriptEngine 渲染脚本中的变量 {{TagId}}
-    /// 5. 执行渲染后的 SQL（Phase 1 仅记录日志，Phase 2 接入 SqliteExecutor）
-    /// 
+    /// 5. 执行渲染后的 SQL（无执行器时记录日志/JSONL，有执行器时通过统一 ISqlExecutor 执行）
+    ///
     /// 复用已有组件：
     /// - IScriptEngine（ScribanScriptEngine）：变量替换
     /// - IRuleEngine（RulesEngineAdapter + ConditionTreeEvaluator）：条件判断
-    /// - ISqlExecutor（SqliteExecutor）：Phase 2 SQL 执行
+    /// - ISqlExecutor（SqlSugarExecutor）：统一数据库 SQL 执行
     /// </summary>
     public class TriggerExecutor
     {
@@ -41,7 +41,7 @@ namespace ZL.Iot.Runner.Runtime
         private readonly ILogger<TriggerExecutor> _logger;
 
         /// <summary>
-        /// 标签值提供者（用于 fieldmapping 分支读取各标签值和写回反馈信号）
+        /// 标签值提供者（用于 F 分支读取各标签值和写回反馈信号）
         /// </summary>
         private readonly ITagValueProvider? _tagValueProvider;
 
@@ -124,8 +124,8 @@ namespace ZL.Iot.Runner.Runtime
                         continue;
                     }
 
-                    // ★ FieldMapping 分支：exe_type = "fieldmapping" 时执行配置驱动采集
-                    if (string.Equals(exe.ExeType, "fieldmapping", StringComparison.OrdinalIgnoreCase))
+                    // ★ FieldMapping 分支：exe_type = "F" 时执行配置驱动采集
+                    if (string.Equals(exe.ExeType, "F", StringComparison.OrdinalIgnoreCase))
                     {
                         ExecuteFieldMapping(exe.Script, tagId);
                         continue;

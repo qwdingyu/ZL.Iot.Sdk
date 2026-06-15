@@ -13,28 +13,38 @@ namespace ZL.Iot.Runner.Runtime;
 /// </summary>
 public sealed class HistoryStoragePipeline : IDisposable
 {
-    private readonly string _deviceCode;
+    // 历史存储运行参数；构造时会归一化批量大小、flush 间隔、队列容量和表名。
     private readonly StorageOptions _options;
-    private readonly ISqlExecutor _sqlExecutor;
+
+    // 表存储执行器基于 ORM/元数据 API 创建表和批量写入，避免历史落库路径拼接裸 SQL。
+    private readonly ITableStorageExecutor _tableStorage;
     private readonly ILogger<HistoryStoragePipeline> _logger;
+
+    // 有界队列隔离 PLC 采集线程和数据库写入线程，避免数据库慢写阻塞采集。
     private readonly Channel<HistoryStorageRecord> _channel;
+
+    // 配置中指定的可落库标签集合；为空表示所有启用标签都允许落库。
     private readonly HashSet<string> _configuredTags;
+
+    // 管线生命周期令牌，仅用于停止后台消费者，不参与单条采集事件判断。
     private readonly CancellationTokenSource _cts = new();
+
+    // 单消费者后台任务：负责按 BatchSize 或 FlushIntervalMs 批量写库。
     private readonly Task _consumerTask;
+
+    // 表只需确保一次；ConcurrentDictionary 用作线程安全 set。
     private readonly ConcurrentDictionary<string, byte> _ensuredTables = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
     public HistoryStoragePipeline(
-        string deviceCode,
         StorageOptions options,
-        ISqlExecutor sqlExecutor,
+        ITableStorageExecutor tableStorage,
         ILogger<HistoryStoragePipeline> logger)
     {
-        _deviceCode = deviceCode;
         _options = NormalizeOptions(options);
-        _sqlExecutor = sqlExecutor;
+        _tableStorage = tableStorage;
         _logger = logger;
-        _configuredTags = BuildConfiguredTags(deviceCode, _options.Mappings);
+        _configuredTags = BuildConfiguredTags(_options.Mappings);
         _channel = Channel.CreateBounded<HistoryStorageRecord>(new BoundedChannelOptions(_options.QueueCapacity)
         {
             FullMode = BoundedChannelFullMode.DropWrite,
@@ -44,20 +54,22 @@ public sealed class HistoryStoragePipeline : IDisposable
         _consumerTask = Task.Run(() => ConsumeAsync(_cts.Token));
     }
 
-    public bool TryEnqueue(string tagId, object? value, TagItem? tag)
+    public bool TryEnqueue(string deviceCode, string tagId, object? value, TagItem? tag)
     {
-        if (_disposed || !_options.Enabled || string.IsNullOrWhiteSpace(tagId))
+        if (_disposed || !_options.Enabled || string.IsNullOrWhiteSpace(deviceCode) || string.IsNullOrWhiteSpace(tagId))
         {
             return false;
         }
 
-        if (_configuredTags.Count > 0 && !_configuredTags.Contains(tagId))
+        if (_configuredTags.Count > 0
+            && !_configuredTags.Contains(BuildMappingKey(deviceCode, tagId))
+            && !_configuredTags.Contains(BuildMappingKey(string.Empty, tagId)))
         {
             return false;
         }
 
         var record = new HistoryStorageRecord(
-            _deviceCode,
+            deviceCode,
             tagId,
             tag?.TagType ?? string.Empty,
             value,
@@ -69,7 +81,7 @@ public sealed class HistoryStoragePipeline : IDisposable
             return true;
         }
 
-        _logger.LogWarning("[{DeviceCode}] 历史存储队列已满，丢弃标签历史: {TagId}", _deviceCode, tagId);
+        _logger.LogWarning("[{DeviceCode}] 历史存储队列已满，丢弃标签历史: {TagId}", deviceCode, tagId);
         return false;
     }
 
@@ -80,26 +92,52 @@ public sealed class HistoryStoragePipeline : IDisposable
             return;
         }
 
+        _disposed = true;
         _channel.Writer.TryComplete();
-        await _consumerTask.ConfigureAwait(false);
-        _cts.Cancel();
+
+        try
+        {
+            await _consumerTask.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            _cts.Cancel();
+            _logger.LogWarning("[{DeviceCode}] 历史存储管线停止超时", "shared");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            _cts.Dispose();
+        }
     }
 
     public void Dispose()
     {
         if (_disposed)
         {
+            _cts.Dispose();
             return;
         }
 
         _disposed = true;
         _channel.Writer.TryComplete();
+
         try
         {
-            _consumerTask.GetAwaiter().GetResult();
+            if (!_consumerTask.Wait(TimeSpan.FromSeconds(10)))
+            {
+                _cts.Cancel();
+                _logger.LogWarning("[{DeviceCode}] 历史存储管线释放超时", "shared");
+            }
         }
-        catch (OperationCanceledException)
+        catch (AggregateException ex) when (ex.InnerExceptions.All(inner => inner is OperationCanceledException || inner is TimeoutException))
         {
+        }
+        catch (TimeoutException)
+        {
+            _logger.LogWarning("[{DeviceCode}] 历史存储管线释放超时", "shared");
         }
         finally
         {
@@ -161,7 +199,7 @@ public sealed class HistoryStoragePipeline : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[{DeviceCode}] 历史存储管线异常退出", _deviceCode);
+            _logger.LogError(ex, "[{DeviceCode}] 历史存储管线异常退出", "shared");
         }
     }
 
@@ -172,26 +210,33 @@ public sealed class HistoryStoragePipeline : IDisposable
             return;
         }
 
-        await EnsureTableAsync().ConfigureAwait(false);
-
-        const string sql = "INSERT INTO {0} (process_time, device_code, tag_id, tag_type, data_type, value_text, value_number) VALUES (@process_time, @device_code, @tag_id, @tag_type, @data_type, @value_text, @value_number)";
-        var parameters = batch.Select(record => new Dictionary<string, object>
+        try
         {
-            ["@process_time"] = record.ProcessTime.ToString("O"),
-            ["@device_code"] = record.DeviceCode,
-            ["@tag_id"] = record.TagId,
-            ["@tag_type"] = record.TagType,
-            ["@data_type"] = record.DataType,
-            ["@value_text"] = record.Value?.ToString() ?? string.Empty,
-            ["@value_number"] = TryConvertNumber(record.Value, out var number) ? number : DBNull.Value
-        }).ToList();
+            await EnsureTableAsync().ConfigureAwait(false);
 
-        await _sqlExecutor.ExecuteBatchNonQueryAsync(
-            string.Format(CultureInfo.InvariantCulture, sql, _options.TableName),
-            parameters).ConfigureAwait(false);
+            var rows = batch.Select(record => new Dictionary<string, object>
+            {
+                ["process_time"] = record.ProcessTime.DateTime,
+                ["device_code"] = record.DeviceCode,
+                ["tag_id"] = record.TagId,
+                ["tag_type"] = record.TagType,
+                ["data_type"] = record.DataType,
+                ["value_text"] = record.Value?.ToString() ?? string.Empty,
+                ["value_number"] = TryConvertNumber(record.Value, out var number) ? number : DBNull.Value
+            }).ToList();
 
-        _logger.LogDebug("[{DeviceCode}] 历史存储已批量写入 {Count} 行", _deviceCode, batch.Count);
-        batch.Clear();
+            await _tableStorage.InsertRowsAsync(_options.TableName, rows).ConfigureAwait(false);
+
+            _logger.LogDebug("[{DeviceCode}] 历史存储已批量写入 {Count} 行", batch[0].DeviceCode, batch.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{DeviceCode}] 历史存储批量写入失败", batch[0].DeviceCode);
+        }
+        finally
+        {
+            batch.Clear();
+        }
     }
 
     private async Task EnsureTableAsync()
@@ -201,8 +246,26 @@ public sealed class HistoryStoragePipeline : IDisposable
             return;
         }
 
-        var sql = $"CREATE TABLE IF NOT EXISTS {_options.TableName} (id INTEGER PRIMARY KEY, process_time TEXT NOT NULL, device_code TEXT NOT NULL, tag_id TEXT NOT NULL, tag_type TEXT, data_type TEXT, value_text TEXT, value_number REAL);";
-        await _sqlExecutor.ExecuteNonQueryAsync(sql).ConfigureAwait(false);
+        var columns = new List<TableColumnDefinition>
+        {
+            new()
+            {
+                Name = "id",
+                DataType = "bigint",
+                IsPrimaryKey = true,
+                IsIdentity = true,
+                IsNullable = false
+            },
+            new() { Name = "process_time", DataType = "datetime", IsNullable = false },
+            new() { Name = "device_code", DataType = "nvarchar", Length = 128, IsNullable = false },
+            new() { Name = "tag_id", DataType = "nvarchar", Length = 128, IsNullable = false },
+            new() { Name = "tag_type", DataType = "nvarchar", Length = 64 },
+            new() { Name = "data_type", DataType = "nvarchar", Length = 64 },
+            new() { Name = "value_text", DataType = "nvarchar", Length = 1024 },
+            new() { Name = "value_number", DataType = "double" }
+        };
+
+        await _tableStorage.EnsureTableAsync(_options.TableName, columns).ConfigureAwait(false);
     }
 
     private static StorageOptions NormalizeOptions(StorageOptions options)
@@ -226,14 +289,19 @@ public sealed class HistoryStoragePipeline : IDisposable
         return identifier;
     }
 
-    private static HashSet<string> BuildConfiguredTags(string deviceCode, List<StorageMapping> mappings)
+    private static HashSet<string> BuildConfiguredTags(List<StorageMapping> mappings)
     {
         return mappings
-            .Where(m => string.IsNullOrWhiteSpace(m.DeviceCode) || string.Equals(m.DeviceCode, deviceCode, StringComparison.OrdinalIgnoreCase))
             .Where(m => !string.IsNullOrWhiteSpace(m.TagId))
-            .Select(m => m.TagId)
+            .Select(m => BuildMappingKey(m.DeviceCode, m.TagId))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
+
+    private static string BuildMappingKey(string? deviceCode, string tagId)
+    {
+        return $"{deviceCode?.Trim() ?? string.Empty}::{tagId.Trim()}";
+    }
+
 
     private static bool TryConvertNumber(object? value, out double number)
     {

@@ -18,7 +18,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\application\ZL.EdgeService\ZL.EdgeService.csproj" />
-        <PackageReference Include="ZL.PlcBase" />
+        <PackageReference Include="ZL.IotHub" />
     </ItemGroup>
 
 </Project>

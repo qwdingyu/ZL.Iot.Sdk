@@ -42,6 +42,7 @@ namespace ZL.Iot.Runner.Runtime
         private readonly ILoggerFactory _loggerFactory;
         private readonly Dictionary<string, SingleDeviceRunner> _deviceRunners = new();
         private readonly CancellationTokenSource _cts = new();
+        private RunnerStorageCoordinator? _storageCoordinator;
         private bool _isInitialized = false;
         private bool _isRunning = false;
 
@@ -97,13 +98,15 @@ namespace ZL.Iot.Runner.Runtime
 
             _logger.LogInformation("[{Name}] 开始初始化，共 {Count} 个设备", Name, _config.Devices?.Count ?? 0);
 
+            _storageCoordinator = RunnerStorageCoordinator.Create(_config.Runner?.DataStorage, _loggerFactory);
+
             // 创建设备运行器实例
             var initErrors = new List<string>();
             foreach (var profile in _config.Devices ?? new List<DeviceProfile>())
             {
                 try
                 {
-                    var singleRunner = SingleDeviceRunner.Create(profile, _loggerFactory, _config.Runner?.DataStorage);
+                    var singleRunner = SingleDeviceRunner.Create(profile, _loggerFactory, _storageCoordinator);
                     _deviceRunners[profile.Code] = singleRunner;
 
                     _logger.LogInformation("[{Code}] 设备运行器创建成功（协议={Protocol}, IP={Ip}:{Port}, 标签数={TagCount}）",
@@ -274,6 +277,8 @@ namespace ZL.Iot.Runner.Runtime
                 (runner as IDisposable)?.Dispose();
             }
             _deviceRunners.Clear();
+            _storageCoordinator?.Dispose();
+            _storageCoordinator = null;
             _cts.Dispose();
         }
     }

@@ -101,7 +101,10 @@ namespace ZL.Iot.Runner.Configuration
         /// <summary>标签 Id，对应 TagProfile.Id。</summary>
         public string TagId { get; set; } = "";
 
-        /// <summary>业务语义标签类型，仅随历史记录保存，不参与落库开关判断。</summary>
+        /// <summary>
+        /// 业务语义标签类型，仅随历史记录保存，不参与是否落库的判断。
+        /// 现场验证阶段使用 M，表示监控/触发标签会进入采集与存储闭环。
+        /// </summary>
         public string TagType { get; set; } = "";
 
         /// <summary>目标列名；通用历史表模式下默认写入 tag_id/value 等标准列。</summary>

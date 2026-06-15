@@ -6,6 +6,7 @@
 
 using System.Data;
 using Microsoft.Extensions.Logging;
+using ZL.Biz.Execute.Sql;
 using ZL.Iot.Interface;
 
 namespace ZL.Iot.Runner.Runtime;
@@ -27,6 +28,13 @@ public class SqlExecutorFieldMappingSink : IFieldMappingSink
 
     public void EnsureTable(string tableName, List<FieldMappingRule> columns)
     {
+        // 表名/列名直接拼接进 DDL，无法参数化，必须做标识符白名单校验防注入。
+        // 复用 ZL.Biz.Execute.Sql.SafeSqlBuilder 的 IsValidIdentifier（^[a-zA-Z_][a-zA-Z0-9_]*$）。
+        if (!SafeSqlBuilder.IsValidIdentifier(tableName))
+        {
+            throw new ArgumentException($"FieldMapping 目标表名非法（仅允许字母/数字/下划线，且不以数字开头）: {tableName}", nameof(tableName));
+        }
+
         // 使用跨数据库兼容的 SQL 类型：
         // - INTEGER / BIGINT：所有数据库通用
         // - REAL：SQLite REAL = MySQL FLOAT/DOUBLE = SQL Server FLOAT = PostgreSQL REAL/DOUBLE
@@ -44,6 +52,12 @@ public class SqlExecutorFieldMappingSink : IFieldMappingSink
                 string.Equals(col.Name, "ProcessTime", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
+            }
+
+            // 列名同样拼接进 DDL，必须校验。
+            if (!SafeSqlBuilder.IsValidIdentifier(col.Name))
+            {
+                throw new ArgumentException($"FieldMapping 列名非法（仅允许字母/数字/下划线，且不以数字开头）: {col.Name}", nameof(columns));
             }
 
             var type = col.DataType?.ToLowerInvariant() switch
@@ -67,9 +81,24 @@ public class SqlExecutorFieldMappingSink : IFieldMappingSink
 
     public void InsertRows(string tableName, List<Dictionary<string, object?>> rows)
     {
+        // 表名拼接进 INSERT，必须校验。
+        if (!SafeSqlBuilder.IsValidIdentifier(tableName))
+        {
+            throw new ArgumentException($"FieldMapping 目标表名非法（仅允许字母/数字/下划线，且不以数字开头）: {tableName}", nameof(tableName));
+        }
+
         foreach (var row in rows)
         {
-            // 用参数化查询避免 SQL 注入
+            // 列名拼接进 SQL，必须逐列校验；值已参数化（@key），不在注入面内。
+            foreach (var colName in row.Keys)
+            {
+                if (!SafeSqlBuilder.IsValidIdentifier(colName))
+                {
+                    throw new ArgumentException($"FieldMapping 列名非法（仅允许字母/数字/下划线，且不以数字开头）: {colName}", nameof(rows));
+                }
+            }
+
+            // 用参数化查询避免 SQL 注入（值部分）
             var colNames = string.Join(", ", row.Keys);
             var colParams = string.Join(", ", row.Keys.Select(k => $"@{k}"));
             var sql = $"INSERT INTO {tableName} ({colNames}) VALUES ({colParams})";

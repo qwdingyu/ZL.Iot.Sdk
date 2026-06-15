@@ -339,6 +339,7 @@ echo "Done. Output: bin/Release/"
         sb.AppendLine();
         sb.AppendLine("## 配置说明");
         sb.AppendLine("编辑 runner.config.json 修改设备连接参数、标签、执行器。");
+        AppendDataStorageSection(sb, request);
         sb.AppendLine();
         sb.AppendLine("## 日志");
         sb.AppendLine("NLog.config 控制日志级别和输出目标。默认输出到 logs/ 目录。");
@@ -350,6 +351,29 @@ echo "Done. Output: bin/Release/"
         return sb.ToString();
     }
 
+    private static void AppendDataStorageSection(StringBuilder sb, GenerateRequest request)
+    {
+        sb.AppendLine();
+        sb.AppendLine("## 数据存储");
+        sb.AppendLine("- 本地历史默认使用 SQLite，路径为 `./data/iot_runner.db`（相对 Runner 工作目录）。");
+
+        if (request.Config?.Runner?.DataStorage != null)
+        {
+            sb.AppendLine($"- 当前配置类型: `{request.Config.Runner.DataStorage.Type}`。");
+
+            var history = request.Config.Runner.DataStorage.History;
+            sb.AppendLine($"- 历史存储: `{(history?.Enabled == true ? "Enabled" : "Disabled")}`，目标表 `{history?.TableName ?? "iot_tag_history"}`。");
+
+            var remoteSync = request.Config.Runner.DataStorage.RemoteSync;
+            sb.AppendLine($"- 远端同步: `{(remoteSync?.Enabled == true ? "Enabled" : "Disabled")}`。当前 Runner 运行时仅保证本地 SQLite 闭环，远端同步若启用也只作为配置下发，需后续版本接线。");
+        }
+        else
+        {
+            sb.AppendLine("- 当前包未携带显式存储配置，默认使用 SQLite 本地历史存储。");
+        }
+
+        sb.AppendLine("- 多设备共库时已收敛为 Runner 级共享写入管线，避免多个 writer 同时抢占同一 SQLite 文件。");
+    }
     /// <summary>
     /// 获取平台目录下的所有模板文件名
     /// 从 ZL.Iot.Runner.Templates 程序集读取 EmbeddedResource

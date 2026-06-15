@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>S7netplus</id>
+    <version>0.20.0</version>
+    <title>S7.Net Plus</title>
+    <authors>Derek Heiser,Michele Cattafesta,Michael Croes,Raphael Schlameuß</authors>
+    <projectUrl>https://github.com/killnine/s7netplus</projectUrl>
+    <description>A continuation of Juergen1969's Siemens communication library.</description>
+    <copyright>Derek Heiser 2015</copyright>
+    <tags>PLC Siemens Communication S7</tags>
+    <repository type="git" url="https://github.com/killnine/s7netplus" commit="f1ae0ea084e712b59e414de6aaee7d196244a239" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5.2">
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard1.3">
+        <dependency id="NETStandard.Library" version="1.6.1" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net5.0" />
+      <group targetFramework="net6.0" />
+      <group targetFramework="net7.0" />
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Memory" version="4.5.5" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

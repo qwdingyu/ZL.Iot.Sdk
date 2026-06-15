@@ -5,7 +5,6 @@
 // ============================================================
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -39,8 +38,12 @@ namespace ZL.Iot.Runner.Runtime
     {
         private readonly string _deviceCode;
         private readonly DeviceRoot _driver;
+
+        // 触发执行器负责规则判断、脚本执行、反馈写回；历史存储不应侵入这个职责。
         private TriggerExecutor _executor;  // 非 readonly：Create 工厂方法先构造再赋值
-        private HistoryStoragePipeline? _historyStorage;
+
+        // 共享 Runner 存储协调器：把 SQLite executor / 历史存储统一收敛到 Runner 级别，避免多设备抢锁。
+        private readonly RunnerStorageCoordinator? _storageCoordinator;
         private readonly ILogger<SingleDeviceRunner> _logger;
         private CancellationTokenSource? _cts;
         private bool _isRunning = false;
@@ -78,12 +81,12 @@ namespace ZL.Iot.Runner.Runtime
             string protocol = "",
             string ip = "",
             int port = 0,
-            HistoryStoragePipeline? historyStorage = null)
+            RunnerStorageCoordinator? storageCoordinator = null)
         {
             _deviceCode = deviceCode ?? throw new ArgumentNullException(nameof(deviceCode));
             _driver = driver ?? throw new ArgumentNullException(nameof(driver));
             _executor = executor ?? throw new ArgumentNullException(nameof(executor));
-            _historyStorage = historyStorage;
+            _storageCoordinator = storageCoordinator;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // 缓存设备元数据（用于状态显示，不依赖 driver 反射）
@@ -110,7 +113,7 @@ namespace ZL.Iot.Runner.Runtime
         public static SingleDeviceRunner Create(
             DeviceProfile profile,
             ILoggerFactory loggerFactory,
-            DataStorageOptions? storage = null)
+            RunnerStorageCoordinator? storageCoordinator = null)
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
 
@@ -134,15 +137,13 @@ namespace ZL.Iot.Runner.Runtime
                 profile.Executors,
                 loggerFactory.CreateLogger<TriggerExecutor>());
             var runner = new SingleDeviceRunner(profile.Code, driver, placeholderExecutor, logger,
-                protocol: profile.Protocol, ip: profile.Ip, port: profile.Port);
+                protocol: profile.Protocol, ip: profile.Ip, port: profile.Port,
+                storageCoordinator: storageCoordinator);
 
             // 5. 创建执行器（传入 runner 自身作为 ITagValueProvider）
             var executorLogger = loggerFactory.CreateLogger<TriggerExecutor>();
-            var sqlExecutor = CreateSqlExecutor(storage, loggerFactory, logger);
-            var historyLogger = loggerFactory.CreateLogger<HistoryStoragePipeline>();
-            var historyStorage = storage?.History?.Enabled == true && sqlExecutor != null
-                ? new HistoryStoragePipeline(profile.Code, storage.History, sqlExecutor, historyLogger)
-                : null;
+            var sqlExecutor = storageCoordinator?.SqlExecutor;
+            var storage = storageCoordinator?.Storage;
             var executor = sqlExecutor != null && storage != null
                 ? new TriggerExecutor(
                     profile.Executors,
@@ -157,59 +158,8 @@ namespace ZL.Iot.Runner.Runtime
                 : new TriggerExecutor(profile.Executors, executorLogger,
                     tagValueProvider: runner);
             runner._executor = executor;
-            runner._historyStorage = historyStorage;
 
             return runner;
-        }
-
-        /// <summary>
-        /// 根据 Runner DataStorage 创建 SQL 执行器；当前生产闭环优先支持 SQLite。
-        /// </summary>
-        private static ISqlExecutor? CreateSqlExecutor(
-            DataStorageOptions? storage,
-            ILoggerFactory loggerFactory,
-            ILogger<SingleDeviceRunner> logger)
-        {
-            if (storage == null || string.Equals(storage.Type, "None", StringComparison.OrdinalIgnoreCase))
-            {
-                logger.LogInformation("Runner DataStorage 未启用，FieldMapping/SQL 将写入 JSONL 降级文件");
-                return null;
-            }
-
-            if (!string.Equals(storage.Type, "Sqlite", StringComparison.OrdinalIgnoreCase))
-            {
-                logger.LogWarning("Runner DataStorage 类型 {Type} 暂未接入，FieldMapping/SQL 将写入 JSONL 降级文件", storage.Type);
-                return null;
-            }
-
-            var dbPath = ResolveSqlitePath(storage.ConnectionString);
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath) ?? AppContext.BaseDirectory);
-
-            logger.LogInformation("Runner DataStorage 已启用 SQLite: {Path}", dbPath);
-            return new SqliteExecutor(loggerFactory.CreateLogger<SqliteExecutor>(), dbPath);
-        }
-
-        /// <summary>
-        /// 兼容完整连接串和裸路径，统一提取 SQLite 文件路径。
-        /// </summary>
-        private static string ResolveSqlitePath(string? connectionString)
-        {
-            var raw = string.IsNullOrWhiteSpace(connectionString)
-                ? "./data/iot_runner.db"
-                : connectionString.Trim();
-
-            const string dataSourcePrefix = "Data Source=";
-            if (raw.StartsWith(dataSourcePrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                raw = raw[dataSourcePrefix.Length..].Split(';', 2)[0].Trim();
-            }
-
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                raw = "./data/iot_runner.db";
-            }
-
-            return Path.GetFullPath(raw, AppContext.BaseDirectory);
         }
 
         /// <summary>
@@ -257,8 +207,6 @@ namespace ZL.Iot.Runner.Runtime
         {
             if (!_isRunning)
             {
-                _historyStorage?.Dispose();
-                _historyStorage = null;
                 return;
             }
 
@@ -269,8 +217,6 @@ namespace ZL.Iot.Runner.Runtime
             {
                 // 释放驱动资源（HslUnifiedDriver 实现了 IDisposable）
                 (_driver as IDisposable)?.Dispose();
-                _historyStorage?.Dispose();
-                _historyStorage = null;
                 _logger.LogInformation("[{Code}] 设备驱动已停止", _deviceCode);
             }
             catch (Exception ex)
@@ -365,7 +311,7 @@ namespace ZL.Iot.Runner.Runtime
 
             try
             {
-                _historyStorage?.TryEnqueue(tagId, value, tag);
+                _storageCoordinator?.TryEnqueueHistory(_deviceCode, tagId, value, tag);
                 _executor.OnTagChanged(tagId, value, quality: 0);
             }
             catch (Exception ex)

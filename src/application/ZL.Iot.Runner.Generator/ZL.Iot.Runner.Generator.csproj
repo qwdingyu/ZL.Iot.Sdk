@@ -12,7 +12,7 @@
 
     <!-- 依赖 Runner 核心库（用于读取 RunnerConfig 模型） -->
     <ItemGroup>
-        <PackageReference Include="ZL.Iot.Runner.Lib" />
+        <PackageReference Include="ZL.Iot.Runner" />
     </ItemGroup>
 
     <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->
@@ -25,11 +25,14 @@
         <InternalsVisibleTo Include="ZL.Iot.Runner.Generator.Tests" />
     </ItemGroup>
 
-    <!-- 模板项目作为 EmbeddedResource 编译进 Templates 程序集 -->
-    <!-- PrivateAssets=all 阻止 NuGet 将 Templates 声明为传递依赖（Templates IsPackable=false） -->
+    <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->
     <ItemGroup>
-        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj"
-                          PrivateAssets="all" />
+        <PackageReference Include="Scriban" />
+    </ItemGroup>
+
+    <!-- 模板项目作为独立 NuGet 包分发，Generator 运行时从 lib/net8.0/ 目录下加载 -->
+    <ItemGroup>
+        <PackageReference Include="ZL.Iot.Runner.Templates" />
     </ItemGroup>
 
 </Project>

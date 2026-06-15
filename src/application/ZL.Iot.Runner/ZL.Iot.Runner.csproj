@@ -11,12 +11,19 @@
         <PackageId>ZL.Iot.Runner</PackageId>
     </PropertyGroup>
 
+    <!-- 向测试项目暴露 internal 类型（如 SerializedSqlExecutor 并发止血装饰器） -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="ZL.Iot.Runner.Tests" />
+    </ItemGroup>
+
     <!-- 复用已有类库，不重复造轮子 -->
     <ItemGroup>
         <!-- 脚本引擎+规则引擎+SQL执行器（已在 ZL.Biz.Execute 中实现） -->
-        <PackageReference Include="ZL.Biz.Execute" />
+        <ProjectReference Include="../../domain/ZL.Biz.Execute/ZL.Biz.Execute.csproj" />
+        <!-- 断网续传/远端同步引擎（仅 RemoteSync.Enabled=true 时启动） -->
+        <ProjectReference Include="../ZL.DataSync/ZL.DataSync.csproj" />
         <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
-        <PackageReference Include="ZL.Iot.Interface" />
+        <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
         <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
         <!-- 始终使用 PackageReference：Condition-based ProjectReference 在 pack 时
              会引用本地源码的 Version（ZL.IotHub.csproj 无 Version 标签），

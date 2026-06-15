@@ -5,38 +5,38 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ZL 自有包（NuGet 上的包，不是本地引用） -->
-    <PackageVersion Include="ZL.PFLite" Version="2.0.1" />
-    <PackageVersion Include="ZL.IotHub" Version="2.0.1" />
-    <PackageVersion Include="ZL.Tag" Version="2.0.1" />
-    <PackageVersion Include="ProtocolGateway" Version="1.1.0" />
-    <PackageVersion Include="ProtocolGateway.Scripting" Version="1.1.0" />
+    <!-- ZL 自有包 — 与 PlcBase / iot-sdk 统一版本 -->
+    <PackageVersion Include="ZL.PFLite" Version="2.2.1" />
+    <PackageVersion Include="ZL.IotHub" Version="2.2.1" />
+    <PackageVersion Include="ZL.Tag" Version="2.2.1" />
+    <PackageVersion Include="ZL.IotHub.Bridges" Version="2.2.1" />
 
-<!-- ZL IoT SDK 自有包（v1.1.0） -->
-    <PackageVersion Include="ZL.Collections" Version="1.1.0" />
-    <PackageVersion Include="ZL.Shared" Version="1.1.0" />
-    <PackageVersion Include="ZL.Framing" Version="1.1.0" />
-    <PackageVersion Include="ZL.Script" Version="1.1.0" />
-    <PackageVersion Include="ZL.Scripting" Version="1.1.0" />
-    <PackageVersion Include="ZL.Connection" Version="1.1.0" />
-    <PackageVersion Include="ZL.ConnectionGuard" Version="1.1.0" />
-    <PackageVersion Include="ZL.DataProcessing" Version="1.1.0" />
-    <PackageVersion Include="ZL.Probing" Version="1.1.0" />
-    <PackageVersion Include="ZL.Protocol" Version="1.1.0" />
-    <PackageVersion Include="ZL.Watchdog" Version="1.1.0" />
-    <PackageVersion Include="ZL.DataConvert" Version="1.1.0" />
-    <PackageVersion Include="ZL.Iot.Interface" Version="1.1.0" />
-    <PackageVersion Include="ZL.DB.Acc" Version="1.1.0" />
-    <PackageVersion Include="ZL.Dao.IotDevice" Version="1.1.0" />
-    <PackageVersion Include="ZL.Dao.Edge" Version="1.1.0" />
-    <PackageVersion Include="ZL.Biz.Execute" Version="1.1.0" />
-    <PackageVersion Include="ZL.Iot.Plugin" Version="1.1.0" />
-    <PackageVersion Include="ZL.Iot.Runner.Lib" Version="1.1.0" />
-    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="1.1.0" />
-    <PackageVersion Include="ZL.EdgeService" Version="1.1.0" />
+    <!-- ZL IoT SDK 自有包 -->
+    <PackageVersion Include="ZL.Collections" Version="2.2.1" />
+    <PackageVersion Include="ZL.Shared" Version="2.2.1" />
+    <PackageVersion Include="ZL.Framing" Version="2.2.1" />
+    <PackageVersion Include="ZL.Script" Version="2.2.1" />
+    <PackageVersion Include="ZL.Scripting" Version="2.2.1" />
+    <PackageVersion Include="ZL.Connection" Version="2.2.1" />
+    <PackageVersion Include="ZL.ConnectionGuard" Version="2.2.1" />
+    <PackageVersion Include="ZL.DataProcessing" Version="2.2.1" />
+    <PackageVersion Include="ZL.Probing" Version="2.2.1" />
+    <PackageVersion Include="ZL.Protocol" Version="2.2.1" />
+    <PackageVersion Include="ZL.Watchdog" Version="2.2.1" />
+    <PackageVersion Include="ZL.DataConvert" Version="2.2.1" />
+    <PackageVersion Include="ZL.Iot.Interface" Version="2.2.1" />
+    <PackageVersion Include="ZL.DB.Acc" Version="2.2.1" />
+    <PackageVersion Include="ZL.Dao.IotDevice" Version="2.2.1" />
+    <PackageVersion Include="ZL.Dao.Edge" Version="2.2.1" />
+    <PackageVersion Include="ZL.Biz.Execute" Version="2.2.1" />
+    <PackageVersion Include="ZL.Iot.Plugin" Version="2.2.1" />
+    <PackageVersion Include="ZL.Iot.Runner" Version="2.2.1" />
+    <PackageVersion Include="ZL.Iot.Runner.Generator" Version="2.2.1" />
+    <PackageVersion Include="ZL.Iot.Runner.Templates" Version="2.2.1" />
+    <PackageVersion Include="ZL.EdgeService" Version="2.2.1" />
 
     <!-- 核心依赖 -->
-    <PackageVersion Include="System.IO.Ports" Version="8.0.0" />
+    <PackageVersion Include="System.IO.Ports" Version="9.0.4" />
     <PackageVersion Include="DynamicExpresso.Core" Version="2.17.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />

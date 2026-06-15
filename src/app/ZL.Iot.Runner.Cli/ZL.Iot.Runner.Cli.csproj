@@ -24,7 +24,7 @@
 
     <ItemGroup>
         <!-- 核心类库 -->
-        <PackageReference Include="ZL.Iot.Runner.Lib" />
+        <PackageReference Include="ZL.Iot.Runner" />
     </ItemGroup>
 
 </Project>

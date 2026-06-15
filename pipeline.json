@@ -1,140 +1,146 @@
 {
-  "$schema": "https://raw.githubusercontent.com/usethink/ZL.Pipeline/main/schemas/pipeline-schema.json",
-  "version": "1.0",
-  "projects": [
-    {
-      "name": "ZL.Collections",
-      "csproj": "src/foundation/ZL.Collections/ZL.Collections.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Shared",
-      "csproj": "src/foundation/ZL.Shared/ZL.Shared.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Protocol",
-      "csproj": "src/foundation/ZL.Protocol/ZL.Protocol.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Framing",
-      "csproj": "src/foundation/ZL.Framing/ZL.Framing.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Probing",
-      "csproj": "src/foundation/ZL.Probing/ZL.Probing.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Script",
-      "csproj": "src/foundation/ZL.Script/ZL.Script.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Scripting",
-      "csproj": "src/foundation/ZL.Scripting/ZL.Scripting.csproj",
-      "obfuscate": false
-    },
-    {
-      "name": "ZL.Connection",
-      "csproj": "src/foundation/ZL.Connection/ZL.Connection.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.ConnectionGuard",
-      "csproj": "src/foundation/ZL.ConnectionGuard/ZL.ConnectionGuard.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.DataProcessing",
-      "csproj": "src/foundation/ZL.DataProcessing/ZL.DataProcessing.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Watchdog",
-      "csproj": "src/platform/ZL.Watchdog/ZL.Watchdog.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.DataConvert",
-      "csproj": "src/platform/ZL.DataConvert/ZL.DataConvert.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Iot.Interface",
-      "csproj": "src/platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj",
-      "obfuscate": false
-    },
-    {
-      "name": "ZL.ProtocolGateway",
-      "csproj": "src/platform/ZL.ProtocolGateway/ZL.ProtocolGateway.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.ProtocolGateway.Scripting",
-      "csproj": "src/platform/ZL.ProtocolGateway.Scripting/ZL.ProtocolGateway.Scripting.csproj",
-      "obfuscate": false
-    },
-    {
-      "name": "ZL.DB.Acc",
-      "csproj": "src/platform/ZL.DB.Acc/ZL.DB.Acc.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Dao.IotDevice",
-      "csproj": "src/domain/ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Dao.Edge",
-      "csproj": "src/domain/ZL.Dao.Edge/ZL.Dao.Edge.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Biz.Execute",
-      "csproj": "src/domain/ZL.Biz.Execute/ZL.Biz.Execute.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Iot.Plugin",
-      "csproj": "src/application/ZL.Iot.Plugin/ZL.Iot.Plugin.csproj",
-      "obfuscate": false
-    },
-    {
-      "name": "ZL.Iot.Runner",
-      "csproj": "src/application/ZL.Iot.Runner/ZL.Iot.Runner.csproj",
-      "obfuscate": true
-    },
-    {
-      "name": "ZL.Iot.Runner.Generator",
-      "csproj": "src/application/ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj",
-      "obfuscate": false
-    },
-    {
-      "name": "ZL.EdgeService",
-      "csproj": "src/application/ZL.EdgeService/ZL.EdgeService.csproj",
-      "obfuscate": true
-    }
-  ],
-  "nugetSource": "https://api.nuget.org/v3/index.json",
-  "publishTimeout": 120,
-  "dryRun": false,
-  "consumers": [
-    {
-      "name": "tmom",
-      "path": "/Users/dingyuwang/0-X/tmom",
-      "cpmFile": "Directory.Packages.props",
-      "buildTarget": "api/TMom.Device.Runtime.Host/TMom.Device.Runtime.Host.csproj",
-      "autoCommit": false
-    },
-    {
-      "name": "UseThink.Iot.api",
-      "path": "/Users/dingyuwang/0-X/UseThink.Iot/api",
-      "cpmFile": "Directory.Packages.props",
-      "buildTarget": "UseThink.Iot/UseThink.Iot.csproj",
-      "autoCommit": false
-    }
-  ]
+    "$schema": "https://raw.githubusercontent.com/usethink/ZL.Pipeline/main/schemas/pipeline-schema.json",
+    "version": "1.0",
+    "projects": [
+        {
+            "name": "ZL.Collections",
+            "csproj": "src/foundation/ZL.Collections/ZL.Collections.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Shared",
+            "csproj": "src/foundation/ZL.Shared/ZL.Shared.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Protocol",
+            "csproj": "src/foundation/ZL.Protocol/ZL.Protocol.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Framing",
+            "csproj": "src/foundation/ZL.Framing/ZL.Framing.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Probing",
+            "csproj": "src/foundation/ZL.Probing/ZL.Probing.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Script",
+            "csproj": "src/foundation/ZL.Script/ZL.Script.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Scripting",
+            "csproj": "src/foundation/ZL.Scripting/ZL.Scripting.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.Connection",
+            "csproj": "src/foundation/ZL.Connection/ZL.Connection.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.ConnectionGuard",
+            "csproj": "src/foundation/ZL.ConnectionGuard/ZL.ConnectionGuard.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.DataProcessing",
+            "csproj": "src/foundation/ZL.DataProcessing/ZL.DataProcessing.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Watchdog",
+            "csproj": "src/platform/ZL.Watchdog/ZL.Watchdog.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.DataConvert",
+            "csproj": "src/platform/ZL.DataConvert/ZL.DataConvert.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Iot.Interface",
+            "csproj": "src/platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.ProtocolGateway",
+            "csproj": "src/platform/ZL.ProtocolGateway/ZL.ProtocolGateway.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.ProtocolGateway.Scripting",
+            "csproj": "src/platform/ZL.ProtocolGateway.Scripting/ZL.ProtocolGateway.Scripting.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.DB.Acc",
+            "csproj": "src/platform/ZL.DB.Acc/ZL.DB.Acc.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Dao.IotDevice",
+            "csproj": "src/domain/ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Dao.Edge",
+            "csproj": "src/domain/ZL.Dao.Edge/ZL.Dao.Edge.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Biz.Execute",
+            "csproj": "src/domain/ZL.Biz.Execute/ZL.Biz.Execute.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Iot.Plugin",
+            "csproj": "src/application/ZL.Iot.Plugin/ZL.Iot.Plugin.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.Iot.Runner",
+            "csproj": "src/application/ZL.Iot.Runner/ZL.Iot.Runner.csproj",
+            "obfuscate": true
+        },
+        {
+            "name": "ZL.Iot.Runner.Templates",
+            "csproj": "src/application/ZL.Iot.Runner.Templates/ZL.Iot.Runner.Templates.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.Iot.Runner.Generator",
+            "csproj": "src/application/ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj",
+            "obfuscate": false
+        },
+        {
+            "name": "ZL.EdgeService",
+            "csproj": "src/application/ZL.EdgeService/ZL.EdgeService.csproj",
+            "obfuscate": true
+        }
+    ],
+    "nugetSource": "https://api.nuget.org/v3/index.json",
+    "publishTimeout": 120,
+    "dryRun": false,
+    "consumers": [
+        {
+            "name": "tmom",
+            "path": "/Users/dingyuwang/0-X/tmom",
+            "cpmFile": "Directory.Packages.props",
+            "buildTarget": "api/TMom.Device.Runtime.Host/TMom.Device.Runtime.Host.csproj",
+            "autoCommit": false
+        },
+        {
+            "name": "UseThink.Iot.api",
+            "path": "/Users/dingyuwang/0-X/UseThink.Iot/api",
+            "cpmFile": "Directory.Packages.props",
+            "buildTarget": "UseThink.Iot/UseThink.Iot.csproj",
+            "autoCommit": false
+        }
+    ],
+    "additionalNugetSource": "/Users/dingyuwang/0-X/ZL.PlcBase/artifacts"
 }

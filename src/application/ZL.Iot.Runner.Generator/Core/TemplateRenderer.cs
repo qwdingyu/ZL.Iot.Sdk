@@ -4,6 +4,7 @@
 //  Scriban 模板渲染器：读取 EmbeddedResource 模板 → 替换占位符 → 输出文本
 // ============================================================
 
+using System.IO;
 using System.Reflection;
 using Scriban;
 using Scriban.Runtime;
@@ -49,8 +50,10 @@ public static class TemplateRenderer
             {
                 using var fallback = templatesAssembly.GetManifestResourceStream(all[0]);
                 if (fallback != null)
+                {
                     using var fallbackReader = new StreamReader(fallback);
                     return fallbackReader.ReadToEnd();
+                }
             }
             return null;
         }

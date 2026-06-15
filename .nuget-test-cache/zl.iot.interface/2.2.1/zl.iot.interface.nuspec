@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>ZL.Iot.Interface</id>
+    <version>2.2.1</version>
+    <authors>UseThink IoT Team</authors>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <description>Package Description</description>
+    <copyright>Copyright © UseThink 2024-2025</copyright>
+    <repository type="git" url="https://github.com/usethink/iot-sdk" commit="7ef09a97b3430c0c9596e74ce7345e3f5183298b" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="Fleck" version="1.2.0" exclude="Build,Analyzers" />
+        <dependency id="NLog" version="6.0.7" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.4" exclude="Build,Analyzers" />
+        <dependency id="ZL.PFLite" version="2.2.1" exclude="Build,Analyzers" />
+        <dependency id="ZL.Tag" version="2.2.1" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.CSharp" version="4.7.0" exclude="Build,Analyzers" />
+        <dependency id="System.Configuration.ConfigurationManager" version="10.0.1" exclude="Build,Analyzers" />
+        <dependency id="System.Management" version="10.0.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

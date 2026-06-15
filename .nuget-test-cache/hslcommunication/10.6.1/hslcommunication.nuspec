@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>HslCommunication</id>
+    <version>10.6.1</version>
+    <title>An industrial IoT underlying architecture framework, focusing on the underlying technical communications.</title>
+    <authors>Richard.Hu</authors>
+    <owners>Richard.Hu</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>http://www.hslcommunication.cn/</projectUrl>
+    <iconUrl>http://www.hslcommunication.cn/images/bitbug_favicon.ico</iconUrl>
+    <description>什么是HSL？  
+      这是一个基于工业物联网，计算机通讯的架构实现，集成了工业软件开发的大部分的基础功能实现，比如三菱PLC通讯，西门子PLC通讯，欧姆龙PLC通讯，modbus通讯，AB PLC，基恩士PLC，台达PLC，松下PLC，GE PLC通讯等等，这些通讯全部进行了多语言的实现，当然，主打的 .net 库的功能集成还更加的强大，除此之外，还实现了跨程序，跨语言，跨平台的通讯，让你不再纠结于使用windows还是 linux系统，实现了日志功能，流水号生成功能，邮件发送功能，傅立叶变换功能，等等，将来会集成更多的工业环境常见功能的实现。  为了不让工业4.0只停留在口号上，万丈高楼平地起，而基石就是HSL。  
+
+HSL能干什么？ 
+      HSL能将工业生产现场的设备进行万物互联，将数据在底层自由的传输，无论是主动的还是被动的，无论你的采集系统是什么（通常采集系统为windows电脑，或是嵌入式系统，或是基于linux的盒子）， 都可以实现数据的随意传输，方便快速实现强大，实时，高响应的健壮系统，无论您是构建C/S系统，还是B/S系统，还是C-B-S-A（集成桌面客户端，浏览器，安卓）混合系统，都是快速而且低成本的实现， 只要拥有了工业现场的一手数据，即可以搭建强大的实时监视功能的软件，生产报表及自动化排产的软件，各种工艺参数历史追踪的软件，基于数据经验的机器学习软件，以及全功能等等。  顺便聊聊 ，传统的工业模式都是采购现成的工业软件，包括上位机软件及MES系统，而忽视了自身的研发能力。对于一些行业标准的功能软件来说，比如ERP系统，财务软件，这些可以直接采购即可， 但是对于上位机及MES系统而言，各个企业的实际需求千差万别，难以有通用的场景，而目前的现状都是花大钱办小事，所以在此处，给出一条面向未来的模式实现：对于生产企业而言， 基于HSL开发企业级MES系统实现，作为数据的核心仓库中心，及业务逻辑处理中心；对于设备供应商而言，基于HSL开发上位机软件系统，快速且方便的将数据分发至客户的MES系统，进行协同工作。 
+
+      企业合作： 欢迎企业客户联系合作，包括开发新的协议支持，培训及指导上位机软件及MES系统的开发，指导工厂智能化升级改造及信息化团队建设。</description>
+    <summary>A paid industrial Internet of Things underlying architecture framework, focusing on the underlying technical communication, like PLC, Robot, Modbus, Redis, Mqtt, WebSocket, socket, etc.[付费工业互联网插件]</summary>
+    <releaseNotes>1. MelsecMcRNet: 修复McType属性设置不正确的bug，导致依然使用普通的mc协议来进行通信，因为R系列MC协议地址不一样。
+2. ModbusServer: ModbusServer增加属性StationCheck，默认为True，对请求的客户端的站号进行检查操作，也可以设置false，不检查站号一致。
+3. BeckhoffAdsNet: 新增支持批量读取的方法Read( string[] address, ushort[] length )，完善了API文档说明，可以一次性读取多个标签信息，需要自行解析。
+4. BeckhoffAdsNet： 修改默认的端口为851，主要用于TWINCAT3，当没有设置 NETID 时，直接连接PLC的话，自动升级为自动获取NETID信息。
+5. BeckhoffAdsNet: 重写实现新的Read{T}(), 一次性读取所有的类型数据，然后自动解析赋值到对象的属性，在API文档上增加示例的代码。
+6. SiemensPPI: 西门子PPI协议修复输入M5这种只有两个字符的地址的时候，地址解析报异常的bug，同样也适用于SiemensPPIOverTcp
+7. KeyenceNano: 基恩士上位链路协议优化，地址重新设计，修复B,VB,W的十六进制地址解析异常的bug，FM地址不正确解析的bug。
+8. KeyenceNano: 上位链路协议读取支持自动切割，根据不同的地址切割出不同的长度信息，一般都是256长度切割，虚拟服务器也进行了地址修复和长度限制适配。
+9. OmronFinsUdp: 欧姆龙Finsudp协议的DA1（PLC节点号）调整为0x00，自动获取，在demo测试界面，增加GCT和SID的参数设置，一般默认就好。
+10. FanucSeries0i: 读取R数据的接口重新设计，修改为ReadPMCData，地址支持G,F,Y,X,A,R,T,K,C,D,E 例如R1200，写入也是一样，具体看demo演示。
+11. 官网地址： http://www.hslcommunication.cn 官网的界面全新设计过，感谢浏览关注。
+12. 本软件已经申请软件著作权，软著登记号：2020SR0340826，任何盗用软件，破解软件，未经正式合同授权而商业使用均视为侵权。</releaseNotes>
+    <copyright>版权归杭州胡工物联科技有限公司所有</copyright>
+    <language>zh-CN</language>
+    <tags>Hsl PLC Communication Robot Siemens Melsec OMRON Redis MQTT Websocket WebApi AB Modbus ABB FANUC EFORT</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework3.5">
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+        <dependency id="System.IO.Ports" version="4.7.0" />
+      </group>
+      <group targetFramework=".NETFramework4.5.1">
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+      </group>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+        <dependency id="System.IO.Ports" version="4.7.0" />
+      </group>
+      <group targetFramework=".NETFramework2.0">
+        <dependency id="Newtonsoft.Json" version="12.0.3" />
+        <dependency id="System.Core" version="3.5.21022.801" />
+        <dependency id="System.Xml.Linq" version="3.5.21022.801" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

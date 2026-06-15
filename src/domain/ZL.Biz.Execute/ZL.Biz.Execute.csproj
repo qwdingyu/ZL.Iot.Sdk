@@ -28,7 +28,7 @@
     <ItemGroup>
         <PackageReference Include="ZL.Dao.IotDevice" />
         <PackageReference Include="ZL.DB.Acc" />
-        <PackageReference Include="ZL.Iot.Interface" />
+        <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 

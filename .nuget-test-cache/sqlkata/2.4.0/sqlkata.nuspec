@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>SqlKata</id>
+    <version>2.4.0</version>
+    <title>SqlKata The C# Sql Query Builder</title>
+    <authors>Ahmad Moussawi</authors>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://github.com/sqlkata/querybuilder</projectUrl>
+    <description>A powerful Dynamic Sql Query Builder supporting Sql Server, MySql, PostgreSql, Oracle and Firebird</description>
+    <releaseNotes>https://github.com/sqlkata/querybuilder</releaseNotes>
+    <copyright>Copyright (c) 2017 Ahmad Moussawi</copyright>
+    <tags>sql query-builder dynamic-query</tags>
+    <repository type="git" url="https://github.com/sqlkata/querybuilder" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Collections.Concurrent" version="4.3.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

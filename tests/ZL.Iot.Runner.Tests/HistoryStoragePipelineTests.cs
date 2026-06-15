@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using ZL.Biz.Execute.Biz;
+using ZL.Iot.Interface;
 using ZL.Iot.Runner.Configuration;
 using ZL.Iot.Runner.Runtime;
 using ZL.Tag;
@@ -29,21 +30,20 @@ public sealed class HistoryStoragePipelineTests : IDisposable
                 }
             }
         };
-        var executor = new SqliteExecutor(NullLogger<SqliteExecutor>.Instance, _dbPath);
+        using var executor = CreateExecutor();
 
         using (var pipeline = new HistoryStoragePipeline(
-            "DEV-001",
             storage,
             executor,
             NullLogger<HistoryStoragePipeline>.Instance))
         {
-            Assert.True(pipeline.TryEnqueue("temperature", 12.5, new TagItem
+            Assert.True(pipeline.TryEnqueue("DEV-001", "temperature", 12.5, new TagItem
             {
                 Id = "temperature",
                 TagType = "D",
                 DataTypeCode = "float"
             }));
-            Assert.False(pipeline.TryEnqueue("pressure", 5, new TagItem
+            Assert.False(pipeline.TryEnqueue("DEV-001", "pressure", 5, new TagItem
             {
                 Id = "pressure",
                 TagType = "M",
@@ -72,14 +72,13 @@ public sealed class HistoryStoragePipelineTests : IDisposable
             FlushIntervalMs = 100,
             QueueCapacity = 10
         };
-        var executor = new SqliteExecutor(NullLogger<SqliteExecutor>.Instance, _dbPath);
+        using var executor = CreateExecutor();
         using var pipeline = new HistoryStoragePipeline(
-            "DEV-001",
             storage,
             executor,
             NullLogger<HistoryStoragePipeline>.Instance);
 
-        Assert.True(pipeline.TryEnqueue("temperature", 12.5, new TagItem
+        Assert.True(pipeline.TryEnqueue("DEV-001", "temperature", 12.5, new TagItem
         {
             Id = "temperature",
             TagType = "M",
@@ -92,6 +91,26 @@ public sealed class HistoryStoragePipelineTests : IDisposable
         Assert.Single(rows);
     }
 
+    [Fact]
+    public void Create_ExposesSameLocalExecutor_ForSqlAndTableStorage()
+    {
+        using var coordinator = RunnerStorageCoordinator.Create(new DataStorageOptions
+        {
+            Type = "Sqlite",
+            ConnectionString = $"Data Source={_dbPath}",
+            History = new StorageOptions
+            {
+                Enabled = true,
+                TableName = "iot_tag_history"
+            }
+        }, NullLoggerFactory.Instance);
+
+        Assert.NotNull(coordinator.SqlExecutor);
+        Assert.NotNull(coordinator.TableStorage);
+        Assert.Same(coordinator.SqlExecutor, coordinator.TableStorage);
+        Assert.Equal("Sqlite", coordinator.SqlExecutor!.Dialect);
+    }
+
     public void Dispose()
     {
         try
@@ -101,5 +120,13 @@ public sealed class HistoryStoragePipelineTests : IDisposable
         catch
         {
         }
+    }
+
+    private SqlSugarExecutor CreateExecutor()
+    {
+        return new SqlSugarExecutor(
+            NullLogger<SqlSugarExecutor>.Instance,
+            SqlSugar.DbType.Sqlite,
+            $"Data Source={_dbPath}");
     }
 }

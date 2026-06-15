@@ -12,20 +12,38 @@ namespace ZL.Iot.Interface
         string Dialect { get; }
         Task<List<Dictionary<string, object>>> ExecuteQueryAsync(string sql, Dictionary<string, object> parameters = null);
         Task<int> ExecuteNonQueryAsync(string sql, Dictionary<string, object> parameters = null);
-        
+
         /// <summary>
         /// 批量执行非查询 SQL（高性能接口）
         /// </summary>
         Task<int> ExecuteBatchNonQueryAsync(string sql, IEnumerable<Dictionary<string, object>> parameterList);
-        
+
         Task<object> ExecuteScalarAsync(string sql, Dictionary<string, object> parameters = null);
         bool Validate(string sql, out string errorMessage);
-        
+
         void BeginTransaction();
         void CommitTransaction();
         void RollbackTransaction();
     }
 
+    /// <summary>
+    /// 配置驱动表存储抽象，用于历史采集/FieldMapping 等结构化落库场景。
+    /// </summary>
+    public interface ITableStorageExecutor
+    {
+        Task EnsureTableAsync(string tableName, IReadOnlyList<TableColumnDefinition> columns);
+        Task<int> InsertRowsAsync(string tableName, IReadOnlyList<Dictionary<string, object>> rows);
+    }
+
+    public class TableColumnDefinition
+    {
+        public string Name { get; set; }
+        public string DataType { get; set; }
+        public bool IsPrimaryKey { get; set; }
+        public bool IsIdentity { get; set; }
+        public bool IsNullable { get; set; } = true;
+        public int Length { get; set; }
+    }
     /// <summary>
     /// 脚本引擎抽象接口 (Edge compatible)
     /// </summary>

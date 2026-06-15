@@ -13,6 +13,7 @@ namespace ZL.Biz.Execute.Biz
     /// 加固版 SQLite 数据库执行器
     /// 针对工业环境优化：解决事务死锁、WAL 并发模式、存储寿命保护 (Vacuum)
     /// </summary>
+    [Obsolete("SqliteExecutor 已作为兼容遗留实现保留；Runner 现场闭环请优先使用 SqlSugarExecutor")]
     public class SqliteExecutor : ISqlExecutor
     {
         private readonly ILogger<SqliteExecutor> _logger;

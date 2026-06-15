@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>libplctag</id>
+    <version>1.5.2</version>
+    <authors>libplctag</authors>
+    <license type="expression">MPL-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/MPL-2.0</licenseUrl>
+    <icon>packageIcon.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/libplctag/libplctag.NET</projectUrl>
+    <description>A library for PLC communication</description>
+    <tags>plc modbus netstandard rockwell allen-bradley libplctag</tags>
+    <repository type="git" url="https://github.com/libplctag/libplctag.NET" commit="343d1b0edeb7fcbae5d56e81477af7b3dc5b05fa" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="libplctag.NativeImport" version="1.0.41" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

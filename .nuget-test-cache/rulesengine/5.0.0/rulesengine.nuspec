@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>RulesEngine</id>
+    <version>5.0.0</version>
+    <authors>Abbas Cyclewala</authors>
+    <license type="file">LICENSE</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <projectUrl>https://github.com/microsoft/RulesEngine</projectUrl>
+    <description>Rules Engine is a package for abstracting business logic/rules/policies out of the system. This works in a very simple way by giving you an ability to put your rules in a store outside the core logic of the system thus ensuring that any change in rules doesn't affect the core system.</description>
+    <releaseNotes>https://github.com/microsoft/RulesEngine/blob/main/CHANGELOG.md</releaseNotes>
+    <copyright>Copyright (c) Microsoft Corporation.</copyright>
+    <tags>BRE, Rules Engine, Abstraction</tags>
+    <repository type="git" url="https://github.com/microsoft/RulesEngine" commit="47e7809591fea8140d0520664f7ea522e0090f75" />
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="FastExpressionCompiler" version="3.3.4" exclude="Build,Analyzers" />
+        <dependency id="FluentValidation" version="11.5.2" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.CSharp" version="4.7.0" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.3" exclude="Build,Analyzers" />
+        <dependency id="System.Linq" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="System.Linq.Dynamic.Core" version="1.3.3" exclude="Build,Analyzers" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="FastExpressionCompiler" version="3.3.4" exclude="Build,Analyzers" />
+        <dependency id="FluentValidation" version="11.5.2" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.CSharp" version="4.7.0" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.3" exclude="Build,Analyzers" />
+        <dependency id="System.Linq" version="4.3.0" exclude="Build,Analyzers" />
+        <dependency id="System.Linq.Dynamic.Core" version="1.3.3" exclude="Build,Analyzers" />
+        <dependency id="System.Threading.Tasks.Extensions" version="4.5.4" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

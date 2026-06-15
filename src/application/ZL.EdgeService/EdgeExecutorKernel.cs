@@ -18,12 +18,12 @@ namespace ZL.EdgeService
 {
     /// <summary>
     /// 边缘自治执行器核心容器
-    /// <para>深度集成 ZL.PlcBase，利用其 QoS 队列、健康检查和原子快照能力</para>
+    /// <para>深度集成 ZL.IotHub，利用其 QoS 队列、健康检查和原子快照能力</para>
     /// <para>针对工业加固：统一写列表逻辑与驱动生命周期管理</para>
     /// </summary>
     /// <remarks>
     /// 架构说明：
-    /// - 继承自 PlcBase.DeviceBase，复用其完整的采集、缓存、事件机制
+    /// - 继承自 IotHub.DeviceBase，复用其完整的采集、缓存、事件机制
     /// - 作为 iot_sdk 与 plcbase 的核心融合点，实现"采集即触发"的业务闭环
     /// - 支持多频率采集调度、原子化业务快照、离线命令缓存
     ///
@@ -112,14 +112,14 @@ namespace ZL.EdgeService
         #region 构造函数
 
         /// <summary>
-        /// 构造函数：将 Iot 模型的 DTO 转换为 PlcBase 的 DeviceConfig
+        /// 构造函数：将 Iot 模型的 DTO 转换为 IotHub 的 DeviceConfig
         /// </summary>
         /// <param name="deviceInfo">IoT 设备驱动 DTO（来自数据库配置）</param>
         /// <remarks>
         /// 初始化流程：
         /// 1. 调用基类构造函数，完成 DeviceConfig 映射
         /// 2. 从依赖注入容器获取日志器和业务执行器
-        /// 3. 订阅 PlcBase 的标签值变更事件
+        /// 3. 订阅 IotHub 的标签值变更事件
         /// </remarks>
         public EdgeExecutorKernel(IotDeviceDriverDto deviceInfo)
             : base(MapDtoToConfig(deviceInfo))
@@ -129,10 +129,10 @@ namespace ZL.EdgeService
             _logger = sp.GetRequiredService<ILogger<EdgeExecutorKernel>>();
             _bizExecutor = sp.GetRequiredService<IBizCfgExecutor>();
 
-            // 订阅 PlcBase 的统一值变更事件 - 实现采集触发的核心入口
+            // 订阅 IotHub 的统一值变更事件 - 实现采集触发的核心入口
             this.OnTagValueChanged += OnInternalTagValueChanged;
             
-            _logger.LogInformation("Edge-Executor Kernel deeply integrated with PlcBase. DeviceId: {DeviceId}", DeviceId);
+            _logger.LogInformation("Edge-Executor Kernel deeply integrated with IotHub. DeviceId: {DeviceId}", DeviceId);
         }
         
         #endregion
@@ -230,7 +230,7 @@ namespace ZL.EdgeService
         }
 
         /// <summary>
-        /// 装载点位列表到 PlcBase 内核
+        /// 装载点位列表到 IotHub 内核
         /// P0: 将 IotTagDto 列表注入到 DeviceRoot.Tags 字典
         /// </summary>
         /// <param name="tags">IotTagDto 列表（已继承 TagItem）</param>
@@ -267,10 +267,10 @@ namespace ZL.EdgeService
         }
 
         /// <summary>
-        /// 将 IoT 设备驱动 DTO 映射为 PlcBase 的 DeviceConfig
+        /// 将 IoT 设备驱动 DTO 映射为 IotHub 的 DeviceConfig
         /// </summary>
         /// <param name="dto">IoT 设备驱动数据传输对象</param>
-        /// <returns>PlcBase 兼容的设备配置对象</returns>
+        /// <returns>IotHub 兼容的设备配置对象</returns>
         /// <remarks>
         /// 融合点 A（模型融合）的实现：
         /// - 定义了 IotDeviceDriverDto -> DeviceConfig 的标准映射
