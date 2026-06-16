@@ -50,8 +50,6 @@
     <EmbeddedResource Include="cs-inheritance/MyApp.csproj.scriban" />
     <EmbeddedResource Include="cs-inheritance/ProgramCs.scriban" />
     <EmbeddedResource Include="cs-inheritance/NLog.config.scriban" />
-    <!-- Web (预留) -->
-    <EmbeddedResource Include="web/*" />
   </ItemGroup>
 
 </Project>

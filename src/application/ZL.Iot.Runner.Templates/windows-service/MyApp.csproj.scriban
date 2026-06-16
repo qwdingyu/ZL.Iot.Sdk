@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <!-- Runner 核心库（NuGet 引用，用户无需 clone monorepo） -->
-    <PackageReference Include="ZL.Iot.Runner.Lib" Version="{{ runner_version }}" />
+    <PackageReference Include="ZL.Iot.Runner" Version="{{ runner_version }}" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
   </ItemGroup>

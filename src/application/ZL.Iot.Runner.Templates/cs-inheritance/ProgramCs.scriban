@@ -124,10 +124,10 @@ class Program
 //        // 例如：值变化时写入其他标签、调用 REST API、保存到数据库等
 //    }
 // ============================================================
-{{~ for device in config.devices ~}}
-public class Device_{{ device.code }} : SimpleDeviceBase
+{{~ for device in devices ~}}
+public class Device_{{ device.Code }} : SimpleDeviceBase
 {
-    public Device_{{ device.code }}(DeviceConfig config) : base(config)
+    public Device_{{ device.Code }}(DeviceConfig config) : base(config)
     {
     }
 

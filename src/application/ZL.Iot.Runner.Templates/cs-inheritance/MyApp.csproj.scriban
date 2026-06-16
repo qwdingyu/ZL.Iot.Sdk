@@ -16,8 +16,6 @@
     <PackageReference Include="ZL.IotHub" Version="2.2.1" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
-    <!-- 配置加载器（json/xml） -->
-    <PackageReference Include="ZL.Iot.Runner.Configuration" Version="{{ runner_version }}" />
   </ItemGroup>
 
   <ItemGroup>

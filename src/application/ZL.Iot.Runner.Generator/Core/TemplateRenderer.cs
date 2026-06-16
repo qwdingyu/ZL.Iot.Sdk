@@ -133,6 +133,19 @@ public static class TemplateRenderer
         globals.Add("host_type", GetHostType(request.Platform));
         globals.Add("format", request.ConfigFormat == ConfigFormat.Xml ? "xml" : "json");
 
+        // 注入设备列表（供 cs-inheritance 模板生成设备类）
+        var devices = new ScriptArray();
+        foreach (var device in request.Config.Devices ?? new())
+        {
+            var d = new ScriptObject();
+            d["Code"] = device.Code;
+            d["Protocol"] = device.Protocol;
+            d["Ip"] = device.Ip;
+            d["Port"] = device.Port;
+            devices.Add(d);
+        }
+        globals.Add("devices", devices);
+
         context.PushGlobal(globals);
 
         return template.Render(context);

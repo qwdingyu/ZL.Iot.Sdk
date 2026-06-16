@@ -126,19 +126,19 @@ public class ExecutorPanel : UserControl
         }
     }
 
-    private static string GetJudgeTypeText(string judgeType)
+    private static string GetJudgeTypeText(int judgeType)
     {
         return judgeType switch
         {
-            "0" => "任意触发",
-            "1" => "值==1",
-            "2" => "值==0",
-            "3" => "值变化",
-            "4" => "值>阈值",
-            "5" => "值<阈值",
-            "6" => "值>=阈值",
-            "7" => "值<=阈值",
-            "8" => "值!=阈值",
+            0 => "任意触发",
+            1 => "值==1",
+            2 => "值==0",
+            3 => "值变化",
+            4 => "值>阈值",
+            5 => "值<阈值",
+            6 => "值>=阈值",
+            7 => "值<=阈值",
+            8 => "值!=阈值",
             _ => $"条件:{judgeType}"
         };
     }

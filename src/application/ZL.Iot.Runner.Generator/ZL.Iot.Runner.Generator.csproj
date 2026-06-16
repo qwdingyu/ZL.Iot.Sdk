@@ -25,11 +25,6 @@
         <InternalsVisibleTo Include="ZL.Iot.Runner.Generator.Tests" />
     </ItemGroup>
 
-    <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->
-    <ItemGroup>
-        <PackageReference Include="Scriban" />
-    </ItemGroup>
-
     <!-- 模板项目作为独立 NuGet 包分发，Generator 运行时从 lib/net8.0/ 目录下加载 -->
     <ItemGroup>
         <PackageReference Include="ZL.Iot.Runner.Templates" />
