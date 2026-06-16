@@ -13,8 +13,6 @@ using ZL.Biz.Execute.Conditions;
 using ZL.Iot.Interface;
 using ZL.Iot.Runner.Configuration;
 using ZL.IotHub.Core;
-using ZL.IotHub.Hsl;
-using ZL.IotHub.Native;
 using ZL.Tag;
 
 namespace ZL.Iot.Runner.Runtime
@@ -100,23 +98,19 @@ namespace ZL.Iot.Runner.Runtime
         }
 
         /// <summary>
-        /// 订阅驱动触发事件。DriverFactory.Create 返回的实例运行时为
-        /// NativeUnifiedDriver 或 HslUnifiedDriver，两者都公开 TriggerDataChanged。
+        /// 订阅驱动触发事件。通过 ITriggerableDriver 接口统一订阅，
+        /// 无需关心底层是 NativeUnifiedDriver 还是 HslUnifiedDriver。
         /// </summary>
         private void SubscribeToDriverEvents()
         {
-            switch (_driver)
+            if (_driver is ITriggerableDriver triggerable)
             {
-                case NativeUnifiedDriver native:
-                    native.TriggerDataChanged += OnTagTriggered;
-                    break;
-                case HslUnifiedDriver hsl:
-                    hsl.TriggerDataChanged += OnTagTriggered;
-                    break;
-                default:
-                    _logger.LogWarning("[{Code}] 当前驱动类型不支持事件订阅（{Type}），触发回调可能无法工作",
-                        _deviceCode, _driver.GetType().Name);
-                    break;
+                triggerable.TriggerDataChanged += OnTagTriggered;
+            }
+            else
+            {
+                _logger.LogWarning("[{Code}] 当前驱动类型 {Type} 未实现 ITriggerableDriver，触发回调无法工作",
+                    _deviceCode, _driver.GetType().Name);
             }
         }
 
@@ -125,14 +119,9 @@ namespace ZL.Iot.Runner.Runtime
         /// </summary>
         private void UnsubscribeFromDriverEvents()
         {
-            switch (_driver)
+            if (_driver is ITriggerableDriver triggerable)
             {
-                case NativeUnifiedDriver native:
-                    native.TriggerDataChanged -= OnTagTriggered;
-                    break;
-                case HslUnifiedDriver hsl:
-                    hsl.TriggerDataChanged -= OnTagTriggered;
-                    break;
+                triggerable.TriggerDataChanged -= OnTagTriggered;
             }
         }
 
