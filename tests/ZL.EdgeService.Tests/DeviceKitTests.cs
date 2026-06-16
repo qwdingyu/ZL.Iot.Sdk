@@ -6,7 +6,6 @@ using Xunit;
 using ZL.Dao.IotDevice;
 using ZL.Tag;
 using ZL.IotHub.Core;
-using ZL.IotHub.Hsl;
 
 namespace ZL.EdgeService.Tests
 {

@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
 using ZL.IotHub.Core;
-using ZL.IotHub.Hsl;
 using ZL.Tag;
 
 namespace {{ namespace }};
