@@ -5,6 +5,7 @@ using System;
 using Xunit;
 using ZL.Dao.IotDevice;
 using ZL.Tag;
+using ZL.IotHub.Core;
 using ZL.IotHub.Hsl;
 
 namespace ZL.EdgeService.Tests
@@ -182,10 +183,10 @@ namespace ZL.EdgeService.Tests
         }
 
         /// <summary>
-        /// 测试 HslUnifiedDriver 构造
+        /// 测试 DriverFactory.Create 构造
         /// </summary>
         [Fact]
-        public void TestHslUnifiedDriver_CanBeConstructed()
+        public void TestDriverFactory_CanCreateDriver()
         {
             // Arrange
             var dto = new IotDeviceDriverDto
@@ -200,9 +201,9 @@ namespace ZL.EdgeService.Tests
 
             // Act
             var config = BuildDeviceConfigFromDto(dto);
-            
-            // 尝试构造 HslUnifiedDriver - 这会验证配置是否有效
-            var exception = Record.Exception(() => new HslUnifiedDriver(config));
+
+            // 尝试构造 DriverFactory - 这会验证配置是否有效
+            var exception = Record.Exception(() => DriverFactory.Create(config));
 
             // Assert
             Assert.Null(exception);  // 如果有异常会记录下来

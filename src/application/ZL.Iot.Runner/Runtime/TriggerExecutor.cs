@@ -595,7 +595,7 @@ namespace ZL.Iot.Runner.Runtime
         /// 工业现场必备能力：网络/PLC 抖动时，写入后立刻回读，能 99% 抓住假写。
         /// 失败重试到 maxAttempts 后放弃，避免无限重试卡死。
         ///
-        /// 调用方传入驱动实例（DeviceRoot 子类，本项目用 HslUnifiedDriver），
+        /// 调用方传入驱动实例（DeviceRoot 子类，由 DriverFactory.Create 创建），
         /// 通过 dynamic 反射调用非泛型 Read(string)/Write(string, object) 方法。
         /// 不用泛型是因为 dynamic 对泛型方法支持不好，会导致 RuntimeBinderException。
         /// </summary>

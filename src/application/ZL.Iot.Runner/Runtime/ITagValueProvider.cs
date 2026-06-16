@@ -1,7 +1,7 @@
 // ============================================================
 //  标签值提供者接口
 //  Runner 运行时提供读取和写入 PLC 标签的能力
-//  SingleDeviceRunner 通过 HslUnifiedDriver 实现此接口
+//  SingleDeviceRunner 通过 DriverFactory 实现此接口
 // ============================================================
 
 namespace ZL.Iot.Runner.Runtime;

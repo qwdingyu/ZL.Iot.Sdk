@@ -14,6 +14,7 @@ using ZL.Iot.Interface;
 using ZL.Iot.Runner.Configuration;
 using ZL.IotHub.Core;
 using ZL.IotHub.Hsl;
+using ZL.IotHub.Native;
 using ZL.Tag;
 
 namespace ZL.Iot.Runner.Runtime
@@ -24,13 +25,13 @@ namespace ZL.Iot.Runner.Runtime
     /// 实现 ITagValueProvider，为 TriggerExecutor 提供标签读取和反馈写回能力
     ///
     /// 职责：
-    /// 1. 使用 HslDriverFactory.Create(config) 创建 DeviceRoot 驱动实例
+    /// 1. 使用 DriverFactory.Create(config) 创建 DeviceRoot 驱动实例
     /// 2. 加载标签列表到 driver.Tags
     /// 3. 初始化连接（Initialize）+ 启动后台采集（StartBackgroundTasks）
     /// 4. 订阅 OnTriggerDataChanged 事件，传递给 TriggerExecutor
     /// 5. 提供状态查询（GetStatus）和优雅停止（Stop）
     /// 
-    /// 使用 HslUnifiedDriver 而非直接继承西门子驱动，确保：
+    /// 使用 DriverFactory 而非直接继承西门子驱动，确保：
     /// - 一行代码创建，支持 15+ PLC 协议
     /// - 更换协议无需修改代码，只需改配置文件
     /// </summary>
@@ -50,7 +51,7 @@ namespace ZL.Iot.Runner.Runtime
         private int _collectedCount = 0;
 
         // 缓存设备元数据（用于状态显示）
-        // 原因：HslUnifiedDriver 没有公开 Port 属性，反射会失败被 catch 吞掉返回 0
+        // 原因：两种统一驱动（Native/Hsl）都未公开 Port 属性，反射会失败被 catch 吞掉返回 0
         // 改为缓存 profile 原始值，确保状态信息准确
         private readonly string _cachedProtocol;
         private readonly string _cachedIp;
@@ -70,7 +71,7 @@ namespace ZL.Iot.Runner.Runtime
         /// 创建单设备运行器
         /// </summary>
         /// <param name="deviceCode">设备编码（唯一标识）</param>
-        /// <param name="driver">DeviceRoot 驱动实例（HslUnifiedDriver）</param>
+        /// <param name="driver">DeviceRoot 驱动实例（由 DriverFactory.Create 创建）</param>
         /// <param name="executor">触发执行器</param>
         /// <param name="logger">日志记录器</param>
         public SingleDeviceRunner(
@@ -94,21 +95,49 @@ namespace ZL.Iot.Runner.Runtime
             _cachedIp = ip;
             _cachedPort = port;
 
-            // 订阅触发事件：当 HslUnifiedDriver.TriggerDataChanged 触发时，传递给执行器
-            if (_driver is HslUnifiedDriver unified)
+            // 订阅驱动 TriggerDataChanged 事件
+            SubscribeToDriverEvents();
+        }
+
+        /// <summary>
+        /// 订阅驱动触发事件。DriverFactory.Create 返回的实例运行时为
+        /// NativeUnifiedDriver 或 HslUnifiedDriver，两者都公开 TriggerDataChanged。
+        /// </summary>
+        private void SubscribeToDriverEvents()
+        {
+            switch (_driver)
             {
-                unified.TriggerDataChanged += OnTagTriggered;
-            }
-            else
-            {
-                // 兼容其他 DeviceRoot 子类（罕见情况）
-                _logger.LogWarning("[{Code}] 当前驱动类型不支持事件订阅（{Type}），触发回调可能无法工作",
-                    _deviceCode, _driver.GetType().Name);
+                case NativeUnifiedDriver native:
+                    native.TriggerDataChanged += OnTagTriggered;
+                    break;
+                case HslUnifiedDriver hsl:
+                    hsl.TriggerDataChanged += OnTagTriggered;
+                    break;
+                default:
+                    _logger.LogWarning("[{Code}] 当前驱动类型不支持事件订阅（{Type}），触发回调可能无法工作",
+                        _deviceCode, _driver.GetType().Name);
+                    break;
             }
         }
 
         /// <summary>
-        /// 创建设备驱动：使用 HslDriverFactory.Create(config) 创建 HslUnifiedDriver
+        /// 取消订阅驱动触发事件，避免释放后收到回调。
+        /// </summary>
+        private void UnsubscribeFromDriverEvents()
+        {
+            switch (_driver)
+            {
+                case NativeUnifiedDriver native:
+                    native.TriggerDataChanged -= OnTagTriggered;
+                    break;
+                case HslUnifiedDriver hsl:
+                    hsl.TriggerDataChanged -= OnTagTriggered;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 创建设备驱动：使用 DriverFactory.Create(config) 创建驱动实例
         /// </summary>
         public static SingleDeviceRunner Create(
             DeviceProfile profile,
@@ -119,11 +148,11 @@ namespace ZL.Iot.Runner.Runtime
 
             var logger = loggerFactory.CreateLogger<SingleDeviceRunner>();
 
-            // 1. 将 Profile 转换为 DeviceConfig（HslDriverFactory.Create 的参数格式）
+            // 1. 将 Profile 转换为 DeviceConfig（DriverFactory.Create 的参数格式）
             var deviceConfig = ProfileToDeviceConfig(profile);
 
             // 2. 创建驱动实例（一行代码，支持 15+ 协议）
-            var driver = HslDriverFactory.Create(deviceConfig);
+            var driver = DriverFactory.Create(deviceConfig);
 
             // 3. 加载标签列表到 driver.Tags
             var tagDict = ProfileTagsToDict(profile.Tags);
@@ -217,7 +246,7 @@ namespace ZL.Iot.Runner.Runtime
 
             try
             {
-                // 释放驱动资源（HslUnifiedDriver 实现了 IDisposable）
+                // 释放驱动资源（驱动实例实现了 IDisposable）
                 (_driver as IDisposable)?.Dispose();
                 _logger.LogInformation("[{Code}] 设备驱动已停止", _deviceCode);
             }
@@ -323,7 +352,7 @@ namespace ZL.Iot.Runner.Runtime
         }
 
         /// <summary>
-        /// 将 DeviceProfile 转换为 HslDriverFactory.Create 需要的 DeviceConfig 格式
+        /// 将 DeviceProfile 转换为 DriverFactory.Create 需要的 DeviceConfig 格式
         /// </summary>
         private static DeviceConfig ProfileToDeviceConfig(DeviceProfile profile)
         {
@@ -386,7 +415,7 @@ namespace ZL.Iot.Runner.Runtime
             if (!string.IsNullOrEmpty(_cachedProtocol)) return _cachedProtocol;
             if (_driver == null) return "Unknown";
 
-            // 兜底：HslUnifiedDriver 暴露 ProtocolKey / ProtocolDisplayName
+            // 兜底：两种统一驱动（Native/Hsl）都暴露 ProtocolKey / ProtocolDisplayName
             try
             {
                 dynamic d = _driver;
@@ -423,10 +452,7 @@ namespace ZL.Iot.Runner.Runtime
             Stop();
 
             // 取消事件订阅，避免触发器回调到已释放的对象（防止内存泄漏）
-            if (_driver is HslUnifiedDriver unified)
-            {
-                unified.TriggerDataChanged -= OnTagTriggered;
-            }
+            UnsubscribeFromDriverEvents();
 
             _cts?.Dispose();
         }

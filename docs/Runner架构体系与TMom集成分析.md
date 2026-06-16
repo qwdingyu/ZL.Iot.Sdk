@@ -95,7 +95,7 @@ Runner 架构的根本设计理念是 **"编译时固化，运行时轻量"**：
 │  └─────────────────────────────────────────────────────────────┘ │
 ├──────────────────────────────────────────────────────────────────┤
 │                  基础层 (Foundation)                               │
-│  ZL.PlcBase (HslUnifiedDriver) │ ZL.Tag (TagItem) │ ZL.Biz.Execute│
+│  ZL.PlcBase (DriverFactory) │ ZL.Tag (TagItem) │ ZL.Biz.Execute│
 │  ZL.Dao.IotDevice (数据访问)   │ SqlSugar (ORM)   │ HslCommunication│
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -262,7 +262,7 @@ new DeviceRunner(config, loggerFactory)
 
 ```csharp
 SingleDeviceRunner.Create(profile, loggerFactory)
-    ├── 创建 HslUnifiedDriver(deviceCode, ProfileToDeviceConfig(profile))
+    ├── 创建 DriverFactory(deviceCode, ProfileToDeviceConfig(profile))
     ├── 为每个 TagProfile 创建 TagItem 并注册到 driver.Tags
     ├── 创建 TriggerExecutor(executors, loggerFactory)
     ├── 订阅 driver.TriggerDataChanged → executor.OnTagChanged
@@ -278,7 +278,7 @@ Start()
     │   ├── driver.ReadAsync()     // 批量读取所有标签
     │   └── 等待 ReadInterval ms
     └── 事件回调链:
-        HslUnifiedDriver.TriggerDataChanged
+        DriverFactory.TriggerDataChanged
             → SingleDeviceRunner.OnTagTriggered()
                 → TriggerExecutor.OnTagChanged()
                     → EvaluateCondition() [判断是否触发]
@@ -604,7 +604,7 @@ GenerateRequest
 │           ├── runner.Initialize()                    │
 │           │   └── foreach device in config.Devices:  │
 │           │       SingleDeviceRunner.Create(profile) │
-│           │           ├── HslUnifiedDriver(profile)  │
+│           │           ├── DriverFactory(profile)  │
 │           │           ├── TagItem[] → driver.Tags    │
 │           │           └── TriggerExecutor(executors) │
 │           ├── runner.Start()                         │
@@ -618,7 +618,7 @@ GenerateRequest
 │           └── 等待取消信号                             │
 │                                                     │
 │  事件回调链:                                         │
-│  HslUnifiedDriver.TriggerDataChanged                │
+│  DriverFactory.TriggerDataChanged                │
 │    → SingleDeviceRunner.OnTagTriggered()            │
 │      → TriggerExecutor.OnTagChanged()               │
 │        → EvaluateCondition()                         │
@@ -635,17 +635,17 @@ GenerateRequest
 ```
 DeviceRunner (协调器)
     ├── SingleDeviceRunner[plc_1]  ← 独立 Thread/Task
-    │       ├── HslUnifiedDriver (SiemensS7@192.168.1.100:102)
+    │       ├── DriverFactory (SiemensS7@192.168.1.100:102)
     │       ├── 采集循环 (ReadInterval=200ms)
     │       └── TriggerExecutor (3 executors)
     │
     ├── SingleDeviceRunner[plc_2]  ← 独立 Thread/Task
-    │       ├── HslUnifiedDriver (ModbusTcp@192.168.1.101:502)
+    │       ├── DriverFactory (ModbusTcp@192.168.1.101:502)
     │       ├── 采集循环 (ReadInterval=500ms)
     │       └── TriggerExecutor (5 executors)
     │
     └── SingleDeviceRunner[plc_3]  ← 独立 Thread/Task
-            ├── HslUnifiedDriver (MitsubishiMC@192.168.1.102:9600)
+            ├── DriverFactory (MitsubishiMC@192.168.1.102:9600)
             ├── 采集循环 (ReadInterval=1000ms)
             └── TriggerExecutor (2 executors)
 ```
@@ -850,7 +850,7 @@ TMom.Device.Runtime.Host (ZL.PlcBase.Host.exe)
 | **应用类型** | ASP.NET Core Web API | 控制台/Windows服务/systemd |
 | **设备管理** | 从 MySQL 数据库动态加载 | 配置文件静态定义 |
 | **配置来源** | 数据库 (iot_device/iot_tag/iot_exe 表) | runner.config.json |
-| **驱动创建** | 运行时通过 DB 查询 → 动态构建 HslUnifiedDriver | 编译时配置 → 启动时直接创建 |
+| **驱动创建** | 运行时通过 DB 查询 → 动态构建 DriverFactory | 编译时配置 → 启动时直接创建 |
 | **触发执行** | ExecutionEngineService (含 TriggerEvaluator + EnhancedTriggerEvaluator) | TriggerExecutor (轻量级) |
 | **JudgeType** | string 类型 ("0"-"8") | int 类型 (0-8) |
 | **触发器种类** | 11种 (0-5 标准 + 6-8 增强 + 边沿/周期) | 9种 (0-8) |
@@ -876,7 +876,7 @@ TMom.Device.Runtime.Host (ZL.PlcBase.Host.exe)
 1. 从 DB 加载启用设备: repo.GetActiveDevicesAsync()
 2. foreach 设备:
    ├── 构建 DeviceConfig (从 DB 字段映射)
-   ├── 创建 HslUnifiedDriver(deviceConfig)
+   ├── 创建 DriverFactory(deviceConfig)
    ├── 从 DB 加载标签: repo.GetTagsByDeviceIdAsync(deviceId)
    ├── foreach 标签: driver.Tags.TryAdd(tagName, new TagItem { ... })
    ├── driver.Initialize()
@@ -891,7 +891,7 @@ TMom.Device.Runtime.Host (ZL.PlcBase.Host.exe)
 
 ```csharp
 // 标签值变化 → 执行引擎处理
-// 由 HslUnifiedDriver.TriggerDataChanged 事件触发
+// 由 DriverFactory.TriggerDataChanged 事件触发
 
 1. ProcessTagValueChangeAsync(tagName, value)
 2. GetRelatedExesAsync(tagName)  // 从缓存获取相关执行器
@@ -945,7 +945,7 @@ TMom.Device.Runtime.Host (ZL.PlcBase.Host.exe)
 **引用关系**：
 - `ZL.Dao.IotDevice` — 数据访问对象（IotDevice/IotTag/PlcExeEntity 等实体 + SqlSugar 操作）
 - `ZL.Biz.Execute` — 业务执行逻辑
-- `ZL.PlcBase` — PLC 驱动基础库（HslUnifiedDriver）
+- `ZL.PlcBase` — PLC 驱动基础库（DriverFactory / NativeUnifiedDriver / HslUnifiedDriver）
 - `ZL.PlcBase.Bridges` — SignalR 桥接（PlcBridgeBootstrap/SignalRPlcBridgeSink）
 
 **注意**：TMom.Host **未直接引用** `ZL.Iot.Runner` 或 `ZL.Iot.Runner.Generator`。Runner 系列是独立的新架构，与当前 TMom.Host 并行存在。
@@ -1150,7 +1150,7 @@ function convertDbToRunnerConfig(devices: IotDevice[]): RunnerConfig {
 | 能力 | TMom.Host | Runner (生成物) | 说明 |
 |------|----------|----------------|------|
 | 多设备采集 | ✅ | ✅ | 都支持 |
-| 多协议支持 | ✅ (14种) | ✅ (14种) | 共用 HslUnifiedDriver |
+| 多协议支持 | ✅ (14种) | ✅ (14种) | 共用 DriverFactory |
 | 触发执行器 | ✅ (11种) | ✅ (9种) | TMom 多了增强触发 |
 | SQL 执行 | ✅ (含安全校验) | ✅ (基本) | Runner 的 TriggerExecutor 无安全校验 |
 | 执行日志 | ✅ (iot_exe_log 表) | ❌ | Runner 仅日志输出 |

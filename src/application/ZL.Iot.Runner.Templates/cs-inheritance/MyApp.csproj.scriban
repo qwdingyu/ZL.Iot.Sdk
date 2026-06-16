@@ -12,8 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- ZL.IotHub 驱动库（含 SimpleDeviceBase / HslUnifiedDriver） -->
-    <PackageReference Include="ZL.IotHub" Version="2.0.3" />
+    <!-- ZL.IotHub 驱动库（含 DriverFactory / SimpleDeviceBase） -->
+    <PackageReference Include="ZL.IotHub" Version="2.2.1" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
     <!-- 配置加载器（json/xml） -->

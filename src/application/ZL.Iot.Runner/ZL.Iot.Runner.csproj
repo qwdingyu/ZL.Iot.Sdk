@@ -24,7 +24,7 @@
         <ProjectReference Include="../ZL.DataSync/ZL.DataSync.csproj" />
         <!-- 接口定义（IScriptEngine/ISqlExecutor/IRuleEngine/IBizCfgExecutor） -->
         <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
-        <!-- PLC 驱动（HslUnifiedDriver/DeviceRoot/TagItem/TagKit） -->
+        <!-- PLC 驱动（DriverFactory/DeviceRoot/TagItem/TagKit） -->
         <!-- 始终使用 PackageReference：Condition-based ProjectReference 在 pack 时
              会引用本地源码的 Version（ZL.IotHub.csproj 无 Version 标签），
              导致 nuspec 写入不存在的 1.0.4 版本，下游 restore 失败（NU1605）。 -->
