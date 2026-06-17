@@ -8,6 +8,8 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PackageId>ZL.Iot.Runner.Generator</PackageId>
+        <!-- 模板资源已内聚到 Generator 程序集，禁止 SDK 自动嵌入后再手动指定 -->
+        <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
     </PropertyGroup>
 
     <!-- 仓库内部依赖使用源码引用，避免开发期 NuGet 版本漂移和同名程序集冲突 -->
@@ -25,9 +27,9 @@
         <InternalsVisibleTo Include="ZL.Iot.Runner.Generator.Tests" />
     </ItemGroup>
 
-    <!-- 模板项目作为独立程序集分发，Generator 运行时从输出目录加载 -->
+    <!-- Scriban 模板作为 Generator 内部资源随包发布，不再维护独立 Templates 项目 -->
     <ItemGroup>
-        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
+        <EmbeddedResource Include="Templates\**\*.scriban" />
     </ItemGroup>
 
 </Project>

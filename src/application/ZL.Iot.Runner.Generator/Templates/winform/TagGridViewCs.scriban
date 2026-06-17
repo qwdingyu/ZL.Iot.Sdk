@@ -97,9 +97,11 @@ public class TagGridView : UserControl
         if (e.ColumnIndex == _grid.Columns["已连接"].Index && e.RowIndex >= 0)
         {
             var text = e.Value?.ToString() ?? "";
+            // 使用系统库存画刷（单例，禁止 Dispose）：CellPainting 每次重绘都会触发，
+            // 若 new SolidBrush 而不释放会持续泄漏 GDI 句柄。
             var brush = text.Contains("已连接")
-                ? new SolidBrush(System.Drawing.Color.Green)
-                : new SolidBrush(System.Drawing.Color.Red);
+                ? System.Drawing.Brushes.Green
+                : System.Drawing.Brushes.Red;
 
             e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
             e.Graphics.DrawString(text, e.CellStyle.Font, brush,

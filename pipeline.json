@@ -108,11 +108,6 @@
             "obfuscate": true
         },
         {
-            "name": "ZL.Iot.Runner.Templates",
-            "csproj": "src/application/ZL.Iot.Runner.Templates/ZL.Iot.Runner.Templates.csproj",
-            "obfuscate": false
-        },
-        {
             "name": "ZL.Iot.Runner.Generator",
             "csproj": "src/application/ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj",
             "obfuscate": false

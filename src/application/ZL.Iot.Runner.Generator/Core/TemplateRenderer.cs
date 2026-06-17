@@ -19,7 +19,7 @@ public static class TemplateRenderer
 {
     /// <summary>
     /// 从 EmbeddedResource 读取模板内容
-    /// 模板存储在 ZL.Iot.Runner.Templates 程序集中
+    /// 模板存储在 ZL.Iot.Runner.Generator 程序集的 Templates 目录资源中
     /// </summary>
     /// <param name="platform">目标平台（对应 Templates 目录下的子目录名）</param>
     /// <param name="fileName">文件名（如 MyApp.csproj.scriban）</param>
@@ -39,7 +39,7 @@ public static class TemplateRenderer
         var templatesAssembly = LoadTemplatesAssembly();
 
         var dir = dirName.Replace('-', '_');
-        var templateName = $"ZL.Iot.Runner.Templates.{dir}.{fileName}";
+        var templateName = $"ZL.Iot.Runner.Generator.Templates.{dir}.{fileName}";
 
         using var stream = templatesAssembly.GetManifestResourceStream(templateName);
         if (stream == null)
@@ -62,33 +62,9 @@ public static class TemplateRenderer
         return reader.ReadToEnd();
     }
 
-    private static System.Reflection.Assembly? _templatesAssembly;
-    private static readonly object _templatesLock = new();
-
     public static System.Reflection.Assembly LoadTemplatesAssembly()
     {
-        if (_templatesAssembly != null) return _templatesAssembly;
-
-        lock (_templatesLock)
-        {
-            if (_templatesAssembly != null) return _templatesAssembly;
-
-            // 1) 检查已加载的程序集
-            _templatesAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == "ZL.Iot.Runner.Templates");
-            if (_templatesAssembly != null) return _templatesAssembly;
-
-            // 2) 从当前程序集所在目录加载
-            var baseDir = Path.GetDirectoryName(typeof(TemplateRenderer).Assembly.Location) ?? ".";
-            var dllPath = Path.Combine(baseDir, "ZL.Iot.Runner.Templates.dll");
-            if (File.Exists(dllPath))
-            {
-                _templatesAssembly = System.Reflection.Assembly.LoadFrom(dllPath);
-                return _templatesAssembly;
-            }
-
-            throw new InvalidOperationException("ZL.Iot.Runner.Templates.dll 未找到");
-        }
+        return typeof(TemplateRenderer).Assembly;
     }
 
     /// <summary>

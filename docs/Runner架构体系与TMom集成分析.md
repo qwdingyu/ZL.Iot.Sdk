@@ -77,10 +77,8 @@ Runner 架构的根本设计理念是 **"编译时固化，运行时轻量"**：
 │  │  └──────────┘ └──────────────┘ └──────────┘ └────────────┘  │
 │  └──────────────────────────────────────────────────────────────┘│
 │                                                                   │
-│  ┌──────────────────────────────────────────────────────────────┐│
-│  │  ZL.Iot.Runner.Templates (Scriban 模板资源)                   ││
-│  │  console/ │ windows-service/ │ linux-systemd/ │ winform/    ││
-│  └──────────────────────────────────────────────────────────────┘│
+│  Generator 内部 Templates/ (Scriban 模板资源)                    │
+│  console/ │ windows-service/ │ linux-systemd/ │ winform/        │
 ├──────────────────────────────────────────────────────────────────┤
 │                  Runner 层 (运行时核心)                             │
 │  ┌─────────────────────────────────────────────────────────────┐ │
@@ -128,11 +126,11 @@ iot-sdk/
 │   │   │           ├── GenerateResult.cs     # 生成结果模型
 │   │   │           └── GenerateJob.cs        # 任务状态机
 │   │   │
-│   │   ├── ZL.Iot.Runner.Templates/          # Scriban 模板资源
-│   │   │   ├── console/                      # Console 宿主模板
-│   │   │   ├── windows-service/              # Windows 服务模板
-│   │   │   ├── linux-systemd/                # Linux systemd 模板
-│   │   │   └── winform/                      # WinForms GUI 模板
+│   │   │   └── Templates/                    # Scriban 模板资源（内嵌到 Generator）
+│   │   │       ├── console/                  # Console 宿主模板
+│   │   │       ├── windows-service/          # Windows 服务模板
+│   │   │       ├── linux-systemd/            # Linux systemd 模板
+│   │   │       └── winform/                  # WinForms GUI 模板
 │   │   │
 │   │   ├── ZL.Iot.Plugin/                    # [旧架构] 插件系统 (netstandard2.1)
 │   │   └── ZL.EdgeService/                   # [旧架构] 边缘服务 (netstandard2.1)
@@ -448,12 +446,12 @@ PackWithManifest(sourceDir, applicationName, runtimeIdentifier, ...)
 - 任务元数据保留 30 分钟
 - 每 5 分钟自动清理一次
 
-### 3.3 ZL.Iot.Runner.Templates — 模板资源
+### 3.3 Generator 内部 Templates — 模板资源
 
 #### 3.3.1 模板目录结构
 
 ```
-ZL.Iot.Runner.Templates/
+ZL.Iot.Runner.Generator/Templates/
 ├── console/                              # Console 应用（开发/测试）
 │   ├── MyApp.csproj.scriban             # .csproj 模板
 │   ├── ProgramCs.scriban                # 入口程序

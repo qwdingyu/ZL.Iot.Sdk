@@ -21,7 +21,7 @@ iot-sdk 在拆分独立前曾是 tmom 仓库的子目录。
 |------|--------------|------------------|------|
 | ZL.Iot.Runner.Generator | `src/application/ZL.Iot.Runner.Generator/` | `tmom/ZL.Iot.Runner.Generator/` (已删除) | ✅ 保留 iot-sdk 版本, 历史代码存档 |
 | ZL.Iot.Runner.GeneratorCli | 已合并到 `src/app/ZL.Iot.Runner.Cli/` | `tmom/ZL.Iot.Runner.GeneratorCli/` (已删除) | ✅ 仅保留历史代码存档 |
-| ZL.Iot.Runner.Templates | `src/application/ZL.Iot.Runner.Templates/` | `tmom/ZL.Iot.Runner.Templates/` (已删除) | ✅ 保留 iot-sdk 版本 |
+| ZL.Iot.Runner.Templates | 已合并到 `src/application/ZL.Iot.Runner.Generator/Templates/` | `tmom/ZL.Iot.Runner.Templates/` (已删除) | ✅ 仅保留历史代码存档 |
 
 ## 后续决策
 

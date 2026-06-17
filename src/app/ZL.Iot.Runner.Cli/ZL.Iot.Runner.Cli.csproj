@@ -11,6 +11,8 @@
         <!-- 默认配置：可执行文件与依赖同目录，便于发布单文件 -->
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <PackageId>ZL.Iot.Runner.Cli</PackageId>
+        <!-- CLI 仅作为源码入口保留，不进入 NuGet 发布面 -->
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <!--
@@ -26,7 +28,6 @@
         <!-- 仓库内部依赖使用源码引用，避免开发期 NuGet 版本漂移 -->
         <ProjectReference Include="..\..\application\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
         <ProjectReference Include="..\..\application\ZL.Iot.Runner.Generator\ZL.Iot.Runner.Generator.csproj" />
-        <ProjectReference Include="..\..\application\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
     </ItemGroup>
 
 </Project>

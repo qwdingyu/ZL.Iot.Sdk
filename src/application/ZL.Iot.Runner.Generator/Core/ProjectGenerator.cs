@@ -376,20 +376,20 @@ echo "Done. Output: bin/Release/"
     }
     /// <summary>
     /// 获取平台目录下的所有模板文件名
-    /// 从 ZL.Iot.Runner.Templates 程序集读取 EmbeddedResource
+    /// 从 ZL.Iot.Runner.Generator 程序集读取 EmbeddedResource
     /// </summary>
     private static string[] GetTemplateFiles(string platformDir)
     {
         var templatesAssembly = TemplateRenderer.LoadTemplatesAssembly();
         if (templatesAssembly == null)
         {
-            Console.Error.WriteLine("[Generator] WARNING: ZL.Iot.Runner.Templates assembly not found");
+            Console.Error.WriteLine("[Generator] WARNING: Generator assembly not found");
             return Array.Empty<string>();
         }
 
         // .NET 将嵌入资源的目录分隔符 '-' 规范化为 '_'
         var resourceDir = platformDir.Replace('-', '_');
-        var prefix = $"ZL.Iot.Runner.Templates.{resourceDir}.";
+        var prefix = $"ZL.Iot.Runner.Generator.Templates.{resourceDir}.";
         return templatesAssembly.GetManifestResourceNames()
             .Where(n => n.StartsWith(prefix, StringComparison.Ordinal))
             .Select(n => n[prefix.Length..])

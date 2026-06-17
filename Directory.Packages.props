@@ -31,7 +31,6 @@
     <PackageVersion Include="ZL.Iot.Plugin" Version="2.2.1" />
     <PackageVersion Include="ZL.Iot.Runner" Version="2.2.1" />
     <PackageVersion Include="ZL.Iot.Runner.Generator" Version="2.2.1" />
-    <PackageVersion Include="ZL.Iot.Runner.Templates" Version="2.2.1" />
     <PackageVersion Include="ZL.EdgeService" Version="2.2.1" />
 
     <!-- 核心依赖 -->
