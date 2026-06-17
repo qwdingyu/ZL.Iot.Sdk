@@ -8,7 +8,6 @@
     <!-- ZL 自有包 — 与 PlcBase / iot-sdk 统一版本 -->
     <PackageVersion Include="ZL.PFLite" Version="2.2.1" />
     <PackageVersion Include="ZL.IotHub" Version="2.2.1" />
-    <PackageVersion Include="ZL.Tag" Version="2.2.1" />
     <PackageVersion Include="ZL.IotHub.Bridges" Version="2.2.1" />
 
     <!-- ZL IoT SDK 自有包 -->

@@ -113,29 +113,34 @@
   zl-pipeline.py publish → nuget.org
 ```
 
-### 12.7 ZL.PFLite / ZL.Tag 包继续存在，ZL.IotHub 内部已内化核心类型
+### 12.7 ZL.PFLite 保持独立，ZL.Tag 由 ZL.IotHub 承载
 
-**ZL.PFLite 和 ZL.Tag 作为独立 NuGet 包继续发布**，供外部项目使用。但 ZL.IotHub 内部已内化了它们的核心类型，能直接用 ZL.IotHub 的项目不应再同时引用 ZL.PFLite/ZL.Tag，避免 CS0433 歧义。
+**ZL.PFLite 是通用基础工具库，继续作为独立 NuGet 包发布**。与 IoT/设备采集无关的项目应继续直接引用 ZL.PFLite，不应为了基础工具能力引入 ZL.IotHub。
 
-| 包 | 状态 | ZL.IotHub 内化位置 | 命名空间 |
-|---|---|---|---|
-| `ZL.Tag` | ✅ 继续发布 | `ZL.IotHub/Tag/` | `ZL.Tag`（不变，兼容） |
-| `ZL.PFLite` (Common/Net) | ✅ 继续发布 | `ZL.IotHub/Utils/` | `ZL.IotHub` / `ZL.IotHub.Utils` |
-| `ZL.PFLite` (Auth/其他) | ✅ 继续发布 | 未内化，仍在 ZL.PFLite.dll | `ZL.PFLite.Auth` 等 |
+**ZL.Tag 包在 iot-sdk 中不再直接引用**。Tag 模型类型仍保持 `ZL.Tag` 命名空间，但实际由 ZL.IotHub 承载，避免同时引用 ZL.Tag.dll 与 ZL.IotHub.dll 时产生 CS0433 类型歧义。
+
+| 包 | 状态 | 引用规则 |
+|---|---|---|
+| `ZL.PFLite` | ✅ 继续独立发布 | 基础工具/DTO/Auth 等能力继续从 ZL.PFLite 获取 |
+| `ZL.IotHub` | ✅ IoT 驱动核心包 | 依赖 ZL.PFLite，并承载 `ZL.Tag` 命名空间的 Tag 模型 |
+| `ZL.Tag` | ❌ iot-sdk 不再引用 | 旧包不应与 ZL.IotHub 同时出现在 iot-sdk 编译依赖中 |
 
 **引用规则**：
 
 ```
-✅ iot-sdk / UseThink.Iot 等能用 ZL.IotHub 的项目：
-  只引用 ZL.IotHub，不引用 ZL.PFLite/ZL.Tag
-  （ZL.IotHub 已包含 ZL.Tag 命名空间和 PFLite 的 Common/Net 类型）
-  例外：需要 ZL.PFLite.Auth 等未内化类型时，同时引用 ZL.PFLite
+✅ 非 IoT/设备采集项目：
+  只引用 ZL.PFLite
 
-✅ 外部项目（不需要 ZL.IotHub 驱动能力）：
-  可以单独引用 ZL.PFLite 或 ZL.Tag
+✅ iot-sdk / UseThink.Iot 等设备采集项目：
+  引用 ZL.IotHub
+  需要 ZL.PFLite.Auth、LogKit、DicKit、pms_public 等基础能力时继续引用 ZL.PFLite
 
-❌ 禁止：同时引用 ZL.IotHub + ZL.Tag（CS0433 歧义）
-❌ 禁止：同时引用 ZL.IotHub + ZL.PFLite 且使用了已内化类型（CS0433 歧义）
+✅ 使用 TagItem / DeviceConfig / TagKit 的项目：
+  using ZL.Tag; 保持不变
+  包引用使用 ZL.IotHub，不再使用 ZL.Tag
+
+❌ 禁止：iot-sdk 项目直接引用 ZL.Tag 包
+❌ 禁止：将 ZL.PFLite 通用类型复制进 ZL.IotHub 形成双类型来源
 ```
 
 ---
