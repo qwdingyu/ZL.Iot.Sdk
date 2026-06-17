@@ -21,6 +21,8 @@ obfuscated/
 # AI tools
 __pycache__/
 *.pyc
+.omx/
+.dotnet-tools/
 
 # OS
 Thumbs.db

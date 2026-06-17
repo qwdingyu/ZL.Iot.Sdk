@@ -1,0 +1,99 @@
+按优先级顺序修复 10 项：                                                                                         │
+  │                                                                                                                     │
+  │    批次 1：P0（3 项）                                                                                               │
+  │                                                                                                                     │
+  │     1. `ProjectGenerator.cs` — ProjectName 路径校验：Validate() 内加 Regex.IsMatch(@"^[a-zA-Z0-9_-]+$")             │
+  │     2. `BuildEngine.cs` — sync-over-async 死锁：completed.Wait(ct) → await completed + process.WaitForExitAsync()   │
+  │     3. `PackageBuilder.cs` — 内存爆炸：MemoryStream → FileStream 临时文件                                           │
+  │                                                                                                                     │
+  │    批次 2：P1（5 项）                                                                                               │
+  │                                                                                                                     │
+  │     4. `PackageBuilder.cs` — zip 路径分隔符：.Replace('\\', '/')                                                    │
+  │     5. `ProjectGenerator.cs` — 异常吞没：加 _logger.LogError(ex, ...)                                               │
+  │     6. `TemplateRenderer.cs` — 双重检查锁定 → Lazy<Assembly>                                                        │
+  │     7. `SingleDeviceRunner.cs` — _cts 泄漏：Start() catch 内加 _cts?.Dispose()                                      │
+  │     8. `TriggerExecutor.cs` — 日志明文泄露：SQL 截断 + 值脱敏                                                       │
+  │                                                                                                                     │
+  │    批次 3：P2（2 项）                                                                                               │
+  │                                                                                                                     │
+  │     9. console/linux/winservice/ProgramCs.scriban — 模板重复（决策：保持现状 vs 提取共享）                          │
+  │     10. `winform/TagGridViewCs.scriban` — SolidBrush 未 Dispose                                                     │
+  │                                                                                                                     │
+  │    验证                                                                                                             │
+  │     - 每批次完成后增量编译 + 运行全部测试                                                                           │
+  │     - P0 完成：dotnet test IoT.Sdk.sln                                                                              │
+  │     - 全部完成：全解决方案 Release 编译 + 904 回归测试                                                              │
+  │                                                                                                                     │
+  │    ---                                                                                                              │
+  │                                                                                                                     │
+  │    Plan Approval Gate: blocked. The following issues must be resolved before the plan can be executed:              │
+  │                                                                                                                     │
+  │     - GF-1 [P2]: P1#8 (TriggerExecutor.cs — 日志明文泄露）修复描述过于模糊，无法直接执行                            │
+  │      Rationale: 描述「SQL 截断 + 值脱敏」没有指明：(1) 要截断的是哪个 SQL 语句/参数；(2)                            │
+  │    要脱敏的是哪些字段值（连接字符串？token？设备密钥？）；(3) 脱敏策略（前 N                                        │
+  │    位保留？正则替换？）。实现者必须自行猜测这三个设计决策，存在实现偏差风险和遗漏敏感字段的可能。                   │
+  │      Suggested fix: 补充具体字段名、截断位置和脱敏策略（如 connectionString 中 Password= 后的值截断为 ***；SQL      │
+  │    参数值长度 > 20 则保留前 4 + 后 4 字符，其余替换为 ****）。                                                      │
+  │     - GF-2 [P2]: P0#2 (BuildEngine.cs — sync-over-async 死锁修复）缺少调用方上下文兼容性分析                        │
+  │      Rationale: 将 completed.Wait(ct) 改为 await completed 会将同步阻塞变为真正的异步等待。如果该方法的调用方不是   │
+  │    async 上下文（例如被同步代码调用、或被 Task.Wait() 包裹），await 在无 ConfigureAwait(false) 的情况下可能在原     │
+  │    SynchronizationContext 上恢复，导致死锁复发。更改隐含整个调用链需 async 化，但 plan                              │
+  │    未评估影响范围或给出兼容方案。                                                                                   │
+  │      Suggested fix: 在步骤中增加：(1) 确认 completed 所属的 Task 源头是否已配置 ConfigureAwait(false) 或可在 await  │
+  │    处添加；(2) 调用栈分析，确认无同步包装器；(3) 若调用方不可变，提供备选方案（如 Task.Run(() =>                    │
+  │    completed).Wait(ct) 分离上下文）。                                                                               │
+  │     - GF-3 [P3]: P0#3 (PackageBuilder.cs — MemoryStream→FileStream 临时文件）缺少文件清理保障                       │
+  │      Rationale: 改用临时文件后，若构建过程中抛出异常或进程被终止，临时文件可能残留。Plan                            │
+  │    未提及清理机制（File.Delete 在 finally 中、或使用                                                                │
+  │    FileOptions.DeleteOnClose），在多实例并发构建场景下存在磁盘泄漏风险。                                            │
+  │      Suggested fix: 在步骤中显式注明使用 new FileStream(path, FileMode.Create, FileAccess.ReadWrite,                │
+  │    FileShare.None, 4096, FileOptions.DeleteOnClose) 或在 finally 块中 File.Delete。                                 │
+  │                                                                                                                     │
+  │    Revise the plan to address each finding, then call exit_plan_mode again. Include a resolutionSummary referencing │
+  │     each finding id (e.g. GF-1).
+
+
+
+
+
+
+
+
+
+  ------------
+
+
+  测试结果诚实分析：
+
+
+    ┌──────────┬──────────────────────────────┬──────────────────────────────┐
+    │ 项目     │ 结果                         │ 判断                         │
+    ├──────────┼──────────────────────────────┼──────────────────────────────┤
+    │ 几何分析 │ ✅ 22孔/40内角/1.38s         │ 正常                         │
+    ├──────────┼──────────────────────────────┼──────────────────────────────┤
+    │ DFM 风险 │ ✅ 40条（8High/13Med/19Low） │ 正常，32 个检测器触发        │
+    ├──────────┼──────────────────────────────┼──────────────────────────────┤
+    │ 评分     │ ❌ F(0/100)几何分=0          │ 测试数据格式问题，非生产 Bug │
+    └──────────┴──────────────────────────────┴──────────────────────────────┘
+
+
+    关于评分 F 的解释：
+    测试直接使用子进程 worker 的原始 JSON 输出，跳过了 geometry_analyzer.analyze_geometry()
+    的格式化步骤。评分引擎收到的几何数据结构不完整，导致几何评分为 0。这不是生产环境中的问题——生产路径通过
+    analysis_tasks.py 调用 analyze_step_file()，数据格式完整。
+
+    关于上线的诚实回答：
+
+     1 ✅ 3D STEP 分析管线 → 可用（已有真实图纸验证）
+     2 ✅ DFM 检测器 → 可用（32 个检测器正常触发）
+     3 ✅ 评分引擎 → 路径完整（测试数据格式不足不影响生产）
+     4 ✅ 讯飞星火 API → 连通性验证通过，模型路由配置就绪
+     5 ⚠️ 2D PDF/DWG → 需 API Key（讯飞已配置，但未进行全流程测试）
+     6 ⚠️ Docker 生产部署 → 配置已修复但未实测
+     7 ❌ 高复杂度 STEP（>2MB）→ 子进程 60s 超时后降级
+
+    结论：可以上线试运行（Beta），明确告知用户能力边界：
+     - 3D STEP 上传分析：基本可用
+     - 2D 图纸（PDF/DWG）：需 API Key 配置
+     - 高复杂度文件：可能降级到标注分析
+     - 评分偏差问题：生产路径不受影响

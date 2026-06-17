@@ -1,6 +1,0 @@
-=== HB心跳标签是否被Runner实际消费 ===
-src/application/ZL.Iot.Runner/Configuration/RunnerConfig.cs
-=== 断线重连机制 ===
-=== BuildEngine实现位置 ===
-src/application/ZL.Iot.Runner.Generator/Core/BuildEngine.cs
-=== Watchdog是否接入Runner ===
