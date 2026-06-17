@@ -138,9 +138,7 @@ iot-sdk/
 │   │   └── ZL.EdgeService/                   # [旧架构] 边缘服务 (netstandard2.1)
 │   │
 │   ├── app/                                  # 入口应用
-│   │   ├── ZL.Iot.Runner.Cli/                # 开发期 CLI 入口
-│   │   └── ZL.Iot.Runner.GeneratorCli/       # Generator HTTP 服务 + CLI
-│   │       └── HttpServer/
+│   │   └── ZL.Iot.Runner.Cli/                # Runner/Generator 统一 CLI + HTTP 服务入口
 │   │
 │   ├── domain/                               # 领域层
 │   ├── foundation/                           # 基础层

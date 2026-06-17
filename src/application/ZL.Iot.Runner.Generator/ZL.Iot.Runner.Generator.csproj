@@ -10,9 +10,9 @@
         <PackageId>ZL.Iot.Runner.Generator</PackageId>
     </PropertyGroup>
 
-    <!-- 依赖 Runner 核心库（用于读取 RunnerConfig 模型） -->
+    <!-- 仓库内部依赖使用源码引用，避免开发期 NuGet 版本漂移和同名程序集冲突 -->
     <ItemGroup>
-        <PackageReference Include="ZL.Iot.Runner" />
+        <ProjectReference Include="..\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
     </ItemGroup>
 
     <!-- Scriban 模板引擎（版本由 Directory.Packages.props 管理） -->
@@ -25,9 +25,9 @@
         <InternalsVisibleTo Include="ZL.Iot.Runner.Generator.Tests" />
     </ItemGroup>
 
-    <!-- 模板项目作为独立 NuGet 包分发，Generator 运行时从 lib/net8.0/ 目录下加载 -->
+    <!-- 模板项目作为独立程序集分发，Generator 运行时从输出目录加载 -->
     <ItemGroup>
-        <PackageReference Include="ZL.Iot.Runner.Templates" />
+        <ProjectReference Include="..\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
     </ItemGroup>
 
 </Project>

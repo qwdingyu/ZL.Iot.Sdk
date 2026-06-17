@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -23,8 +23,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- 核心类库 -->
-        <PackageReference Include="ZL.Iot.Runner" />
+        <!-- 仓库内部依赖使用源码引用，避免开发期 NuGet 版本漂移 -->
+        <ProjectReference Include="..\..\application\ZL.Iot.Runner\ZL.Iot.Runner.csproj" />
+        <ProjectReference Include="..\..\application\ZL.Iot.Runner.Generator\ZL.Iot.Runner.Generator.csproj" />
+        <ProjectReference Include="..\..\application\ZL.Iot.Runner.Templates\ZL.Iot.Runner.Templates.csproj" />
     </ItemGroup>
 
 </Project>

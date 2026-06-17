@@ -102,12 +102,46 @@ public class JobSchedulerTests : IDisposable
     /// <summary>等待 worker 调用 mock generator，确保 _generatorTcs 已更新为当前任务</summary>
     private void WaitGeneratorCalled()
     {
-        _generatorCalledTcs = new TaskCompletionSource<bool>();
+        _generatorCalledTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (Volatile.Read(ref _generatorTcs) is not null)
+        {
+            return;
+        }
+
         _generatorCalledTcs.Task.Wait(TimeSpan.FromSeconds(10));
     }
 
-    /// <summary>异步版本：通过轮询 job 状态判断 worker 是否已开始处理</summary>
+    /// <summary>异步版本：等待 mock generator 真正被调用，避免 Running 状态与 mock 初始化之间的竞态</summary>
     private async Task WaitGeneratorCalledAsync(GenerateJob job)
+    {
+        _generatorCalledTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (Volatile.Read(ref _generatorTcs) is not null)
+            {
+                return;
+            }
+
+            var current = _scheduler?.GetJob(job.Id);
+            if (current is null)
+                throw new InvalidOperationException($"Job {job.Id} not found");
+
+            if (current.Status is JobStatus.Succeeded or JobStatus.Failed or JobStatus.TimedOut or JobStatus.Cancelled)
+                return;
+
+            if (_generatorCalledTcs.Task.IsCompletedSuccessfully)
+            {
+                return;
+            }
+
+            await Task.Delay(20);
+        }
+        throw new TimeoutException($"Worker did not start processing job {job.Id} within 10 seconds (status={_scheduler!.GetJob(job.Id)?.Status})");
+    }
+
+    /// <summary>等待任务进入终态，避免用固定延迟判断异步 worker 的处理结果。</summary>
+    private async Task<GenerateJob> WaitJobTerminalAsync(GenerateJob job)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
         while (DateTime.UtcNow < deadline)
@@ -115,16 +149,14 @@ public class JobSchedulerTests : IDisposable
             var current = _scheduler?.GetJob(job.Id);
             if (current is null)
                 throw new InvalidOperationException($"Job {job.Id} not found");
-            // Running 表示 worker 正在处理；Succeeded/Failed 表示处理极快已经完成
-            if (current.Status == JobStatus.Running ||
-                current.Status == JobStatus.Succeeded ||
-                current.Status == JobStatus.Failed ||
-                current.Status == JobStatus.TimedOut ||
-                current.Status == JobStatus.Cancelled)
-                return;
+
+            if (current.Status is JobStatus.Succeeded or JobStatus.Failed or JobStatus.TimedOut or JobStatus.Cancelled)
+                return current;
+
             await Task.Delay(20);
         }
-        throw new TimeoutException($"Worker did not start processing job {job.Id} within 10 seconds (status={_scheduler!.GetJob(job.Id)?.Status})");
+
+        throw new TimeoutException($"Job {job.Id} did not reach terminal state within 10 seconds (status={_scheduler!.GetJob(job.Id)?.Status})");
     }
 
     public void Dispose()
@@ -416,9 +448,8 @@ public class JobSchedulerTests : IDisposable
         await WaitGeneratorCalledAsync(job!);
         _generatorTcs?.TrySetResult(GenerateResult.Ok(
             new byte[] { 1, 2, 3 }, "test.zip", TimeSpan.Zero));
-        await Task.Delay(500); // 等 worker 处理完
 
-        var updated = _scheduler.GetJob(job.Id!);
+        var updated = await WaitJobTerminalAsync(job);
         Assert.NotNull(updated);
         Assert.Equal(JobStatus.Succeeded, updated.Status);
         Assert.NotNull(updated.ResultBytes);
@@ -435,9 +466,8 @@ public class JobSchedulerTests : IDisposable
 
         await WaitGeneratorCalledAsync(job!);
         _generatorTcs?.TrySetResult(GenerateResult.Fail("mock error", TimeSpan.Zero));
-        await Task.Delay(500);
 
-        var updated = _scheduler.GetJob(job.Id!);
+        var updated = await WaitJobTerminalAsync(job);
         Assert.NotNull(updated);
         Assert.Equal(JobStatus.Failed, updated.Status);
         Assert.Contains("mock error", updated.ErrorMessage);

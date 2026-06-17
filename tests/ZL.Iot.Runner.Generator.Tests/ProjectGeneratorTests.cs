@@ -149,7 +149,7 @@ public class ProjectGeneratorTests
 
         Assert.Contains("<AssemblyName>TestRunner</AssemblyName>", csprojContent);
         Assert.Contains("<Version>1.0.0</Version>", csprojContent);
-        Assert.Contains("ZL.Iot.Runner.Lib", csprojContent);
+        Assert.Contains("ZL.Iot.Runner", csprojContent);
         Assert.Contains("NLog.Extensions.Logging", csprojContent);
         Assert.Contains("PublishTrimmed", csprojContent);
         Assert.DoesNotContain("{{ project_name }}", csprojContent);
