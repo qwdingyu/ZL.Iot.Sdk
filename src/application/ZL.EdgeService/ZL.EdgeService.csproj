@@ -29,11 +29,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="ZL.Dao.Edge" />
-        <PackageReference Include="ZL.Biz.Execute" />
-        <PackageReference Include="ZL.Dao.IotDevice" />
-        <PackageReference Include="ZL.Iot.Interface" />
-        <PackageReference Include="ZL.DB.Acc" />
+        <ProjectReference Include="../../domain/ZL.Dao.Edge/ZL.Dao.Edge.csproj" />
+        <ProjectReference Include="../../domain/ZL.Biz.Execute/ZL.Biz.Execute.csproj" />
+        <ProjectReference Include="../../domain/ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj" />
+        <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
+        <ProjectReference Include="../../platform/ZL.DB.Acc/ZL.DB.Acc.csproj" />
         <PackageReference Include="ZL.IotHub" />
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>

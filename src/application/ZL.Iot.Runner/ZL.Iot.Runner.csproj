@@ -29,7 +29,6 @@
              会引用本地源码的 Version（ZL.IotHub.csproj 无 Version 标签），
              导致 nuspec 写入不存在的 1.0.4 版本，下游 restore 失败（NU1605）。 -->
         <!-- Development: ProjectReference picks ITriggerableDriver interface -->
-        <ProjectReference Include="../../../../ZL.PlcBase/ZL.IotHub/ZL.IotHub.csproj" />
         <PackageReference Include="ZL.IotHub" />
         <!-- PFLite（DeviceConfig/SharedTagValueCache 等基础工具） -->
         <PackageReference Include="ZL.PFLite" />

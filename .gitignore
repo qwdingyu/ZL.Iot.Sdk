@@ -23,6 +23,8 @@ __pycache__/
 *.pyc
 .omx/
 .dotnet-tools/
+.atomcode/
+.qwen/
 
 # OS
 Thumbs.db

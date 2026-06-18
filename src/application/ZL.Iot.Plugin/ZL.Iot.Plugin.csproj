@@ -16,9 +16,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="ZL.Iot.Interface" />
-        <PackageReference Include="ZL.Dao.IotDevice" />
-        <PackageReference Include="ZL.DB.Acc" />
+        <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
+        <ProjectReference Include="../../domain/ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj" />
+        <ProjectReference Include="../../platform/ZL.DB.Acc/ZL.DB.Acc.csproj" />
         <PackageReference Include="ZL.IotHub" />
     </ItemGroup>
 

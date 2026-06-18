@@ -44,19 +44,23 @@
 - 仓库内部编译时 ProjectReference 自动保证类型一致性，不会出现 CS0433 歧义
 - iot-sdk 内部 24 个项目依赖关系复杂，PackageReference 的传递依赖极易产生版本不一致
 
-### 12.2 对 ZL.PlcBase 的引用：ProjectReference（开发期）
+### 12.2 跨仓库：PackageReference + local-feed
 
-**iot-sdk 对 ZL.PlcBase 中的 ZL.IotHub 引用，开发期使用 `<ProjectReference>`**，指向本地源码路径。
+**iot-sdk 对 ZL.PlcBase 的引用属于跨仓库引用，必须使用 `<PackageReference>`**，通过 `/Users/dingyuwang/.nuget/local-feed` 或 nuget.org 还原。严禁在 iot-sdk 中直接 `ProjectReference` 到 `/Users/dingyuwang/0-X/ZL.PlcBase` 源码。
 
 ```
-✅ 允许（开发期）：
-  <ProjectReference Include="..\..\ZL.PlcBase\ZL.IotHub\ZL.IotHub.csproj" />
+✅ 允许（跨仓库）：
+  <PackageReference Include="ZL.IotHub" />
+  <PackageReference Include="ZL.PFLite" />
 
-❌ 禁止（开发期）：
-  <PackageReference Include="ZL.IotHub" />    ← 需要 pack 同步，易版本漂移
+❌ 禁止（跨仓库）：
+  <ProjectReference Include="..\..\..\..\ZL.PlcBase\ZL.IotHub\ZL.IotHub.csproj" />
 ```
 
-**调试好之后**，通过 `deploy-fast.sh` 将 ZL.PlcBase 打包到 local-feed，消费者（UseThink.Iot / tmom）从 local-feed 取包。
+**原因**：
+- 跨仓库 ProjectReference 会把多个仓库绑成一个编译图，消费者编译慢，问题边界不清晰
+- local-feed NuGet 保留包契约边界，同时能在本地快速联调
+- `deploy-fast.sh` 已经负责把 ZL.PlcBase 和 iot-sdk 统一打包到 local-feed
 
 ### 12.3 对外部第三方包：PackageReference
 
@@ -73,15 +77,14 @@
 | 场景 | 引用方式 | 原因 |
 |---|---|---|
 | iot-sdk 内部项目互引 | `<ProjectReference>` | 同 sln，改了即用，零版本漂移 |
-| iot-sdk → ZL.IotHub（开发期） | `<ProjectReference>` | 跨仓库但同机器，改了即用 |
-| iot-sdk → ZL.IotHub（发布期） | `<PackageReference>` | 打包时自动切换 |
+| iot-sdk → ZL.IotHub / ZL.PFLite | `<PackageReference>` | 跨仓库，保持包契约边界 |
 | iot-sdk → 第三方包 | `<PackageReference>` | CPM 统一版本 |
 | UseThink.Iot → ZL.IotHub | `<PackageReference>` | 跨仓库，编译快 |
 | UseThink.Iot → iot-sdk 包 | `<PackageReference>` | 跨仓库，编译快 |
 
-### 12.5 开发/发布双模式切换
+### 12.5 开发/发布统一模式
 
-**开发期**（ProjectReference，改了即用）：
+**仓库内部开发期**使用 ProjectReference，**跨仓库开发期和发布期**都使用 PackageReference。
 
 ```xml
 <!-- iot-sdk 内部的 csproj -->
@@ -89,14 +92,14 @@
   <!-- 内部项目 → ProjectReference -->
   <ProjectReference Include="..\..\platform\ZL.DB.Acc\ZL.DB.Acc.csproj" />
   <ProjectReference Include="..\..\platform\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
-  <!-- ZL.PlcBase → ProjectReference（开发期） -->
-  <ProjectReference Include="..\..\ZL.PlcBase\ZL.IotHub\ZL.IotHub.csproj" />
+  <!-- ZL.PlcBase → PackageReference（跨仓库） -->
+  <PackageReference Include="ZL.IotHub" />
   <!-- 第三方 → PackageReference -->
   <PackageReference Include="NLog" />
 </ItemGroup>
 ```
 
-**发布期**（`dotnet pack` 时 ProjectReference 自动转为 NuGet 依赖，无需手动改 csproj）。
+不要再使用“开发期 ProjectReference、发布期 PackageReference”的条件切换。该模式会制造本地可编译但打包后失败的版本漂移。
 
 ### 12.6 同步工作流
 
@@ -106,7 +109,7 @@
   （ProjectReference 保证内部一致性，无需 pack）
 
 同步到消费者：
-  deploy-fast.sh 2.2.2    ← pack → local-feed
+  /Users/dingyuwang/0-X/deploy/tools/deploy-fast.sh 2.2.2    ← pack → local-feed
   cd 消费者 && dotnet restore && dotnet build
 
 正式发布：
@@ -143,6 +146,22 @@
 ❌ 禁止：将 ZL.PFLite 通用类型复制进 ZL.IotHub 形成双类型来源
 ```
 
+### 12.8 引用边界门禁
+
+任何 agent 修改 `*.csproj`、`Directory.Packages.props`、`NuGet.config` 或 `pipeline.json` 后，必须运行：
+
+```bash
+python3 scripts/verify-reference-boundaries.py
+```
+
+检查消费者项目时运行：
+
+```bash
+python3 scripts/verify-reference-boundaries.py --root /Users/dingyuwang/0-X/UseThink.Iot/api --mode consumer
+```
+
+失败时必须先修复引用边界，禁止提交、打包或发布。完整规范见 `docs/依赖引用边界规范_20260618.md`。
+
 ---
 
 ## 技术红线
@@ -175,7 +194,7 @@
 ```
 1. 理解需求 → 对照 docs/ 中的架构文档确认设计
 2. 理解现有代码 → 找到最合适的扩展点
-3. 实现 → 遵循 ORM 优先原则 + ProjectReference 优先原则
+3. 实现 → 遵循 ORM 优先原则 + 引用边界规范
 4. 测试 → 写正式的可复用测试脚本
 5. 提交 → git add + git commit（中文）
 6. 文档 → 更新或新增 docs/ 中的文档
@@ -187,5 +206,6 @@
 - 架构设计：`docs/PROJECT_OVERVIEW.md`
 - 依赖关系：`docs/DEPENDENCY_GRAPH.md`
 - NuGet 管理：`docs/nuget-management.md`
+- 依赖引用边界：`docs/依赖引用边界规范_20260618.md`
 - 本地发布流程：`/Users/dingyuwang/0-X/deploy/tools/local-feed-workflow.md`
 - ZL.PlcBase 铁律：`/Users/dingyuwang/0-X/ZL.PlcBase/AGENTS.md`

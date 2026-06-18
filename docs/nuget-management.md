@@ -1,5 +1,8 @@
 # NuGet 包管理全局方案
 
+> **状态**: 本文保留为历史包管理说明。当前强制执行的引用边界规范以 `docs/依赖引用边界规范_20260618.md` 为准。
+> 如果本文与引用边界规范冲突，按引用边界规范执行。
+
 > **版本**: v1.0 | **最后更新**: 2026-06-07 | **适用范围**: iot-sdk 及所有下游消费者项目
 
 ---
@@ -33,7 +36,7 @@
 |------|------|
 | **单一配置源** | 所有包源定义在 `~/.nuget/NuGet/NuGet.Config`，项目级 config 不重复定义 |
 | **持久化** | 全局本地 feed 位于 `~/.nuget/local-feed/`（用户 home 目录），**不在 /tmp** |
-| **NuGet.org 优先** | 能发布的包全部上 NuGet.org，本地 feed 仅作为最后手段 |
+| **local-feed 优先** | 本地开发先命中 `/Users/dingyuwang/.nuget/local-feed`，没有同版本包时回退到 nuget.org |
 | **CPM 精确锁定** | 消费者使用 `Directory.Packages.props` 精确指定版本号，杜绝版本漂移 |
 | **无冗余 feed** | 删除所有项目级 `.nuget/local-feed/`，消除多份副本的不一致 |
 
@@ -49,15 +52,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
     <add key="local-feed" value="/Users/dingyuwang/.nuget/local-feed" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
   </packageSources>
 </configuration>
 ```
 
 **关键要求**：
 - 使用**绝对路径**（NuGet 不展开 `~` 符号）
-- `nuget.org` 必须排在 `local-feed` **之前**（优先从公网获取）
+- `local-feed` 必须排在 `nuget.org` **之前**（优先使用本地联调包）
 - 不要加 `<clear/>`（与 MSBuild 用户配置合并）
 
 ### 2.2 项目级 NuGet.config
@@ -161,7 +164,7 @@ dotnet restore
 
 | # | 做法 | 理由 |
 |---|------|------|
-| 1 | **优先发布到 NuGet.org** | 公网源持久可靠，任何机器都能恢复 |
+| 1 | **本地开发优先 local-feed，正式发布使用 NuGet.org** | 兼顾本地迭代速度和正式发布可重复性 |
 | 2 | **使用 CPM 精确版本** | 消费者 `Directory.Packages.props` 中写死版本号 |
 | 3 | **项目级 config 不重复定义源** | 避免多份配置不一致 |
 | 4 | **本地 feed 放 `~/.nuget/local-feed/`** | 持久化，不受系统重启/清理影响 |
