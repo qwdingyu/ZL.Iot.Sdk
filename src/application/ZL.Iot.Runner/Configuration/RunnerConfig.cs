@@ -147,7 +147,7 @@ namespace ZL.Iot.Runner.Configuration
 
         /// <summary>
         /// 协议类型，对应 HslProtocolRegistry 中注册的类型
-        /// 支持：SiemensS7 / SiemensS7200Smart / ModbusTcp / MitsubishiMC / OmronFinsTcp / BacnetIp /等
+        /// 支持 legacy 名称和标准协议 key，例如 SiemensS7 / ModbusTcp / modbus-tcp / siemens-s7 / melsec-mc。
         /// </summary>
         public string Protocol { get; set; } = "SiemensS7";
 
@@ -236,11 +236,11 @@ namespace ZL.Iot.Runner.Configuration
     /// - 1：值==1（bool 型 true）
     /// - 2：值==0（bool 型 false）
     /// - 3：值变化（任意变化）
-    /// - 4：值>Threshold
-    /// - 5：值<Threshold
-    /// - 6：值>=Threshold
-    /// - 7：值<=Threshold
-    /// - 8：值!=Threshold
+    /// - 4：值 &gt; Threshold
+    /// - 5：值 &lt; Threshold
+    /// - 6：值 &gt;= Threshold
+    /// - 7：值 &lt;= Threshold
+    /// - 8：值 != Threshold
     /// 
     /// ExeType 说明：
     /// - "S"：Select 模式，执行 SQL 并回填变量

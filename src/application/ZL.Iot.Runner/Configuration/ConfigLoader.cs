@@ -181,7 +181,10 @@ namespace ZL.Iot.Runner.Configuration
                 {
                     "SiemensS7", "SiemensS7200Smart", "ModbusTcp", "MitsubishiMC",
                     "OmronFinsTcp", "BacnetIp", "ModbusRtu", "MelsecA", "MelsecQnA",
-                    "OmronFinsSerial", "Bacnet", "KepwareOPC", "OPCUA"
+                    "OmronFinsSerial", "Bacnet", "KepwareOPC", "OPCUA",
+                    "siemens-s7", "modbus-tcp", "melsec-mc", "omron-fins-tcp",
+                    "beckhoff-ads", "modbus-rtu-over-tcp", "fatek", "allen-bradley",
+                    "inovance-tcp", "delta-tcp", "keyence-mc", "opcua"
                 };
                 if (!validProtocols.Contains(device.Protocol, StringComparer.OrdinalIgnoreCase))
                     throw new InvalidOperationException(

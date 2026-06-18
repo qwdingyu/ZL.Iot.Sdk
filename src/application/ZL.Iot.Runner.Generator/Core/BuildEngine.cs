@@ -7,6 +7,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 
 namespace ZL.Iot.Runner.Generator.Core;
 
@@ -98,6 +99,11 @@ public static class BuildEngine
     private const int FrameworkDependentTimeoutSeconds = 120;
 
     /// <summary>
+    /// restore 在首次下载 runtime pack 时可能超过 60 秒，尤其是 self-contained RID 发布。
+    /// </summary>
+    private const int RestoreTimeoutSeconds = 180;
+
+    /// <summary>
     /// 调用 dotnet publish 编译项目（兼容旧签名，同步）
     /// </summary>
     /// <param name="projectDir">项目根目录（包含 .csproj 的目录）</param>
@@ -134,14 +140,16 @@ public static class BuildEngine
             };
         }
 
+        EnsureNuGetConfig(projectDir);
+
         // 1) 先执行 dotnet restore，确保 NuGet 包可用
-        var restoreResult = await RunDotnetAsync(projectDir, csprojPath, "restore", "--nologo", ct: ct);
-        if (!restoreResult)
+        var restoreResult = await RunDotnetAsync(projectDir, csprojPath, "restore", "--nologo", RestoreTimeoutSeconds, ct);
+        if (!restoreResult.Success)
         {
             return new BuildResult
             {
                 Success = false,
-                Errors = new[] { "dotnet restore 失败，请检查 NuGet.config 和网络连接" }
+                Errors = new[] { $"dotnet restore 失败，请检查 NuGet.config 和网络连接。{restoreResult.Error}" }
             };
         }
 
@@ -367,6 +375,65 @@ public static class BuildEngine
     }
 
     /// <summary>
+    /// Generator 的 Binary 模式会在临时目录中发布独立项目；该目录通常没有仓库级 NuGet.config。
+    /// 写入最小 NuGet.config，确保本地 feed 中的 ZL.* 包能被恢复，同时保留 nuget.org 作为第三方包源。
+    /// </summary>
+    private static void EnsureNuGetConfig(string projectDir)
+    {
+        var targetConfig = Path.Combine(projectDir, "NuGet.config");
+        if (File.Exists(targetConfig))
+        {
+            return;
+        }
+
+        var nearestConfig = FindNearestNuGetConfig(Directory.GetCurrentDirectory());
+        if (!string.IsNullOrWhiteSpace(nearestConfig) && File.Exists(nearestConfig))
+        {
+            File.Copy(nearestConfig, targetConfig);
+            return;
+        }
+
+        var localFeed = Environment.GetEnvironmentVariable("LOCAL_FEED");
+        if (string.IsNullOrWhiteSpace(localFeed))
+        {
+            localFeed = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".nuget",
+                "local-feed");
+        }
+
+        var doc = new XDocument(
+            new XElement("configuration",
+                new XElement("packageSources",
+                    new XElement("clear"),
+                    new XElement("add",
+                        new XAttribute("key", "local-feed"),
+                        new XAttribute("value", localFeed)),
+                    new XElement("add",
+                        new XAttribute("key", "nuget.org"),
+                        new XAttribute("value", "https://api.nuget.org/v3/index.json"),
+                        new XAttribute("protocolVersion", "3")))));
+        doc.Save(targetConfig);
+    }
+
+    private static string? FindNearestNuGetConfig(string startDir)
+    {
+        var current = new DirectoryInfo(startDir);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "NuGet.config");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 截断字符串（保留前 N 个字符）
     /// </summary>
     private static string Truncate(this string s, int maxLen)
@@ -377,7 +444,13 @@ public static class BuildEngine
     /// <summary>
     /// 运行 dotnet 命令（用于 restore 等辅助操作）
     /// </summary>
-    private static async Task<bool> RunDotnetAsync(string workingDir, string projectPath, string command, string? extraArgs = null, CancellationToken ct = default)
+    private static async Task<DotnetCommandResult> RunDotnetAsync(
+        string workingDir,
+        string projectPath,
+        string command,
+        string? extraArgs = null,
+        int timeoutSeconds = 60,
+        CancellationToken ct = default)
     {
         var args = new List<string> { command, projectPath, "--nologo" };
         if (!string.IsNullOrEmpty(extraArgs))
@@ -400,7 +473,7 @@ public static class BuildEngine
         var outputTask = process.StandardOutput.ReadToEndAsync(ct);
         var errorTask = process.StandardError.ReadToEndAsync(ct);
 
-        var completed = await Task.WhenAny(Task.Run(() => process.WaitForExit(), ct), Task.Delay(TimeSpan.FromSeconds(60), ct));
+        var completed = await Task.WhenAny(Task.Run(() => process.WaitForExit(), ct), Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), ct));
         if (!process.HasExited)
         {
             process.Kill(true);
@@ -411,6 +484,17 @@ public static class BuildEngine
         try { await Task.WhenAll(outputTask, errorTask); } catch { /* 管道已关闭，忽略 */ }
 
         ct.ThrowIfCancellationRequested();
-        return process.ExitCode == 0;
+        var output = await outputTask;
+        var error = await errorTask;
+        if (process.ExitCode == 0)
+        {
+            return new DotnetCommandResult(true, string.Empty);
+        }
+
+        return new DotnetCommandResult(
+            false,
+            $"退出码 {process.ExitCode}；stdout: {output.Truncate(500)}；stderr: {error.Truncate(800)}");
     }
+
+    private readonly record struct DotnetCommandResult(bool Success, string Error);
 }

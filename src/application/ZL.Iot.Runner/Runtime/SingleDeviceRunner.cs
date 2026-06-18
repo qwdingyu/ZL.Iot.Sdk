@@ -72,6 +72,10 @@ namespace ZL.Iot.Runner.Runtime
         /// <param name="driver">DeviceRoot 驱动实例（由 DriverFactory.Create 创建）</param>
         /// <param name="executor">触发执行器</param>
         /// <param name="logger">日志记录器</param>
+        /// <param name="protocol">设备协议名称，用于运行状态展示</param>
+        /// <param name="ip">设备 IP 地址，用于运行状态展示</param>
+        /// <param name="port">设备端口，用于运行状态展示</param>
+        /// <param name="storageCoordinator">历史数据写入协调器</param>
         public SingleDeviceRunner(
             string deviceCode,
             DeviceRoot driver,
@@ -368,7 +372,7 @@ namespace ZL.Iot.Runner.Runtime
         }
 
         /// <summary>
-        /// 将 TagProfile 列表转换为 ConcurrentDictionary<string, TagItem>
+        /// 将 TagProfile 列表转换为 ConcurrentDictionary&lt;string, TagItem&gt;
         /// </summary>
         private static System.Collections.Concurrent.ConcurrentDictionary<string, TagItem> ProfileTagsToDict(
             System.Collections.Generic.List<TagProfile> tags)
