@@ -125,7 +125,7 @@
 | 包 | 状态 | 引用规则 |
 |---|---|---|
 | `ZL.PFLite` | ✅ 继续独立发布 | 基础工具/DTO/Auth 等能力继续从 ZL.PFLite 获取 |
-| `ZL.IotHub` | ✅ IoT 驱动核心包 | 依赖 ZL.PFLite，并承载 `ZL.Tag` 命名空间的 Tag 模型 |
+| `ZL.IotHub` | ✅ IoT 驱动核心包 | 承载 `ZL.Tag` 命名空间的 Tag 模型；不承载 `ZL.PFLite.*` 类型 |
 | `ZL.Tag` | ❌ iot-sdk 不再引用 | 旧包不应与 ZL.IotHub 同时出现在 iot-sdk 编译依赖中 |
 
 **引用规则**：
@@ -143,6 +143,7 @@
   包引用使用 ZL.IotHub，不再使用 ZL.Tag
 
 ❌ 禁止：iot-sdk 项目直接引用 ZL.Tag 包
+❌ 禁止：在 ZL.IotHub 中定义 `namespace ZL.PFLite...`
 ❌ 禁止：将 ZL.PFLite 通用类型复制进 ZL.IotHub 形成双类型来源
 ```
 
