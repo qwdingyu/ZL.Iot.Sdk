@@ -7,11 +7,11 @@
     <Version>{{ version }}</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- 自包含发布配置（与 Console 模板一致，仅 RID 不同） -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- IoT 驱动程序集需要目录发布，避免单文件模式遗漏动态加载依赖 -->
+    <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <RuntimeIdentifier>{{ runtime_identifier }}</RuntimeIdentifier>
     <!-- IL Trimmer 会破坏 Modbus/MQTT 等重度反射库，IoT 场景禁用 -->
     <PublishTrimmed>false</PublishTrimmed>
@@ -20,12 +20,14 @@
   <ItemGroup>
     <!-- Runner 核心库（NuGet 引用，用户无需 clone monorepo） -->
     <PackageReference Include="ZL.Iot.Runner" Version="{{ runner_version }}" />
+    <!-- 驱动核心库：DriverFactory 运行时需要直接进入发布依赖图 -->
+    <PackageReference Include="ZL.IotHub" Version="{{ runner_version }}" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- 配置文件需标记为 Content 以便单文件发布时正确输出 -->
+    <!-- 配置文件需标记为 Content 以便目录发布时正确输出 -->
     <Content Include="runner.config.{{ format }}">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

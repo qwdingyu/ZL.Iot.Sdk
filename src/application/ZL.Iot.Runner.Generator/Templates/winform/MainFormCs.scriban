@@ -8,6 +8,7 @@ using NLog.Extensions.Logging;
 using ZL.Iot.Runner;
 using ZL.Iot.Runner.Configuration;
 using ZL.Iot.Runner.Runtime;
+using ZL.IotHub.Core;
 
 namespace {{ namespace }};
 
@@ -106,6 +107,8 @@ public partial class MainForm : Form
     {
         try
         {
+            EnsureDriverAssemblyLoaded();
+
             var configPath = "./runner.config.{{ format }}";
             var config = ConfigLoader.Load(configPath);
 
@@ -124,6 +127,12 @@ public partial class MainForm : Form
         {
             AppendLog($"[ERROR] 配置加载失败: {ex.Message}");
         }
+    }
+
+    private static void EnsureDriverAssemblyLoaded()
+    {
+        // DriverFactory 由 Runner 运行时动态使用；显式触碰可确保发布产物保留 ZL.IotHub。
+        _ = typeof(DriverFactory).Assembly.FullName;
     }
 
     private void RefreshTimer_Tick(object? sender, EventArgs e)

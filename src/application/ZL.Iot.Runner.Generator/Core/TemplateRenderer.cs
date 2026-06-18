@@ -6,6 +6,7 @@
 
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using Scriban;
 using Scriban.Runtime;
 using ZL.Iot.Runner.Generator.Core.Models;
@@ -102,7 +103,7 @@ public static class TemplateRenderer
         globals.Add("project_name", request.ProjectName);
         globals.Add("namespace", GetNamespace(request));
         globals.Add("version", request.Version);
-        globals.Add("runner_version", GetRunnerVersion());
+        globals.Add("runner_version", GetPackageVersion());
         globals.Add("generated_at", DateTime.UtcNow.ToString("O"));
         globals.Add("platform", GetPlatformDir(request.Platform));
         globals.Add("runtime_identifier", request.RuntimeIdentifier ?? "win-x64");
@@ -138,28 +139,136 @@ public static class TemplateRenderer
     }
 
     /// <summary>
-    /// 获取 Runner 当前版本号（从程序集元数据读取）
+    /// 获取生成项目需要引用的 NuGet 包版本。
     /// </summary>
-    private static string GetRunnerVersion()
+    internal static string GetPackageVersion()
     {
+        var overrideVersion = Environment.GetEnvironmentVariable("ZL_IOT_RUNNER_PACKAGE_VERSION");
+        if (IsStablePackageVersion(overrideVersion))
+        {
+            return overrideVersion!;
+        }
+
+        var depsVersion = TryGetPackageVersionFromDeps("ZL.Iot.Runner.Generator")
+            ?? TryGetPackageVersionFromDeps("ZL.Iot.Runner");
+        if (IsStablePackageVersion(depsVersion))
+        {
+            return depsVersion!;
+        }
+
         try
         {
-            // 优先从 ZL.Iot.Runner 程序集读取 InformationalVersion（CI 构建时注入）
-            var runnerAssembly = typeof(ZL.Iot.Runner.Configuration.RunnerConfig).Assembly;
-            var attr = runnerAssembly.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
-            if (attr?.InformationalVersion != null)
-                return attr.InformationalVersion.Split('+')[0]; // 去掉 CI 元数据后缀
+            // 开发期 fallback：本地源码引用时没有 NuGet 包上下文，只能读取程序集信息。
+            var generatorAssembly = typeof(TemplateRenderer).Assembly;
+            var attr = generatorAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            var informationalVersion = attr?.InformationalVersion?.Split('+')[0];
+            if (IsStablePackageVersion(informationalVersion))
+            {
+                return informationalVersion!;
+            }
 
-            // 退而求其次：读取 AssemblyVersion
-            var version = runnerAssembly.GetName().Version;
-            if (version != null)
-                return version.ToString();
+            var version = generatorAssembly.GetName().Version?.ToString();
+            if (IsStablePackageVersion(version))
+            {
+                return version!;
+            }
         }
         catch
         {
-            // 所有读取失败时返回默认值
+            // 所有读取失败时返回默认值。
         }
+
         return "1.0.0";
+    }
+
+    private static string? TryGetPackageVersionFromDeps(string packageName)
+    {
+        foreach (var path in GetDepsFileCandidates())
+        {
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var stream = File.OpenRead(path);
+                using var document = JsonDocument.Parse(stream);
+                if (!document.RootElement.TryGetProperty("targets", out var targets))
+                {
+                    continue;
+                }
+
+                foreach (var target in targets.EnumerateObject())
+                {
+                    foreach (var library in target.Value.EnumerateObject())
+                    {
+                        var separatorIndex = library.Name.LastIndexOf('/');
+                        if (separatorIndex <= 0)
+                        {
+                            continue;
+                        }
+
+                        var name = library.Name[..separatorIndex];
+                        if (!string.Equals(name, packageName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var version = library.Name[(separatorIndex + 1)..];
+                        if (IsStablePackageVersion(version))
+                        {
+                            return version;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // deps.json 只用于增强 NuGet 版本推断，读取失败时继续走 fallback。
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetDepsFileCandidates()
+    {
+        var depsFiles = AppContext.GetData("APP_CONTEXT_DEPS_FILES") as string;
+        if (!string.IsNullOrWhiteSpace(depsFiles))
+        {
+            foreach (var path in depsFiles.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                yield return path;
+            }
+        }
+
+        var entryLocation = Assembly.GetEntryAssembly()?.Location;
+        if (!string.IsNullOrWhiteSpace(entryLocation))
+        {
+            yield return Path.ChangeExtension(entryLocation, ".deps.json");
+        }
+
+        var entryName = Assembly.GetEntryAssembly()?.GetName().Name;
+        if (!string.IsNullOrWhiteSpace(entryName))
+        {
+            yield return Path.Combine(AppContext.BaseDirectory, $"{entryName}.deps.json");
+        }
+
+        if (!string.IsNullOrWhiteSpace(Environment.ProcessPath))
+        {
+            yield return Path.ChangeExtension(Environment.ProcessPath, ".deps.json");
+        }
+    }
+
+    private static bool IsStablePackageVersion(string? version)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return false;
+        }
+
+        return Version.TryParse(version, out _);
     }
 
     /// <summary>

@@ -176,15 +176,18 @@ public class ProjectGenerator : IProjectGenerator
         // 根据宿主类型构建发布选项
         var hostType = request.Platform == TargetPlatform.WinForm ? HostType.WinForms : HostType.Console;
         var isSelfContained = hostType == HostType.Console;
+        // IoT 驱动层包含运行时加载和反射路径。目录发布比单文件发布更可靠，
+        // 能确保 ZL.IotHub/HSL/OPC 等驱动程序集随包分发并可被 AssemblyLoadContext 解析。
+        var publishSingleFile = false;
 
         var buildOptions = new BuildPublishOptions
         {
             Configuration = "Release",
             RuntimeIdentifier = request.RuntimeIdentifier!,
             SelfContained = isSelfContained,
-            PublishSingleFile = isSelfContained,
-            IncludeNativeLibrariesForSelfExtract = isSelfContained,
-            EnableCompressionInSingleFile = isSelfContained,
+            PublishSingleFile = publishSingleFile,
+            IncludeNativeLibrariesForSelfExtract = false,
+            EnableCompressionInSingleFile = false,
             OutputDirectory = publishDir,
             HostType = hostType
         };

@@ -18,6 +18,8 @@
   <ItemGroup>
     <!-- Runner 核心库（NuGet 引用，用户无需 clone monorepo） -->
     <PackageReference Include="ZL.Iot.Runner" Version="{{ runner_version }}" />
+    <!-- 驱动核心库：DriverFactory 运行时需要直接进入发布依赖图 -->
+    <PackageReference Include="ZL.IotHub" Version="{{ runner_version }}" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
   </ItemGroup>

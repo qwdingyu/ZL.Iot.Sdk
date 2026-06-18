@@ -1,6 +1,7 @@
 using ZL.Iot.Runner;
 using ZL.Iot.Runner.Configuration;
 using ZL.Iot.Runner.Runtime;
+using ZL.IotHub.Core;
 using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
@@ -11,6 +12,8 @@ public static class Program
 {
     public static int Main(string[] args)
     {
+        EnsureDriverAssemblyLoaded();
+
         var configPath = args.Length > 0 ? args[0] : "./runner.config.{{ format }}";
         var config = ConfigLoader.Load(configPath);
 
@@ -36,5 +39,11 @@ public static class Program
         }
 
         return 0;
+    }
+
+    private static void EnsureDriverAssemblyLoaded()
+    {
+        // DriverFactory 由 Runner 运行时动态使用；显式触碰可确保目录发布携带 ZL.IotHub。
+        _ = typeof(DriverFactory).Assembly.FullName;
     }
 }

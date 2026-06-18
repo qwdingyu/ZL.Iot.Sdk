@@ -5,9 +5,12 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using ZL.IotHub.Hsl;
+using ZL.IotHub.Native;
 
 namespace ZL.Iot.Runner.Configuration
 {
@@ -33,6 +36,8 @@ namespace ZL.Iot.Runner.Configuration
             WriteIndented = false,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
+
+        private static readonly Lazy<IReadOnlyCollection<string>> SupportedProtocols = new(BuildSupportedProtocols);
 
         /// <summary>
         /// 从文件路径自动识别格式加载 RunnerConfig
@@ -176,16 +181,7 @@ namespace ZL.Iot.Runner.Configuration
                     throw new InvalidOperationException($"配置验证失败：第 {i + 1} 个设备的 Code 不能为空");
                 if (string.IsNullOrWhiteSpace(device.Protocol))
                     throw new InvalidOperationException($"配置验证失败：设备 [{device.Code}] 的 Protocol 不能为空");
-                // 协议白名单校验
-                var validProtocols = new[]
-                {
-                    "SiemensS7", "SiemensS7200Smart", "ModbusTcp", "MitsubishiMC",
-                    "OmronFinsTcp", "BacnetIp", "ModbusRtu", "MelsecA", "MelsecQnA",
-                    "OmronFinsSerial", "Bacnet", "KepwareOPC", "OPCUA",
-                    "siemens-s7", "modbus-tcp", "melsec-mc", "omron-fins-tcp",
-                    "beckhoff-ads", "modbus-rtu-over-tcp", "fatek", "allen-bradley",
-                    "inovance-tcp", "delta-tcp", "keyence-mc", "opcua"
-                };
+                var validProtocols = SupportedProtocols.Value;
                 if (!validProtocols.Contains(device.Protocol, StringComparer.OrdinalIgnoreCase))
                     throw new InvalidOperationException(
                         $"配置验证失败：设备 [{device.Code}] 的 Protocol [{device.Protocol}] 不在支持的协议列表中。" +
@@ -212,6 +208,47 @@ namespace ZL.Iot.Runner.Configuration
                             $"配置验证失败：设备 [{device.Code}] 执行器 [{exe.BizCode}] 引用的 TagId [{exe.TagId}] 不存在或未启用");
                 }
             }
+        }
+
+        private static IReadOnlyCollection<string> BuildSupportedProtocols()
+        {
+            var protocols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var descriptor in NativeProtocolRegistry.All)
+            {
+                protocols.Add(descriptor.Key);
+                foreach (var alias in descriptor.Aliases)
+                {
+                    protocols.Add(alias);
+                }
+            }
+
+            foreach (var descriptor in HslProtocolRegistry.All)
+            {
+                protocols.Add(descriptor.Key);
+                foreach (var alias in descriptor.Aliases)
+                {
+                    protocols.Add(alias);
+                }
+            }
+
+            // 兼容早期 RunnerConfig / TMom 配置中的历史协议名。新配置应优先使用 IotHub registry 中的标准 key。
+            string[] legacyAliases =
+            {
+                "SiemensS7", "SiemensS7200Smart", "ModbusTcp", "MitsubishiMC",
+                "OmronFinsTcp", "BacnetIp", "ModbusRtu", "MelsecA", "MelsecQnA",
+                "OmronFinsSerial", "Bacnet", "KepwareOPC", "OPCUA"
+            };
+
+            foreach (var alias in legacyAliases)
+            {
+                protocols.Add(alias);
+            }
+
+            return protocols
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
     }
 }

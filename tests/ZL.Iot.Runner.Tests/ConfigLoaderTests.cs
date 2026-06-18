@@ -291,6 +291,35 @@ namespace ZL.Iot.Runner.Tests
         }
 
         [Fact]
+        public void LoadFromJson_StandardIotHubProtocolKey_ReturnsRunnerConfig()
+        {
+            var json = """
+            {
+              "runner": { "name": "Test" },
+              "devices": [{ "code": "p1", "protocol": "modbus-tcp", "ip": "127.0.0.1", "port": 502, "tags": [], "executors": [] }]
+            }
+            """;
+
+            var config = ConfigLoader.LoadFromJson(json);
+
+            Assert.Equal("modbus-tcp", config.Devices[0].Protocol);
+        }
+
+        [Fact]
+        public void LoadFromJson_UnknownProtocol_ThrowsInvalidOperationException()
+        {
+            var json = """
+            {
+              "runner": { "name": "Test" },
+              "devices": [{ "code": "p1", "protocol": "not-a-protocol", "ip": "127.0.0.1", "port": 502, "tags": [], "executors": [] }]
+            }
+            """;
+
+            var ex = Assert.Throws<InvalidOperationException>(() => ConfigLoader.LoadFromJson(json));
+            Assert.Contains("不在支持的协议列表中", ex.Message);
+        }
+
+        [Fact]
         public void LoadFromJson_DuplicateTagIds_ThrowsInvalidOperationException()
         {
             var json = """

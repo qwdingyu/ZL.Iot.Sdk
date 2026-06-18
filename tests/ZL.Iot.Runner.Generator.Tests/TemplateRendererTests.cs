@@ -136,6 +136,28 @@ public class TemplateRendererTests
     }
 
     [Fact]
+    public void Render_Csproj_UsesResolvedPackageVersionForRunnerAndIotHub()
+    {
+        var previous = Environment.GetEnvironmentVariable("ZL_IOT_RUNNER_PACKAGE_VERSION");
+        Environment.SetEnvironmentVariable("ZL_IOT_RUNNER_PACKAGE_VERSION", "9.8.7");
+
+        try
+        {
+            var template = TemplateRenderer.ReadTemplate(TargetPlatform.Console, "MyApp.csproj.scriban")!;
+            var request = CreateRenderRequest();
+            var rendered = TemplateRenderer.Render(template, request);
+
+            Assert.Contains("<PackageReference Include=\"ZL.Iot.Runner\" Version=\"9.8.7\" />", rendered);
+            Assert.Contains("<PackageReference Include=\"ZL.IotHub\" Version=\"9.8.7\" />", rendered);
+            Assert.DoesNotContain("Version=\"1.0.0\"", rendered);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ZL_IOT_RUNNER_PACKAGE_VERSION", previous);
+        }
+    }
+
+    [Fact]
     public void Render_RespectsCustomRuntimeIdentifier()
     {
         var template = TemplateRenderer.ReadTemplate(TargetPlatform.Console, "MyApp.csproj.scriban")!;

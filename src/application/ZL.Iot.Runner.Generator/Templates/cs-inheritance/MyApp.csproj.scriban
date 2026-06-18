@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <!-- ZL.IotHub 驱动库（含 DriverFactory / SimpleDeviceBase） -->
-    <PackageReference Include="ZL.IotHub" Version="2.2.1" />
+    <PackageReference Include="ZL.IotHub" Version="{{ runner_version }}" />
     <!-- NLog 结构化日志 -->
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
   </ItemGroup>
