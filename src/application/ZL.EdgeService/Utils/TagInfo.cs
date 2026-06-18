@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using ZL.Dao.IotDevice;
-using ZL.Iot.Interface;
 
 namespace ZL.EdgeService
 {

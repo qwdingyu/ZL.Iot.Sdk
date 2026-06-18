@@ -18,10 +18,9 @@
 <PackageReference Include="Fleck" />
     </ItemGroup>
 
-    <!-- 引用仓库内的 ZL.PFLite 和 ZL.IotHub 项目 -->
+    <!-- 基础工具依赖 -->
     <ItemGroup>
         <PackageReference Include="ZL.PFLite" />
-        <PackageReference Include="ZL.IotHub" />
     </ItemGroup>
 
 </Project>

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using ZL.Tag;
 
-namespace ZL.Iot.Interface
+namespace ZL.EdgeService
 {
     public class TagCfgDtoList
     {
