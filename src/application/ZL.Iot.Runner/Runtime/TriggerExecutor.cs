@@ -179,11 +179,11 @@ namespace ZL.Iot.Runner.Runtime
         /// 1: 值==1
         /// 2: 值==0
         /// 3: 值变化（任意变化）
-        /// 4: 值>Threshold
-        /// 5: 值<Threshold
-        /// 6: 值>=Threshold
-        /// 7: 值<=Threshold
-        /// 8: 值!=Threshold
+        /// 4: 值 &gt; Threshold
+        /// 5: 值 &lt; Threshold
+        /// 6: 值 &gt;= Threshold
+        /// 7: 值 &lt;= Threshold
+        /// 8: 值 != Threshold
         /// </summary>
         private bool EvaluateLegacyJudgeType(int judgeType, string judgeExp, object value)
         {

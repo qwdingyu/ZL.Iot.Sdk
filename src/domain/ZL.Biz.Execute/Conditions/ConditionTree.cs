@@ -151,13 +151,13 @@ namespace ZL.Biz.Execute.Conditions
         /// <summary>大于 (>)</summary>
         GreaterThan = 3,
 
-        /// <summary>大于等于 (>=)</summary>
+        /// <summary>大于等于 (&gt;=)</summary>
         GreaterThanOrEqual = 4,
 
-        /// <summary>小于 (<)</summary>
+        /// <summary>小于 (&lt;)</summary>
         LessThan = 5,
 
-        /// <summary>小于等于 (<=)</summary>
+        /// <summary>小于等于 (&lt;=)</summary>
         LessThanOrEqual = 6,
 
         /// <summary>包含（字符串）</summary>

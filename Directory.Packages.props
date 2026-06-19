@@ -54,7 +54,7 @@
 
     <!-- JSON -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.2" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.8" />
 
     <!-- 日志 -->
     <PackageVersion Include="NLog" Version="6.0.7" />
@@ -83,7 +83,7 @@
     <!-- 业务规则引擎 -->
     <PackageVersion Include="NLua" Version="1.7.3" />
     <PackageVersion Include="RulesEngine" Version="5.0.0" />
-    <PackageVersion Include="Scriban" Version="7.1.0" />
+    <PackageVersion Include="Scriban" Version="7.2.4" />
     <PackageVersion Include="SqlKata" Version="2.4.0" />
 
     <!-- 测试 -->
@@ -101,9 +101,10 @@
     <PackageVersion Include="OPCFoundation.NetStandard.Opc.Ua" Version="1.5.378.134" />
     <PackageVersion Include="Dapper" Version="2.1.35" />
     <PackageVersion Include="MySqlConnector" Version="2.3.0" />
-    <PackageVersion Include="Npgsql" Version="8.0.0" />
+    <PackageVersion Include="Npgsql" Version="8.0.6" />
+    <PackageVersion Include="System.Linq.Dynamic.Core" Version="1.7.2" />
     <PackageVersion Include="System.Threading.RateLimiting" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.8" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
     <PackageVersion Include="NLog.Database" Version="5.3.4" />
     <PackageVersion Include="NLog.Targets.JsonFile" Version="2.0.6" />

@@ -15,7 +15,7 @@ namespace ZL.Iot.Runner.Generator.Core;
 /// 生成任务调度器
 /// 
 /// 架构：
-///   用户请求 → Enqueue → Channel<FIFO> → Worker 循环
+///   用户请求 → Enqueue → Channel&lt;FIFO&gt; → Worker 循环
 ///                                           ↓
 ///                                     SemaphoreSlim (限流)
 ///                                           ↓

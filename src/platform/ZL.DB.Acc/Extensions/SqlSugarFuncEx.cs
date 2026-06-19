@@ -163,7 +163,7 @@ namespace ZL.DB.Acc
             };
         }
         /// <summary>
-        /// db.Queryable<Student>().Where(it => MyToString(it.Id) == "1302583").ToList();
+        /// db.Queryable&lt;Student&gt;().Where(it => MyToString(it.Id) == "1302583").ToList();
         /// 生成的Sql CAST([Id] AS VARCHAR(MAX))
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -207,7 +207,7 @@ namespace ZL.DB.Acc
             throw new NotSupportedException("Can only be used in expressions");
         }
         /// <summary>
-        /// db.Queryable<Order>().Select(it=> PartitionDateDiff(it.Name, it.CreateTime)).ToList();
+        /// db.Queryable&lt;Order&gt;().Select(it=> PartitionDateDiff(it.Name, it.CreateTime)).ToList();
         /// SELECT *,ROW_NUMBER() over(partition by `Name` order by abs(datediff(`CreateTime`, NOW() )) ) FROM `Order`
         /// </summary>
         /// <param name="name"></param>
@@ -222,7 +222,7 @@ namespace ZL.DB.Acc
             throw new NotSupportedException("Can only be used in expressions");
         }
         /// <summary>
-        /// db.Queryable<Order>().Select(it=> ToDateFormat(it.CreateTime)).ToList();
+        /// db.Queryable&lt;Order&gt;().Select(it=> ToDateFormat(it.CreateTime)).ToList();
         /// </summary>
         /// <param name="dateField"></param>
         /// <returns></returns>

@@ -81,7 +81,7 @@ namespace ZL.DB.Acc
             return effect;
         }
         /// <summary>
-        /// List<iot_device>list=SugarAcc.GetList<iot_device>("select * from iot_device");
+        /// List&lt;iot_device&gt; list = SugarAcc.GetList&lt;iot_device&gt;("select * from iot_device");
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sql"></param>
