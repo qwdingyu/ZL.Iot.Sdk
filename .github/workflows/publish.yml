@@ -62,7 +62,7 @@ jobs:
           if [ "${{ inputs.skip-obfuscate }}" = "true" ]; then
             OBF_FLAG="--skip-obfuscate"
           fi
-          python3 .pipeline/tools/ZL.Pipeline.Cli/zl_pipeline/scripts/publish_all.py \
+          python3 .pipeline/scripts/publish_all.py \
             --version ${{ steps.version.outputs.version }} \
             $OBF_FLAG
 
