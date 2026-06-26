@@ -1,11 +1,6 @@
 # ============================================================
-# iot-sdk NuGet 发布流水线
-# 触发方式:
-#   - tag push v*        → 自动发布（版本号提取自 tag）
-#   - workflow_dispatch  → 手动指定版本发布
-#
-# Trusted Publishing: 无需 NUGET_API_KEY，通过 GitHub OIDC 认证
-# nuget.org 策略: Owner=qwdingyu, Repo=ZL.Iot.Sdk, Workflow=publish.yml
+# iot-sdk NuGet 发布流水线（精简版）
+# 核心逻辑委托给 ZL.PlcBase 的共享脚本 publish-all.py
 # ============================================================
 name: Publish iot-sdk to NuGet
 
@@ -15,9 +10,9 @@ name: Publish iot-sdk to NuGet
   workflow_dispatch:
     inputs:
       version:
-        description: 'Package version (e.g. 2.0.0)'
+        description: 'Package version (e.g. 2.2.1)'
         required: true
-        default: '2.0.0'
+        default: '2.2.1'
       skip-obfuscate:
         description: 'Skip Obfuscar obfuscation'
         type: boolean
@@ -29,16 +24,8 @@ name: Publish iot-sdk to NuGet
 
 env:
   DOTNET_NOLOGO: true
-  CONFIGURATION: Release
 
-# ============================================================
-# iot-sdk 全部 23 个可发布包（来自 pipeline.json）
-# 分组：foundation → platform → domain → application（构建依赖顺序）
-# ============================================================
 jobs:
-  # ============================================================
-  # Job 1: Build + Pack + Obfuscate
-  # ============================================================
   build-and-pack:
     runs-on: ubuntu-latest
     outputs:
@@ -46,261 +33,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 检出 ZL.PlcBase（获取共享 publish-all.py 脚本）
+      - name: Checkout ZL.PlcBase (shared scripts)
+        uses: actions/checkout@v4
+        with:
+          repository: qwdingyu/ZL.PlcBase
+          path: .shared/pipeline-scripts
+          ref: main
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # 版本号：tag push 取 tag 名（去掉 v），workflow_dispatch 取输入
       - name: Determine version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
+            echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           else
-            VERSION="${{ inputs.version }}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Version: $VERSION"
-
-      # Restore：在 CI 环境下本地 feed 不可达，使用临时覆盖的 NuGet.config
-      #（只包含 nuget.org，因为内部包如 ZL.PFLite / ZL.IotHub 已在 nuget.org 发布 2.2.1）
-      - name: Restore
-        run: |
-          # 生成临时 nuget.config（替换本地 feed 路径为仅 nuget.org）
-          # 用 echo 逐行写入，避免 heredoc 中 <?xml 触发 YAML 解析问题
-          echo '<?xml version="1.0" encoding="utf-8"?>' > nuget.ci.config
-          echo '<configuration>' >> nuget.ci.config
-          echo '  <packageSources>' >> nuget.ci.config
-          echo '    <clear />' >> nuget.ci.config
-          echo '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />' >> nuget.ci.config
-          echo '  </packageSources>' >> nuget.ci.config
-          echo '</configuration>' >> nuget.ci.config
-          dotnet restore IoT.Sdk.sln --configfile nuget.ci.config
-
-      # Build 所有项目（解决方案构建，自动按依赖顺序编译）
-      - name: Build
-        run: dotnet build IoT.Sdk.sln -c ${{ env.CONFIGURATION }} --no-restore
-
-      # ============================================================
-      # Pack: 全部 23 个包，按依赖层次 packing（foundation → platform → domain → application）
-      # 使用 -p:PackageVersion 统一版本控制
-      # ============================================================
-      - name: Pack packages
-        run: |
-          mkdir -p artifacts/packages
-          ODIR="$PWD/artifacts/packages"
-          VER="${{ steps.version.outputs.version }}"
-
-          # ---- foundation（10 个，无外部 ZL 依赖）----
-          dotnet pack src/foundation/ZL.Collections/ZL.Collections.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Shared/ZL.Shared.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Protocol/ZL.Protocol.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Framing/ZL.Framing.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Probing/ZL.Probing.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Script/ZL.Script.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Scripting/ZL.Scripting.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.Connection/ZL.Connection.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.ConnectionGuard/ZL.ConnectionGuard.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/foundation/ZL.DataProcessing/ZL.DataProcessing.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          # ---- platform（6 个）----
-          dotnet pack src/platform/ZL.Watchdog/ZL.Watchdog.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/platform/ZL.DataConvert/ZL.DataConvert.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/platform/ZL.ProtocolGateway/ZL.ProtocolGateway.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/platform/ZL.ProtocolGateway.Scripting/ZL.ProtocolGateway.Scripting.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/platform/ZL.DB.Acc/ZL.DB.Acc.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          # ---- domain（3 个）----
-          dotnet pack src/domain/ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/domain/ZL.Dao.Edge/ZL.Dao.Edge.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/domain/ZL.Biz.Execute/ZL.Biz.Execute.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          # ---- application（5 个）----
-          dotnet pack src/application/ZL.Iot.Plugin/ZL.Iot.Plugin.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/application/ZL.Iot.Runner/ZL.Iot.Runner.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/application/ZL.Iot.Runner.Generator/ZL.Iot.Runner.Generator.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/application/ZL.EdgeService/ZL.EdgeService.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          dotnet pack src/application/ZL.DataSync/ZL.DataSync.csproj \
-            -c ${{ env.CONFIGURATION }} --no-build \
-            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
-
-          echo "✅ All packages packed:"
-          ls -la "$ODIR"
-
-      # ============================================================
-      # Obfuscation：对 pipeline.json 中 obfuscate: true 的包进行混淆
-      # 方案：dotnet publish（含依赖）→ Obfuscar 混淆 → Python 替换 nupkg DLL
-      #
-      # 注意：iot-sdk 包可能跨多个 TFM（net8.0 / netstandard2.0 / netstandard2.1），
-      # 此处仅对 net8.0 TFM 做混淆。生产环境多 TFM 混淆需逐 TFM publish + replace。
-      #
-      # GitHub Actions 暂不支持 .NET 10，跳过 net10.0 框架的混淆（保留原始包内容）。
-      # ============================================================
-      - name: Install Obfuscar
-        if: github.event_name != 'workflow_dispatch' || inputs.skip-obfuscate != true
-        run: dotnet tool install --global Obfuscar.GlobalTool --version 2.2.38
-
-      # ---- foundation: 需要混淆的包（排除 ZL.Scripting obfuscate:false）----
-      - name: Obfuscate ZL.Collections
-        if: github.event_name != 'workflow_dispatch' || inputs.skip-obfuscate != true
-        run: |
-          PDIR="publish-obs/ZL.Collections"; ODIR="obfuscated/ZL.Collections"
-          mkdir -p "$PDIR" "$ODIR"
-          dotnet publish src/foundation/ZL.Collections/ZL.Collections.csproj -c Release -f net8.0 -o "$PDIR" --nologo -v q || true
-          if [ -f "$PDIR/ZL.Collections.dll" ]; then
-            printf '<Obfuscator>\n  <Var name="InPath" value="%s"/>\n  <Var name="OutPath" value="%s"/>\n  <Var name="KeepPublicApi" value="true"/>\n  <Var name="HidePrivateApi" value="true"/>\n  <Var name="HideStrings" value="true"/>\n  <Var name="RenameProperties" value="false"/>\n  <Var name="RenameEvents" value="false"/>\n  <Var name="RenameFields" value="false"/>\n  <Var name="UseUnicodeNames" value="true"/>\n  <Var name="RenameJsonProperties" value="false"/>\n  <Module file="$(InPath)/ZL.Collections.dll"/>\n</Obfuscator>\n' "$PDIR" "$ODIR" > obfuscar.ZL.Collections.xml
-            obfuscar.console obfuscar.ZL.Collections.xml
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
           fi
 
-      # 为保持 workflow 文件可读性，其余混淆包用脚本模式统一处理
-      - name: Obfuscate remaining packages (publish+Obfuscar+replace)
-        if: github.event_name != 'workflow_dispatch' || inputs.skip-obfuscate != true
+      # 核心：共享脚本处理 restore → build → pack → obfuscate
+      - name: Build, pack & obfuscate
         run: |
-          VER="${{ steps.version.outputs.version }}"
-          ODIR="$PWD/obfuscated"
-          PDIR="$PWD/publish-obs"
-          APKG="$PWD/artifacts/packages"
-          mkdir -p "$ODIR" "$PDIR"
-
-          # 需要混淆的包名列表（按依赖顺序，先混淆底层包，上层包需复制下层混淆后的 DLL）
-          OBF_PKGS=(
-            # foundation
-            "ZL.Shared:src/foundation/ZL.Shared"
-            "ZL.Protocol:src/foundation/ZL.Protocol"
-            "ZL.Framing:src/foundation/ZL.Framing"
-            "ZL.Probing:src/foundation/ZL.Probing"
-            "ZL.Script:src/foundation/ZL.Script"
-            "ZL.Connection:src/foundation/ZL.Connection"
-            "ZL.ConnectionGuard:src/foundation/ZL.ConnectionGuard"
-            "ZL.DataProcessing:src/foundation/ZL.DataProcessing"
-            # platform
-            "ZL.Watchdog:src/platform/ZL.Watchdog"
-            "ZL.DataConvert:src/platform/ZL.DataConvert"
-            "ZL.ProtocolGateway:src/platform/ZL.ProtocolGateway"
-            "ZL.DB.Acc:src/platform/ZL.DB.Acc"
-            # domain
-            "ZL.Dao.IotDevice:src/domain/ZL.Dao.IotDevice"
-            "ZL.Dao.Edge:src/domain/ZL.Dao.Edge"
-            "ZL.Biz.Execute:src/domain/ZL.Biz.Execute"
-            # application
-            "ZL.Iot.Runner:src/application/ZL.Iot.Runner"
-            "ZL.EdgeService:src/application/ZL.EdgeService"
-          )
-
-          for entry in "${OBF_PKGS[@]}"; do
-            PKG_NAME="${entry%%:*}"
-            CSRPROJ="${entry##*:}/${PKG_NAME}.csproj"
-            echo "=== Obfuscating $PKG_NAME ==="
-            POD="$PDIR/$PKG_NAME"; OOD="$ODIR/$PKG_NAME"
-            mkdir -p "$POD" "$OOD"
-            # publish net8.0（若项目不支持 net8.0，跳过；支持的 tfm 优先 net8.0）
-            dotnet publish "$CSRPROJ" -c Release -f net8.0 -o "$POD" --nologo -v q 2>/dev/null || {
-              echo "⚠️ $PKG_NAME 不支持 net8.0，跳过混淆"
-              continue
-            }
-            # 生成 obfuscar XML 并运行
-            OBF_XML="obfuscar.$PKG_NAME.xml"
-            printf '<Obfuscator>\n  <Var name="InPath" value="%s"/>\n  <Var name="OutPath" value="%s"/>\n  <Var name="KeepPublicApi" value="true"/>\n  <Var name="HidePrivateApi" value="true"/>\n  <Var name="HideStrings" value="true"/>\n  <Var name="RenameProperties" value="false"/>\n  <Var name="RenameEvents" value="false"/>\n  <Var name="RenameFields" value="false"/>\n  <Var name="UseUnicodeNames" value="true"/>\n  <Var name="RenameJsonProperties" value="false"/>\n  <Module file="$(InPath)/%s.dll"/>\n</Obfuscator>\n' "$POD" "$OOD" "$PKG_NAME" > "$OBF_XML"
-            obfuscar.console "$OBF_XML"
-            # 替换 nupkg 中的 DLL：用 replace-nupkg-dll.py 脚本处理
-            NUPKG=$(ls "$APKG"/"$PKG_NAME"."$VER".nupkg 2>/dev/null | head -1)
-            if [ -n "$NUPKG" ] && [ -f "$OOD/$PKG_NAME.dll" ]; then
-              python3 scripts/replace-nupkg-dll.py "$NUPKG" "$OOD/$PKG_NAME.dll" net8.0
-            fi
-          done
-          echo "=== Obfuscation complete ==="
-
-      - name: List packages
-        run: ls -la artifacts/packages/
+          OBF_FLAG=""
+          if [ "${{ inputs.skip-obfuscate }}" = "true" ]; then
+            OBF_FLAG="--skip-obfuscate"
+          fi
+          python3 .shared/pipeline-scripts/scripts/publish-all.py \
+            --version ${{ steps.version.outputs.version }} \
+            $OBF_FLAG
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages-${{ steps.version.outputs.version }}
           path: artifacts/packages/*.nupkg
+          retention-days: 14
 
-  # ============================================================
-  # Job 2: Push to NuGet.org（仅非 dry-run 时执行）
-  # 使用 Trusted Publishing (NuGet/login@v1) 获取短期 API Key
-  # ============================================================
   push-to-nuget:
     needs: build-and-pack
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_dispatch' || inputs.dry-run != true
-    # Trusted Publishing 需要 GitHub OIDC token
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.dry-run != true)
     permissions:
       id-token: write
     steps:
-      - name: Download packages
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: nuget-packages-${{ needs.build-and-pack.outputs.version }}
           path: artifacts/packages
@@ -310,7 +90,6 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Trusted Publishing: 通过 GitHub OIDC 申请 1 小时有效的短期 API Key
       - name: NuGet login (OIDC → temp API key)
         uses: NuGet/login@v1
         id: login
@@ -319,8 +98,6 @@ jobs:
 
       - name: Push to NuGet.org
         run: |
-          TOTAL=$(ls artifacts/packages/*.nupkg 2>/dev/null | wc -l)
-          echo "🚀 Pushing $TOTAL packages to NuGet.org..."
           for pkg in artifacts/packages/*.nupkg; do
             echo "  ➡ $(basename $pkg)"
             dotnet nuget push "$pkg" \
@@ -328,7 +105,4 @@ jobs:
               --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
               --skip-duplicate
           done
-
-      - name: Summary
-        run: |
           echo "✅ Published version ${{ needs.build-and-pack.outputs.version }} to NuGet.org"
