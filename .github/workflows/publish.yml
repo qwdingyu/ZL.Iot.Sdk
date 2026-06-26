@@ -63,9 +63,21 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Version: $VERSION"
 
-      # Restore 解决方案 → 一次性还原所有项目依赖
+      # Restore：在 CI 环境下本地 feed 不可达，使用临时覆盖的 NuGet.config
+      #（只包含 nuget.org，因为内部包如 ZL.PFLite / ZL.IotHub 已在 nuget.org 发布 2.2.1）
       - name: Restore
-        run: dotnet restore IoT.Sdk.sln
+        run: |
+          # 生成临时 nuget.config（替换本地 feed 路径为仅 nuget.org）
+          cat > nuget.ci.config <<'CONFIGEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+CONFIGEOF
+          dotnet restore IoT.Sdk.sln --configfile nuget.ci.config
 
       # Build 所有项目（解决方案构建，自动按依赖顺序编译）
       - name: Build
