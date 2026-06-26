@@ -171,7 +171,7 @@ jobs:
             -c ${{ env.CONFIGURATION }} --no-build \
             -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
 
-          # ---- application（4 个）----
+          # ---- application（5 个）----
           dotnet pack src/application/ZL.Iot.Plugin/ZL.Iot.Plugin.csproj \
             -c ${{ env.CONFIGURATION }} --no-build \
             -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
@@ -185,6 +185,10 @@ jobs:
             -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
 
           dotnet pack src/application/ZL.EdgeService/ZL.EdgeService.csproj \
+            -c ${{ env.CONFIGURATION }} --no-build \
+            -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
+
+          dotnet pack src/application/ZL.DataSync/ZL.DataSync.csproj \
             -c ${{ env.CONFIGURATION }} --no-build \
             -p:PackageVersion=$VER -p:ContinuousIntegrationBuild=true -o "$ODIR"
 
