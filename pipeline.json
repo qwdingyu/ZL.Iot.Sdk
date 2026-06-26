@@ -116,6 +116,11 @@
             "name": "ZL.EdgeService",
             "csproj": "src/application/ZL.EdgeService/ZL.EdgeService.csproj",
             "obfuscate": true
+        },
+        {
+            "name": "ZL.DataSync",
+            "csproj": "src/application/ZL.DataSync/ZL.DataSync.csproj",
+            "obfuscate": false
         }
     ],
     "nugetSource": "https://api.nuget.org/v3/index.json",
