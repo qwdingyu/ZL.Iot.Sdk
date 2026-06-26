@@ -9,7 +9,7 @@
 # ============================================================
 name: Publish iot-sdk to NuGet
 
-on:
+"on":
   push:
     tags: ['v*']
   workflow_dispatch:
@@ -68,15 +68,14 @@ jobs:
       - name: Restore
         run: |
           # 生成临时 nuget.config（替换本地 feed 路径为仅 nuget.org）
-          cat > nuget.ci.config <<'CONFIGEOF'
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <clear />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-  </packageSources>
-</configuration>
-CONFIGEOF
+          # 用 echo 逐行写入，避免 heredoc 中 <?xml 触发 YAML 解析问题
+          echo '<?xml version="1.0" encoding="utf-8"?>' > nuget.ci.config
+          echo '<configuration>' >> nuget.ci.config
+          echo '  <packageSources>' >> nuget.ci.config
+          echo '    <clear />' >> nuget.ci.config
+          echo '    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />' >> nuget.ci.config
+          echo '  </packageSources>' >> nuget.ci.config
+          echo '</configuration>' >> nuget.ci.config
           dotnet restore IoT.Sdk.sln --configfile nuget.ci.config
 
       # Build 所有项目（解决方案构建，自动按依赖顺序编译）
