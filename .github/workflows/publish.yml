@@ -255,23 +255,10 @@ jobs:
             OBF_XML="obfuscar.$PKG_NAME.xml"
             printf '<Obfuscator>\n  <Var name="InPath" value="%s"/>\n  <Var name="OutPath" value="%s"/>\n  <Var name="KeepPublicApi" value="true"/>\n  <Var name="HidePrivateApi" value="true"/>\n  <Var name="HideStrings" value="true"/>\n  <Var name="RenameProperties" value="false"/>\n  <Var name="RenameEvents" value="false"/>\n  <Var name="RenameFields" value="false"/>\n  <Var name="UseUnicodeNames" value="true"/>\n  <Var name="RenameJsonProperties" value="false"/>\n  <Module file="$(InPath)/%s.dll"/>\n</Obfuscator>\n' "$POD" "$OOD" "$PKG_NAME" > "$OBF_XML"
             obfuscar.console "$OBF_XML"
-            # 替换 nupkg 中的 DLL：用内联 Python 脚本处理
+            # 替换 nupkg 中的 DLL：用 replace-nupkg-dll.py 脚本处理
             NUPKG=$(ls "$APKG"/"$PKG_NAME"."$VER".nupkg 2>/dev/null | head -1)
             if [ -n "$NUPKG" ] && [ -f "$OOD/$PKG_NAME.dll" ]; then
-              python3 -c "
-import zipfile, os, shutil, sys
-nupkg, dll, tfm = sys.argv[1], sys.argv[2], 'net8.0'
-tmp = nupkg + '.tmp'
-with zipfile.ZipFile(nupkg, 'r') as zin:
-    with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            if item.filename == f'lib/{tfm}/{os.path.basename(nupkg).split(\".\")[0]}.dll'.replace(nupkg.split('/')[-1].split('.')[0], dll.split('/')[-1].split('.')[0]):
-                zout.writestr(item, open(dll, 'rb').read())
-            else:
-                zout.writestr(item, zin.read(item.filename))
-shutil.move(tmp, nupkg)
-print(f'  ✅ Replaced DLL in {os.path.basename(nupkg)} for {tfm}')
-" "$NUPKG" "$OOD/$PKG_NAME.dll"
+              python3 scripts/replace-nupkg-dll.py "$NUPKG" "$OOD/$PKG_NAME.dll" net8.0
             fi
           done
           echo "=== Obfuscation complete ==="
