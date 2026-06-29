@@ -109,7 +109,7 @@ public sealed class HttpSyncStrategy : ISyncStrategy
         if (string.IsNullOrEmpty(endpoint))
         {
             _logger.Warning($"HTTP 目标 {_targetName} 未配置 Endpoint，跳过表 {tableName}");
-            return SyncReport.Fail(tableName, rows.Count, "未配置 HTTP Endpoint", sw.Elapsed.TotalMilliseconds);
+            return SyncReport.Fail(tableName, rows.Count, rows.Count, "未配置 HTTP Endpoint", sw.Elapsed.TotalMilliseconds);
         }
 
         // 3. 分批上传（使用索引迭代避免 Skip/Take 的 O(n²) 复杂度）
@@ -174,7 +174,7 @@ public sealed class HttpSyncStrategy : ISyncStrategy
         int totalProcessed = ok + fail;
         return fail == 0 && totalProcessed > 0
             ? SyncReport.Ok(tableName, rows.Count, ok, null, sw.Elapsed.TotalMilliseconds)
-            : SyncReport.Fail(tableName, rows.Count, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
+            : SyncReport.Fail(tableName, rows.Count, fail, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
     }
 
     // ═══════════════════════════════════════════════════════════════

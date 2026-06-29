@@ -136,7 +136,7 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
         int totalProcessed = ok + fail;
         return fail == 0 && totalProcessed > 0
             ? SyncReport.Ok(tableName, rows.Count, ok, maxProcessTime?.ToString("o"), sw.Elapsed.TotalMilliseconds)
-            : SyncReport.Fail(tableName, rows.Count, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
+            : SyncReport.Fail(tableName, rows.Count, fail, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
     }
 
     // ═══════════════════════════════════════════════════════════════

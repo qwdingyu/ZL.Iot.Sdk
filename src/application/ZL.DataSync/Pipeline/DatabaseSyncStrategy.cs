@@ -53,9 +53,10 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
 
         // 1. 读取未同步数据（基于 _Synced = 0 标记）
         // 注意：SqlSugar 的 SqlQuery&lt;Dictionary&gt; 返回空 keys，必须用 SqlQuery&lt;dynamic&gt; 再转换
+        string orderBy = HasColumn(localDb, tableName, "ProcessTime") ? "ORDER BY ProcessTime" : string.Empty;
         var dynamicRows = localDb.Ado.SqlQuery<dynamic>(
             $"SELECT * FROM {SqlSugarHelpers.QuoteIdentifier(tableName, SqlSugar.DbType.Sqlite)} " +
-            $"WHERE {SqlSugarHelpers.SyncColumn} = 0 ORDER BY ProcessTime LIMIT @limit",
+            $"WHERE {SqlSugarHelpers.SyncColumn} = 0 {orderBy} LIMIT @limit",
             new SugarParameter("@limit", batchSize)
         );
 
@@ -126,7 +127,7 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
         int totalProcessed = ok + fail;
         return fail == 0 && totalProcessed > 0
             ? SyncReport.Ok(tableName, rows.Count, ok, null, sw.Elapsed.TotalMilliseconds)
-            : SyncReport.Fail(tableName, rows.Count, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
+            : SyncReport.Fail(tableName, rows.Count, fail, $"成功 {ok}/{rows.Count}, 失败 {fail}", sw.Elapsed.TotalMilliseconds);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -167,5 +168,23 @@ public sealed class DatabaseSyncStrategy : SyncStrategyBase
         }
 
         return (ok, fail);
+    }
+
+    private static bool HasColumn(SqlSugarClient db, string table, string colName)
+    {
+        try
+        {
+            var cols = db.Ado.SqlQuery<ColumnInfoRow>($"PRAGMA table_info(\"{table}\")");
+            return cols != null && cols.Any(r => r.Name == colName);
+        }
+        catch
+        {
+            return false; // PRAGMA 失败（表不存在等）不影响主流程
+        }
+    }
+
+    private sealed class ColumnInfoRow
+    {
+        public string? Name { get; set; }
     }
 }
