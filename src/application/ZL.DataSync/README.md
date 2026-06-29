@@ -28,7 +28,7 @@
 │  ┌──────▼────────────────▼─────────────────▼──────┐  │
 │  │           SQLite 本地缓冲                       │  │
 │  │  t_ad_boltsdata (_Synced=0/1)                  │  │
-│  │  _SyncWatermark (水位线追踪)                    │  │
+│  │  _SyncLog (ProcessTime 增量水位线，可选)        │  │
 │  └───────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────┘
 ```
@@ -202,7 +202,7 @@ ZL.DataSync/
 │   ├── SyncReport.cs              # 同步报告 + 同步状态
 │   └── SyncEngine.cs              # 同步引擎（核心：循环、重试、清理、表发现）
 └── Infrastructure/
-    ├── WatermarkStore.cs          # 水位线存储（SQLite 内的 _SyncWatermark 表）
+    ├── WatermarkStore.cs          # 水位线存储（SQLite 内的 _SyncWatermark 表，预留扩展）
     ├── ILogger.cs                 # 日志接口 + DebugLogger
     ├── PfliteLoggerAdapter.cs     # 桥接 ZL.PFLite 的 LogKit
     └── ServiceCollectionExtensions.cs  # DI 扩展
