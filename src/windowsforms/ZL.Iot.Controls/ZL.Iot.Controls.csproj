@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <AssemblyName>ZL.Iot.Controls</AssemblyName>
+    <RootNamespace>ZL.Iot.Controls</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PackageId>ZL.Iot.Controls</PackageId>
+    <Version>2.2.1</Version>
+    <Authors>ZL</Authors>
+    <Description>ZL.Iot.Controls 公共 WinForms 控件库，供 IotDebug 与 ZL.Iot.Runner.Desktop 共用。</Description>
+    <PackageOutputPath>../.nupkg</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ZL.IotHub" />
+    <PackageReference Include="OxyPlot.Core" />
+    <PackageReference Include="OxyPlot.WindowsForms" />
+  </ItemGroup>
+
+</Project>

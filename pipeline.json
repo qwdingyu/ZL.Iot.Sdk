@@ -121,6 +121,11 @@
             "name": "ZL.DataSync",
             "csproj": "src/application/ZL.DataSync/ZL.DataSync.csproj",
             "obfuscate": false
+        },
+        {
+            "name": "ZL.Iot.Controls",
+            "csproj": "src/windowsforms/ZL.Iot.Controls/ZL.Iot.Controls.csproj",
+            "obfuscate": false
         }
     ],
     "nugetSource": "https://api.nuget.org/v3/index.json",
@@ -141,6 +146,5 @@
             "buildTarget": "UseThink.Iot/UseThink.Iot.csproj",
             "autoCommit": false
         }
-    ],
-    "additionalNugetSource": "/Users/dingyuwang/0-X/ZL.PlcBase/artifacts"
+    ]
 }

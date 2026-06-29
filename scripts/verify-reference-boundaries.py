@@ -3,9 +3,9 @@
 
 规则目标：
 1. iot-sdk 仓库内部项目互相引用必须使用 ProjectReference。
-2. 跨仓库引用 ZL.PlcBase / iot-sdk 必须使用 local-feed NuGet 包。
+2. 跨仓库引用 ZL.PlcBase / iot-sdk 必须使用 NuGet 包（local-feed 或 nuget.org）。
 3. 禁止重新引入 ZL.Tag 包，Tag 类型由 ZL.IotHub 承载。
-4. NuGet 源统一从 local-feed 优先，再回退到 nuget.org，禁止 artifacts 目录作为包源。
+4. NuGet 源可以是 nuget.org 或 local-feed，或两者组合；禁止 artifacts 目录作为包源。
 """
 
 from __future__ import annotations
@@ -242,9 +242,13 @@ def check_nuget_config(config_file: Path) -> list[Problem]:
             problems.append(
                 Problem(config_file, "local-feed 必须排在 nuget.org 前面，确保本地开发包优先命中。")
             )
-    elif sources:
+    elif not sources:
         problems.append(
-            Problem(config_file, "NuGet 源必须同时包含 local-feed 和 nuget.org。")
+            Problem(config_file, "NuGet 源不能为空，至少需要 nuget.org 或 local-feed。")
+        )
+    elif "nuget.org" not in keys and "local-feed" not in keys:
+        problems.append(
+            Problem(config_file, "NuGet 源必须包含 nuget.org 或 local-feed。")
         )
 
     return problems

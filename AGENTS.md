@@ -44,9 +44,9 @@
 - 仓库内部编译时 ProjectReference 自动保证类型一致性，不会出现 CS0433 歧义
 - iot-sdk 内部 24 个项目依赖关系复杂，PackageReference 的传递依赖极易产生版本不一致
 
-### 12.2 跨仓库：PackageReference + local-feed
+### 12.2 跨仓库：PackageReference + nuget.org
 
-**iot-sdk 对 ZL.PlcBase 的引用属于跨仓库引用，必须使用 `<PackageReference>`**，通过 `/Users/dingyuwang/.nuget/local-feed` 或 nuget.org 还原。严禁在 iot-sdk 中直接 `ProjectReference` 到 `/Users/dingyuwang/0-X/ZL.PlcBase` 源码。
+**iot-sdk 对 ZL.PlcBase 的引用属于跨仓库引用，必须使用 `<PackageReference>`**，通过 nuget.org 还原。严禁在 iot-sdk 中直接 `ProjectReference` 到 `/Users/dingyuwang/0-X/ZL.PlcBase` 源码。
 
 ```
 ✅ 允许（跨仓库）：
@@ -59,8 +59,8 @@
 
 **原因**：
 - 跨仓库 ProjectReference 会把多个仓库绑成一个编译图，消费者编译慢，问题边界不清晰
-- local-feed NuGet 保留包契约边界，同时能在本地快速联调
-- `deploy-fast.sh` 已经负责把 ZL.PlcBase 和 iot-sdk 统一打包到 local-feed
+- 统一使用 nuget.org 保留包契约边界，避免本地 feed 版本漂移
+- 发布流程通过 GitHub Actions 自动打包并推送到 nuget.org
 
 ### 12.3 对外部第三方包：PackageReference
 
@@ -108,13 +108,13 @@
   改代码 → dotnet build IoT.Sdk.sln → dotnet test → git commit
   （ProjectReference 保证内部一致性，无需 pack）
 
-同步到消费者：
-  /Users/dingyuwang/0-X/deploy/tools/deploy-fast.sh 2.2.2    ← pack → local-feed
-  cd 消费者 && dotnet restore && dotnet build
-
 正式发布：
-  zl-pipeline.py publish → nuget.org
+  git tag v2.2.2 && git push origin v2.2.2    ← 触发 GitHub Actions
+  自动 pack → push 到 nuget.org
 ```
+
+消费者同步：
+  cd 消费者 && dotnet restore && dotnet build
 
 ### 12.7 ZL.PFLite 保持独立，ZL.Tag 由 ZL.IotHub 承载
 
@@ -145,6 +145,21 @@
 ❌ 禁止：iot-sdk 项目直接引用 ZL.Tag 包
 ❌ 禁止：在 ZL.IotHub 中定义 `namespace ZL.PFLite...`
 ❌ 禁止：将 ZL.PFLite 通用类型复制进 ZL.IotHub 形成双类型来源
+```
+
+**发布与消费**：
+
+```
+日常开发：
+  改代码 → dotnet build → dotnet test → git commit
+  仓库内部用 ProjectReference，跨仓库用 PackageReference（nuget.org）
+
+正式发布：
+  git tag vX.Y.Z && git push origin vX.Y.Z
+  GitHub Actions 自动 pack 并 push 到 nuget.org
+
+消费者：
+  dotnet restore（从 nuget.org 拉包）→ dotnet build
 ```
 
 ### 12.8 引用边界门禁
@@ -199,8 +214,7 @@ python3 scripts/verify-reference-boundaries.py --root /Users/dingyuwang/0-X/UseT
 4. 测试 → 写正式的可复用测试脚本
 5. 提交 → git add + git commit（中文）
 6. 文档 → 更新或新增 docs/ 中的文档
-7. 同步消费者 → deploy-fast.sh → 消费者 dotnet restore
-```
+7. 正式发布 → git tag vX.Y.Z && git push origin vX.Y.Z → GitHub Actions 自动 pack/push → 消费者 dotnet restore
 
 ## 引用
 
@@ -208,5 +222,5 @@ python3 scripts/verify-reference-boundaries.py --root /Users/dingyuwang/0-X/UseT
 - 依赖关系：`docs/DEPENDENCY_GRAPH.md`
 - NuGet 管理：`docs/nuget-management.md`
 - 依赖引用边界：`docs/依赖引用边界规范_20260618.md`
-- 本地发布流程：`/Users/dingyuwang/0-X/deploy/tools/local-feed-workflow.md`
+- 本地发布流程：通过 GitHub Actions 自动发布到 nuget.org
 - ZL.PlcBase 铁律：`/Users/dingyuwang/0-X/ZL.PlcBase/AGENTS.md`

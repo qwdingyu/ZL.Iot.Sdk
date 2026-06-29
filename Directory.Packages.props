@@ -95,6 +95,10 @@
     <!-- 源码调试 -->
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
 
+    <!-- 图表 -->
+    <PackageVersion Include="OxyPlot.Core" Version="2.1.2" />
+    <PackageVersion Include="OxyPlot.WindowsForms" Version="2.1.2" />
+
     <!-- ProtocolGateway 专用依赖 -->
     <PackageVersion Include="BACnet" Version="2.0.4" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.2.3" />
