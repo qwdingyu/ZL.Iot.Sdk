@@ -26,6 +26,9 @@ __pycache__/
 .atomcode/
 .qwen/
 
+# Debug/Inspection scripts
+inspect_zliothub.cs
+
 # OS
 Thumbs.db
 
