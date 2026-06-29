@@ -49,12 +49,6 @@ public sealed class HttpSyncStrategy : ISyncStrategy
     /// </summary>
     private static HttpClient CreateSharedHttpClient()
     {
-#if NETSTANDARD2_0
-        return new HttpClient(new HttpClientHandler())
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
-#else
         return new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = TimeSpan.FromSeconds(30),
@@ -64,7 +58,6 @@ public sealed class HttpSyncStrategy : ISyncStrategy
         {
             Timeout = TimeSpan.FromSeconds(30)
         };
-#endif
     }
 
     /// <summary>
