@@ -59,6 +59,12 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
         DateTime? lastSyncTime = await ReadSyncLogAsync(localDb, tableName, ct).ConfigureAwait(false);
 
         // 2. 读取未同步数据（基于 ProcessTime 增量）
+        if (!HasColumn(localDb, tableName, "ProcessTime"))
+        {
+            Logger.Error($"[{TargetName}] 表 {tableName} 缺少 ProcessTime 列，无法使用 ProcessTimeSyncStrategy");
+            return SyncReport.Fail(tableName, 0, "表缺少 ProcessTime 列", sw.Elapsed.TotalMilliseconds);
+        }
+
         var dynamicRows = localDb.Ado.SqlQuery<dynamic>(
             $"SELECT * FROM {SqlSugarHelpers.QuoteIdentifier(tableName, SqlSugar.DbType.Sqlite)} " +
             $"WHERE ProcessTime > @lastTime ORDER BY ProcessTime LIMIT @limit",
@@ -224,5 +230,23 @@ public sealed class ProcessTimeSyncStrategy : SyncStrategyBase
         }
 
         return (ok, fail);
+    }
+
+    private static bool HasColumn(SqlSugarClient db, string table, string colName)
+    {
+        try
+        {
+            var cols = db.Ado.SqlQuery<ColumnInfoRow>($"PRAGMA table_info(\"{table}\")");
+            return cols != null && cols.Any(r => r.Name == colName);
+        }
+        catch
+        {
+            return false; // PRAGMA 失败（表不存在等）不影响主流程
+        }
+    }
+
+    private sealed class ColumnInfoRow
+    {
+        public string? Name { get; set; }
     }
 }
