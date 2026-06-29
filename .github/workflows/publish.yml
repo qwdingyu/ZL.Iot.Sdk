@@ -27,7 +27,7 @@ env:
 
 jobs:
   build-and-pack:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -49,6 +49,7 @@ jobs:
 
       # 核心：共享脚本处理 restore → build → pack → obfuscate
       - name: Build, pack & obfuscate
+        shell: bash
         run: |
           OBF_FLAG=""
           if [ "${{ inputs.skip-obfuscate }}" = "true" ]; then
