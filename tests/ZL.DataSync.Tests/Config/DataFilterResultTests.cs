@@ -4,7 +4,7 @@ using ZL.DataSync.Config;
 namespace ZL.DataSync.Tests.Config;
 
 /// <summary>
-/// DataFilterResult 记录测试。
+/// DataFilterResult 类测试。
 /// </summary>
 public class DataFilterResultTests
 {
@@ -15,9 +15,9 @@ public class DataFilterResultTests
             shouldSync: true,
             transformedRow: new Dictionary<string, object?> { ["key"] = "val" });
 
-        Assert.True(result.shouldSync);
-        Assert.NotNull(result.transformedRow);
-        Assert.Equal("val", result.transformedRow!["key"]);
+        Assert.True(result.ShouldSync);
+        Assert.NotNull(result.TransformedRow);
+        Assert.Equal("val", result.TransformedRow!["key"]);
     }
 
     [Fact]
@@ -25,8 +25,8 @@ public class DataFilterResultTests
     {
         var result = new DataFilterResult(shouldSync: false);
 
-        Assert.False(result.shouldSync);
-        Assert.Null(result.transformedRow);
+        Assert.False(result.ShouldSync);
+        Assert.Null(result.TransformedRow);
     }
 
     [Fact]
@@ -34,8 +34,8 @@ public class DataFilterResultTests
     {
         var result = new DataFilterResult(shouldSync: true);
 
-        Assert.True(result.shouldSync);
-        Assert.Null(result.transformedRow);
+        Assert.True(result.ShouldSync);
+        Assert.Null(result.TransformedRow);
     }
 
     [Fact]
