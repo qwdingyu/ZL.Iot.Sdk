@@ -46,6 +46,8 @@ namespace ZL.Iot.Controls.Controls
         // DataGridView 列索引常量（与 Designer.cs 中列顺序保持一致）
         int TagAddressCellIndex = 2;  // "设备地址"列索引
         int TagValCellIndex = 6;      // "值"列索引——高频更新列
+        int TagTypeCellIndex = 9;     // "标签类型"列索引
+        int ScanRateCellIndex = 10;   // "采集周期"列索引
 
         /// <summary>遗留锁对象（目前未实际使用，保留兼容）</summary>
         readonly object syncObj = new object();
@@ -967,9 +969,24 @@ namespace ZL.Iot.Controls.Controls
             tagItem.Length = string.IsNullOrEmpty(length_str) ? -1 : Convert.ToInt32(length_str);
             tagItem.Unit = dgvr.Cells[7].Value != null ? dgvr.Cells[7].Value.ToString() : string.Empty;
             tagItem.Description = dgvr.Cells[8].Value != null ? dgvr.Cells[8].Value.ToString() : string.Empty;
+            tagItem.TagType = dgvr.Cells[TagTypeCellIndex].Value != null ? dgvr.Cells[TagTypeCellIndex].Value.ToString() : string.Empty;
+            tagItem.ScanRate = int.TryParse(dgvr.Cells[ScanRateCellIndex].Value?.ToString(), out var sr) ? sr : 0;
             return tagItem;
         }
         #endregion
+
+        /// <summary>获取当前点表中所有标签的列表（供外部生成 DeviceConfig 使用）</summary>
+        public List<TagItem> GetTagItems()
+        {
+            var list = new List<TagItem>();
+            foreach (DataGridViewRow row in dgv_Tags.Rows)
+            {
+                if (row == null || row.IsNewRow) continue;
+                if (row.Cells[TagAddressCellIndex].Value == null) continue;
+                list.Add(GetTagItem(row));
+            }
+            return list;
+        }
 
         #region 遍历 dgv_Tags 并生成 XML
         public void GetDataTable(XElement element)
@@ -1018,6 +1035,8 @@ namespace ZL.Iot.Controls.Controls
                     }
                     dgvr.Cells[7].Value = tagItem.Unit;
                     dgvr.Cells[8].Value = tagItem.Description;
+                    dgvr.Cells[TagTypeCellIndex].Value = tagItem.TagType;
+                    dgvr.Cells[ScanRateCellIndex].Value = tagItem.ScanRate > 0 ? tagItem.ScanRate.ToString() : string.Empty;
 
                     count++;
                 }
@@ -1254,7 +1273,7 @@ namespace ZL.Iot.Controls.Controls
             try
             {
                 using var sw = new StreamWriter(sfd.FileName, false, new UTF8Encoding(true)); // UTF-8 BOM
-                sw.WriteLine("Enable,Name,Address,DataType,Encoding,Length,Unit,Description");
+                sw.WriteLine("Enable,Name,Address,DataType,Encoding,Length,Unit,Description,TagType,ScanRate");
                 foreach (DataGridViewRow row in dgv_Tags.Rows)
                 {
                     if (row.IsNewRow) continue;
@@ -1266,7 +1285,9 @@ namespace ZL.Iot.Controls.Controls
                     string length = CsvEscape(row.Cells[5].Value?.ToString());
                     string unit = CsvEscape(row.Cells[7].Value?.ToString());
                     string desc = CsvEscape(row.Cells[8].Value?.ToString());
-                    sw.WriteLine($"{enable},{name},{addr},{type},{encoding},{length},{unit},{desc}");
+                    string tagType = CsvEscape(row.Cells[TagTypeCellIndex].Value?.ToString());
+                    string scanRate = CsvEscape(row.Cells[ScanRateCellIndex].Value?.ToString());
+                    sw.WriteLine($"{enable},{name},{addr},{type},{encoding},{length},{unit},{desc},{tagType},{scanRate}");
                 }
                 OnLogs?.Invoke($"点表配置已导出: {sfd.FileName}");
             }
@@ -1311,8 +1332,8 @@ namespace ZL.Iot.Controls.Controls
                     var fields = ParseCsvLine(line);
                     if (fields.Count < 3) continue; // 最少需要 Enable/Name/Address
 
-                    // 确保有足够的列
-                    while (fields.Count < 8) fields.Add("");
+                    // 确保有足够的列（兼容旧版 CSV：TagType/ScanRate 可选）
+                    while (fields.Count < 10) fields.Add("");
 
                     int rowIndex = dgv_Tags.Rows.Add();
                     var row = dgv_Tags.Rows[rowIndex];
@@ -1338,6 +1359,11 @@ namespace ZL.Iot.Controls.Controls
                     row.Cells[7].Value = fields[6];
                     // Description
                     row.Cells[8].Value = fields[7];
+                    // TagType
+                    row.Cells[TagTypeCellIndex].Value = fields[8];
+                    // ScanRate
+                    if (!string.IsNullOrEmpty(fields[9]) && int.TryParse(fields[9], out var scanRate))
+                        row.Cells[ScanRateCellIndex].Value = scanRate.ToString();
                     imported++;
                 }
 

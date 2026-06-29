@@ -20,7 +20,7 @@ namespace ZL.DataSync.Pipeline;
 /// </code>
 ///
 /// 设计决策：
-/// - 使用静态 HttpClient + SocketsHttpHandler 连接池，避免频繁创建销毁导致端口耗尽
+/// - 使用静态 HttpClient 连接池，避免频繁创建销毁导致端口耗尽
 /// - PooledConnectionLifetime = 2 分钟：短于 DNS 刷新间隔，确保域名解析更新能及时生效
 /// - 每批次最多 20 条：HTTP API 通常有 payload 大小限制，20 是经验值
 /// - 静态 HttpClient 在应用退出时由 GC 自动回收，此处不主动 Dispose
@@ -49,6 +49,12 @@ public sealed class HttpSyncStrategy : ISyncStrategy
     /// </summary>
     private static HttpClient CreateSharedHttpClient()
     {
+#if NETSTANDARD2_0
+        return new HttpClient(new HttpClientHandler())
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
+#else
         return new HttpClient(new SocketsHttpHandler
         {
             ConnectTimeout = TimeSpan.FromSeconds(30),
@@ -58,6 +64,7 @@ public sealed class HttpSyncStrategy : ISyncStrategy
         {
             Timeout = TimeSpan.FromSeconds(30)
         };
+#endif
     }
 
     /// <summary>
@@ -137,7 +144,7 @@ public sealed class HttpSyncStrategy : ISyncStrategy
             try
             {
                 var resp = await s_http.PostAsync(endpoint, content, ct).ConfigureAwait(false);
-                var respText = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var respText = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                 if (resp.IsSuccessStatusCode)
                 {
@@ -241,7 +248,7 @@ public sealed class HttpSyncStrategy : ISyncStrategy
         return null;
     }
 
-    private static string ShortenResponse(string s, int max) => s.Length <= max ? s : s[..max] + "...";
+    private static string ShortenResponse(string s, int max) => s.Length <= max ? s : s.Substring(0, max) + "...";
 
     public void Dispose()
     {

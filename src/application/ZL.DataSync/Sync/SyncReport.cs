@@ -5,14 +5,14 @@ namespace ZL.DataSync;
 /// </summary>
 public sealed class SyncReport
 {
-    public DateTime Timestamp { get; init; }
-    public string TableName { get; init; } = string.Empty;
-    public int TargetCount { get; init; }       // 目标库中待同步的记录数
-    public int SyncedCount { get; init; }        // 实际成功同步的数量
-    public int FailedCount { get; init; }        // 失败的数量
-    public string? LastError { get; init; }
-    public string? LastWatermark { get; init; }  // 上次成功同步的水位值
-    public double ElapsedMs { get; init; }
+    public DateTime Timestamp { get; set; }
+    public string TableName { get; set; } = string.Empty;
+    public int TargetCount { get; set; }       // 目标库中待同步的记录数
+    public int SyncedCount { get; set; }        // 实际成功同步的数量
+    public int FailedCount { get; set; }        // 失败的数量
+    public string? LastError { get; set; }
+    public string? LastWatermark { get; set; }  // 上次成功同步的水位值
+    public double ElapsedMs { get; set; }
 
     /// <summary>
     /// 同步成功：没有失败（包括无数据的情况）。

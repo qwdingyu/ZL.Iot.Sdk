@@ -3,9 +3,20 @@ namespace ZL.DataSync.Config;
 /// <summary>
 /// 数据过滤/转换回调结果。
 /// </summary>
-/// <param name="shouldSync">是否应同步该行（true=保留，false=过滤掉）</param>
-/// <param name="transformedRow">转换后的行（可为 null，表示保持原行）</param>
-public record DataFilterResult(bool shouldSync, Dictionary<string, object?>? transformedRow = null);
+public sealed class DataFilterResult
+{
+    public DataFilterResult(bool shouldSync, Dictionary<string, object?>? transformedRow = null)
+    {
+        ShouldSync = shouldSync;
+        TransformedRow = transformedRow;
+    }
+
+    /// <summary>是否应同步该行（true=保留，false=过滤掉）。</summary>
+    public bool ShouldSync { get; }
+
+    /// <summary>转换后的行（可为 null，表示保持原行）。</summary>
+    public Dictionary<string, object?>? TransformedRow { get; }
+}
 
 /// <summary>
 /// 远程目标配置（一个目标 = 一个数据库/HTTP API 端点）。
@@ -90,14 +101,14 @@ public enum TargetType
 public sealed class HttpUploadConfig
 {
     /// <summary>API 端点 URL</summary>
-    public string Endpoint { get; init; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
 
     /// <summary>
     /// 每个表对应的 API 端点。
     /// Key=本地表名，Value=API URL。
     /// 为空时使用上面的 Endpoint 作为默认值。
     /// </summary>
-    public Dictionary<string, string> TableEndpoints { get; init; } = new();
+    public Dictionary<string, string> TableEndpoints { get; set; } = new();
 
     /// <summary>请求超时（秒）。默认 30</summary>
     public int TimeoutSeconds { get; set; } = 30;
@@ -112,11 +123,11 @@ public sealed class HttpUploadConfig
     /// 支持变量：{deviceName}, {barCode}, {timestamp}, {table}, {data}
     /// 为空时自动生成标准 JSON 结构。
     /// </summary>
-    public string? BodyTemplate { get; init; }
+    public string? BodyTemplate { get; set; }
 
     /// <summary>设备标识（用于请求体中的 deviceName 字段）</summary>
-    public string? DeviceName { get; init; }
+    public string? DeviceName { get; set; }
 
     /// <summary>数据分类标识（用于请求体中的 type 字段）</summary>
-    public string? Type { get; init; }
+    public string? Type { get; set; }
 }

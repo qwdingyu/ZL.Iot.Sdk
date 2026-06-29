@@ -46,6 +46,8 @@
             this.Column_value = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Column_unit = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Column_decs = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.Column_tagtype = new System.Windows.Forms.DataGridViewComboBoxColumn();
+            this.Column_scanrate = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.TSMI_del = new System.Windows.Forms.ToolStripMenuItem();
             this.TSMI_Save = new System.Windows.Forms.ToolStripMenuItem();
@@ -94,7 +96,9 @@
             this.Column_length,
             this.Column_value,
             this.Column_unit,
-            this.Column_decs});
+            this.Column_decs,
+            this.Column_tagtype,
+            this.Column_scanrate});
             this.dgv_Tags.ContextMenuStrip = this.contextMenuStrip1;
             dataGridViewCellStyle5.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle5.BackColor = System.Drawing.SystemColors.Window;
@@ -215,15 +219,44 @@
             this.Column_unit.Width = 105;
             // 
             // Column_decs
-            // 
+            //
             this.Column_decs.FillWeight = 89.65736F;
             this.Column_decs.HeaderText = "注释";
             this.Column_decs.MinimumWidth = 6;
             this.Column_decs.Name = "Column_decs";
             this.Column_decs.Width = 106;
-            // 
+            //
+            // Column_tagtype
+            //
+            this.Column_tagtype.FillWeight = 89.65736F;
+            this.Column_tagtype.HeaderText = "标签类型";
+            this.Column_tagtype.Items.AddRange(new object[] {
+            "Bool",
+            "Byte",
+            "Short",
+            "UShort",
+            "Int",
+            "UInt",
+            "Long",
+            "ULong",
+            "Float",
+            "Double",
+            "String",
+            "ByteArray"});
+            this.Column_tagtype.MinimumWidth = 6;
+            this.Column_tagtype.Name = "Column_tagtype";
+            this.Column_tagtype.Width = 106;
+            //
+            // Column_scanrate
+            //
+            this.Column_scanrate.FillWeight = 89.65736F;
+            this.Column_scanrate.HeaderText = "采样率";
+            this.Column_scanrate.MinimumWidth = 6;
+            this.Column_scanrate.Name = "Column_scanrate";
+            this.Column_scanrate.Width = 106;
+            //
             // contextMenuStrip1
-            // 
+            //
             this.contextMenuStrip1.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.TSMI_del,
@@ -434,5 +467,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Column_value;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column_unit;
         private System.Windows.Forms.DataGridViewTextBoxColumn Column_decs;
+        private System.Windows.Forms.DataGridViewComboBoxColumn Column_tagtype;
+        private System.Windows.Forms.DataGridViewTextBoxColumn Column_scanrate;
     }
 }
