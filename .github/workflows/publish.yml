@@ -33,14 +33,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 检出 deploy 仓库（公开仓库，获取共享 publish_all.py 脚本）
-      - name: Checkout deploy repo (shared scripts)
-        uses: actions/checkout@v4
-        with:
-          repository: qwdingyu/deploy
-          path: .pipeline
-          ref: main
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -62,7 +54,7 @@ jobs:
           if [ "${{ inputs.skip-obfuscate }}" = "true" ]; then
             OBF_FLAG="--skip-obfuscate"
           fi
-          python3 .pipeline/scripts/publish_all.py \
+          python3 scripts/publish_all.py \
             --version ${{ steps.version.outputs.version }} \
             $OBF_FLAG
 
