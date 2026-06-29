@@ -42,6 +42,7 @@ public class JobScheduler : IDisposable
     private readonly TimeSpan _userRateLimitInterval;
     private volatile int _runningCount;
     private volatile int _queuedCount;
+    private volatile int _nextQueuePosition;
     private readonly Func<GenerateRequest, CancellationToken, Func<string, int, Task>?, Task<GenerateResult>>? _generatorFactory;
 
     /// <summary>
@@ -134,16 +135,16 @@ public class JobScheduler : IDisposable
         }
 
         // 2) 队列容量检查 — 使用 Interlocked.Increment + 超限回退，避免 TOCTOU 竞争
-        var newPosition = Interlocked.Increment(ref _queuedCount);
-        if (newPosition > _maxQueueLength)
+        var queuedCount = Interlocked.Increment(ref _queuedCount);
+        if (queuedCount > _maxQueueLength)
         {
             Interlocked.Decrement(ref _queuedCount);
             return (false, $"队列已满（当前 {_maxQueueLength} 个任务等待中），请稍后重试", null);
         }
 
-        // 3) 创建任务并入队
+        // 3) 创建任务并入队（队列位置单调递增，不受 Worker 取走任务的影响）
         var job = GenerateJob.Create(request, userId);
-        job.QueuePosition = newPosition;
+        job.QueuePosition = Interlocked.Increment(ref _nextQueuePosition);
         _store.Add(job);
 
         _channel.Writer.TryWrite(job);
