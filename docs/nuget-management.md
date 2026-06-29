@@ -3,7 +3,7 @@
 > **状态**: 本文保留为历史包管理说明。当前强制执行的引用边界规范以 `docs/依赖引用边界规范_20260618.md` 为准。
 > 如果本文与引用边界规范冲突，按引用边界规范执行。
 
-> **版本**: v1.0 | **最后更新**: 2026-06-07 | **适用范围**: iot-sdk 及所有下游消费者项目
+> **版本**: v2.0 | **最后更新**: 2026-06-29 | **适用范围**: iot-sdk 及所有下游消费者项目
 
 ---
 
@@ -14,14 +14,13 @@
 │                    全局 NuGet 配置（唯一权威源）                   │
 │                                                                  │
 │  ~/.nuget/NuGet/NuGet.Config                                    │
-│  ├── nuget.org (https://api.nuget.org/v3/index.json)            │
-│  │    └── ZL IoT SDK 23 个包 (v1.1.0+)                          │
-│  │        包括: ZL.Collections ~ ZL.EdgeService, ProtocolGateway │
-│  │              ProtocolGateway.Scripting, ZL.PlcSimulator.*    │
-│  │                                                              │
-│  └── local-feed (/Users/dingyuwang/.nuget/local-feed/)          │
-│       └── ZL.PlcBase.2.0.1.nupkg      (非 NuGet.org 发布的包)   │
-│       └── ZL.PlcBase.Bridges.2.0.1.nupkg                       │
+│   └── nuget.org (https://api.nuget.org/v3/index.json)           │
+│        └── ZL IoT SDK 23 个包 (v2.2.1+)                        │
+│            包括: ZL.Collections ~ ZL.EdgeService, ProtocolGateway │
+│                  ProtocolGateway.Scripting, ZL.Iot.Controls     │
+│                                                                  │
+│  ⚠️ 已废弃：local-feed (/Users/dingyuwang/.nuget/local-feed/)  │
+│     当前不再使用，保留目录仅用于历史包查询，不参与正常还原。      │
 └────────────────────────┬────────────────────────────────────────┘
                          │ 继承（无 <clear/>，无项目级包源覆盖）
          ┌───────────────┼───────────────┬──────────────┬──────────┐
@@ -35,10 +34,9 @@
 | 原则 | 说明 |
 |------|------|
 | **单一配置源** | 所有包源定义在 `~/.nuget/NuGet/NuGet.Config`，项目级 config 不重复定义 |
-| **持久化** | 全局本地 feed 位于 `~/.nuget/local-feed/`（用户 home 目录），**不在 /tmp** |
-| **local-feed 优先** | 本地开发先命中 `/Users/dingyuwang/.nuget/local-feed`，没有同版本包时回退到 nuget.org |
+| **nuget.org 唯一源** | 当前所有 ZL 包统一发布到 nuget.org，不再维护本地 feed |
 | **CPM 精确锁定** | 消费者使用 `Directory.Packages.props` 精确指定版本号，杜绝版本漂移 |
-| **无冗余 feed** | 删除所有项目级 `.nuget/local-feed/`，消除多份副本的不一致 |
+| **GitHub Actions 发布** | 所有包通过 GitHub Actions 自动构建、打包、推送，不手动推送 |
 
 ---
 
@@ -52,7 +50,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="local-feed" value="/Users/dingyuwang/.nuget/local-feed" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
   </packageSources>
 </configuration>
@@ -60,18 +57,18 @@
 
 **关键要求**：
 - 使用**绝对路径**（NuGet 不展开 `~` 符号）
-- `local-feed` 必须排在 `nuget.org` **之前**（优先使用本地联调包）
+- 不再配置 `local-feed`
 - 不要加 `<clear/>`（与 MSBuild 用户配置合并）
 
 ### 2.2 项目级 NuGet.config
 
-所有下游项目（tmom、UseThink.Iot/api、ZL.PlcSimulator）的 `NuGet.config` 已精简为：
+所有下游项目（tmom、UseThink.Iot/api、ZL.PlcSimulator）的 `NuGet.config` 应精简为：
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <!-- 继承全局 NuGet 配置 (~/.nuget/NuGet/NuGet.Config)：
-       nuget.org + /Users/dingyuwang/.nuget/local-feed -->
+       nuget.org -->
 </configuration>
 ```
 
@@ -80,44 +77,40 @@
 - 为将来某个项目需要私有源时预留扩展点
 - **绝不包含** `<clear/>` 或重复的 `<packageSources>`
 
-### 2.3 全局本地 Feed
-
-**路径**: `/Users/dingyuwang/.nuget/local-feed/`
-
-**当前内容**：
-| 包 | 版本 | 为何不在 NuGet.org |
-|---|------|-------------------|
-| `ZL.PlcBase` | 2.0.1 | 第三方商业库，未发布到 NuGet.org |
-| `ZL.PlcBase.Bridges` | 2.0.1 | 同上 |
-
-**命名规则**: `{PackageId}.{Version}.nupkg`
-
 ---
 
 ## 三、日常工作流
 
 ### 3.1 发布新 ZL 包版本
 
+当前发布链路为 **GitHub Actions** 自动处理：
+
+```
+代码 Push → GitHub Actions → dotnet pack → 推送 NuGet.org
+```
+
+**版本号规则**：
+- 所有 ZL 包统一版本号，当前固定为 `2.2.1`
+- 不允许随意提升版本，由发布流程统一管理
+- 版本变更必须通过 PR + CI 流程
+
+**如需触发发布**：
 ```bash
-# 1. 在 iot-sdk 中打包
-cd /Users/dingyuwang/0-X/iot-sdk
-zl-pipeline pack 1.1.0
+# 1. 修改 Directory.Packages.props 中的版本号
+# 2. 提交并 Push 到 main 分支
+git add Directory.Packages.props
+git commit -m "chore: 统一升级 ZL 包版本到 2.2.2"
+git push origin main
 
-# 2. 推送到 NuGet.org
-zl-pipeline publish 1.1.0
-
-# 3. 更新 iot-sdk 自身 CPM
-#    (pack 时已自动更新 Directory.Packages.props)
-
-# 4. 同步所有消费者
-zl-pipeline sync-consumers 1.1.0
+# 3. GitHub Actions 自动构建并发布到 nuget.org
 ```
 
 ### 3.2 消费者更新到最新版本
 
 ```bash
 # 方案 A: 全量同步（所有包同一版本）
-zl-pipeline sync-consumers 1.1.0
+cd /Users/dingyuwang/0-X/iot-sdk
+zl-pipeline sync-consumers 2.2.1
 
 # 方案 B: 独立对齐（各包取各自最新）
 zl-pipeline align-versions
@@ -128,18 +121,7 @@ python3 align-zl-packages.py --dry-run   # 预览
 python3 align-zl-packages.py              # 执行
 ```
 
-### 3.3 向全局本地 feed 添加新包
-
-```bash
-# 仅当包无法发布到 NuGet.org 时执行
-cp path/to/SomePackage.1.0.0.nupkg ~/.nuget/local-feed/
-
-# 验证
-dotnet nuget list source    # 确认 local-feed 存在
-dotnet package search SomePackage --source local-feed  # 确认可发现
-```
-
-### 3.4 消费者项目 restore 和构建
+### 3.3 消费者项目 restore 和构建
 
 ```bash
 cd /path/to/consumer
@@ -149,7 +131,7 @@ dotnet build          # 编译
 
 **如果 restore 失败**：
 ```bash
-# 1. 清除 NuGet HTTP 缓存（NuGet.org 新发版有传播延迟）
+# 1. 清除 NuGet HTTP 缓存（nuget.org 新发版有传播延迟）
 dotnet nuget locals http-cache -c
 
 # 2. 重新 restore
@@ -164,48 +146,51 @@ dotnet restore
 
 | # | 做法 | 理由 |
 |---|------|------|
-| 1 | **本地开发优先 local-feed，正式发布使用 NuGet.org** | 兼顾本地迭代速度和正式发布可重复性 |
+| 1 | **通过 GitHub Actions 发布到 nuget.org** | 统一发布流程，可追溯，不依赖本地环境 |
 | 2 | **使用 CPM 精确版本** | 消费者 `Directory.Packages.props` 中写死版本号 |
 | 3 | **项目级 config 不重复定义源** | 避免多份配置不一致 |
-| 4 | **本地 feed 放 `~/.nuget/local-feed/`** | 持久化，不受系统重启/清理影响 |
-| 5 | **CI 环境中也配置同样源** | 保持本地和 CI 行为一致 |
-| 6 | **发布后立即 sync-consumers** | 防止消费者引用未发布版本 |
+| 4 | **CI 环境中也配置同样源** | 保持本地和 CI 行为一致 |
+| 5 | **发布后立即 sync-consumers** | 防止消费者引用未发布版本 |
 
 ### 4.2 DON'T（禁止做法）
 
 | # | 禁止 | 后果 |
 |---|------|------|
-| 1 | **不要把 feed 放在 /tmp** | `/tmp` 会被系统定时清理或重启丢失 |
-| 2 | **不要每个项目一个 local-feed** | 多份副本版本不一致，维护成本高 |
-| 3 | **不要在项目 config 中使用 `<clear/>`** | 会清除全局源，导致 ZL.PlcBase 找不到 |
-| 4 | **不要混用 ProjectReference 和 PackageReference** | 同一包在构建图中只能有一种引用方式 |
-| 5 | **不要跳过 CPM 直接在 .csproj 写版本** | 版本碎片化，难以追踪和更新 |
-| 6 | **不要发布后忘记更新消费者** | 消费者 restore 失败（引用了不存在的版本） |
+| 1 | **不要手动 dotnet nuget push** | 绕过 CI，缺少审计，容易产生版本漂移 |
+| 2 | **不要使用 local-feed** | 已废弃，不再维护，容易产生版本不一致 |
+| 3 | **不要把 feed 放在 /tmp** | `/tmp` 会被系统定时清理或重启丢失 |
+| 4 | **不要每个项目一个 local-feed** | 多份副本版本不一致，维护成本高 |
+| 5 | **不要在项目 config 中使用 `<clear/>`** | 会清除全局源，导致包找不到 |
+| 6 | **不要混用 ProjectReference 和 PackageReference** | 同一包在构建图中只能有一种引用方式 |
+| 7 | **不要跳过 CPM 直接在 .csproj 写版本** | 版本碎片化，难以追踪和更新 |
+| 8 | **不要发布后忘记更新消费者** | 消费者 restore 失败（引用了不存在的版本） |
 
 ### 4.3 NuGet.org 包名安全
 
 **现状**：`ZL.Dao.IotDevice`、`ZL.DataConvert`、`ZL.DB.Acc`、`ZL.EdgeService` 四个包名曾被第三方抢先注册了高版本号（如 `1.0.8042.25207`）。
 
 **防御策略**：
-1. **已发布 1.1.0** 绕过冲突（`1.1.0 > 1.0.xxxx` 在语义化版本比较中不一定成立，但 CPM 精确锁定不受影响）
+1. **已发布 2.2.1** 绕过冲突（CPM 精确锁定不受影响）
 2. **所有消费者必须使用 CPM**，精确锁定版本号，不受 NuGet 范围解析影响
 3. **长期方案**：考虑统一加 `UseThink.` 前缀（如 `UseThink.Iot.Dao.IotDevice`），彻底隔离
 
-> **重要**：即使有冲突者发布更高版本号，只要消费者 CPM 写的是 `<PackageVersion Include="ZL.Dao.IotDevice" Version="1.1.0" />`，NuGet 就会精确拉取 1.1.0，不会被更高版本劫持。
+> **重要**：即使有冲突者发布更高版本号，只要消费者 CPM 写的是 `<PackageVersion Include="ZL.Dao.IotDevice" Version="2.2.1" />`，NuGet 就会精确拉取 2.2.1，不会被更高版本劫持。
 
 ---
 
 ## 五、版本管理策略
 
-### 5.1 发版策略：独立发版
+### 5.1 发版策略：统一版本
 
-每个 ZL 包**独立发版**，不强制所有 23 个包同步到同一版本。
+所有 ZL 包**统一版本号**，同步发布。
 
 | 场景 | 操作 |
 |------|------|
-| 仅 `ZL.Dao.IotDevice` 有 Bug 修复 | 只发布 `ZL.Dao.IotDevice` 1.1.1 |
-| `ZL.Framing` + `ZL.Protocol` 有新功能 | 发布这两个包 1.1.1 |
-| 全部包有大版本更新 | 发布所有 23 个包 2.0.0 |
+| 修复 Bug | 统一升级所有包版本，如 `2.2.1` → `2.2.2` |
+| 新功能 | 统一升级所有包版本，如 `2.2.1` → `2.3.0` |
+| 大版本更新 | 统一升级所有包版本，如 `2.2.1` → `3.0.0` |
+
+**版本号由 GitHub Actions 流水线统一管理**，禁止手动随意提升版本。
 
 ### 5.2 消费者更新策略
 
@@ -213,14 +198,13 @@ dotnet restore
 |------|------|------|
 | `zl-pipeline sync-consumers X.Y.Z` | 全量同步到指定版本 | 所有包都发布了 X.Y.Z 时使用 |
 | `zl-pipeline align-versions` | 各包拉到各自最新 | 日常独立发版后的消费者更新 |
-| `align-zl-packages.py` | UseThink.Iot/api 专用 | 支持 NuGet.org + 本地 feed 混合源 |
+| `align-zl-packages.py` | UseThink.Iot/api 专用 | 支持 NuGet.org 源 |
 
 ### 5.3 版本查询优先级
 
 ```
 align-zl-packages.py (--source auto，默认):
-  1. NuGet.org index.json API  ← 优先（发布后秒级可用）
-  2. ~/.nuget/local-feed/      ← 备选（NuGet.org 404 时）
+  1. NuGet.org index.json API  ← 唯一源
 ```
 
 ---
@@ -237,20 +221,7 @@ dotnet nuget locals http-cache -c          # 清除 HTTP 缓存
 dotnet restore                              # 重试
 ```
 
-### 6.2 restore 失败：ZL.PlcBase 找不到
-
-```bash
-# 确认全局本地 feed 存在
-ls ~/.nuget/local-feed/ZL.PlcBase*
-
-# 确认全局配置引用了该路径
-cat ~/.nuget/NuGet/NuGet.Config
-
-# 如果 feed 被误删，从备份恢复
-cp /path/to/backup/*.nupkg ~/.nuget/local-feed/
-```
-
-### 6.3 restore 拉到了错误的版本号
+### 6.2 restore 拉到了错误的版本号
 
 ```bash
 # 检查 CPM
@@ -261,7 +232,7 @@ dotnet nuget locals global-packages -c     # ⚠️ 清除全局包缓存（较�
 dotnet restore
 ```
 
-### 6.4 NuGet.org 新发版后消费者找不到
+### 6.3 NuGet.org 新发版后消费者找不到
 
 NuGet.org 有**传播延迟**（通常 1-5 分钟）：
 - `index.json` API：推送后**立即可用**
@@ -270,14 +241,14 @@ NuGet.org 有**传播延迟**（通常 1-5 分钟）：
 
 ```bash
 # 验证包是否已可用（最可靠）
-curl -s "https://api.nuget.org/v3-flatcontainer/zl.dao.iotdevice/index.json" | python3 -c "import sys,json; print('1.1.0 OK' if '1.1.0' in json.load(sys.stdin)['versions'] else 'NOT YET')"
+curl -s "https://api.nuget.org/v3-flatcontainer/zl.dao.iotdevice/index.json" | python3 -c "import sys,json; print('2.2.1 OK' if '2.2.1' in json.load(sys.stdin)['versions'] else 'NOT YET')"
 
 # 如果已可用但 restore 失败，清缓存
 dotnet nuget locals http-cache -c
 dotnet restore
 ```
 
-### 6.5 编译时报"传递性包冲突"
+### 6.4 编译时报"传递性包冲突"
 
 当项目同时引用了 NuGet 包和源码（ProjectReference）版本的同一依赖时：
 
@@ -309,13 +280,12 @@ dotnet restore
 | 文件 | 路径 | 作用 |
 |------|------|------|
 | 全局 NuGet 配置 | `~/.nuget/NuGet/NuGet.Config` | 定义所有包源 |
-| 全局本地 feed | `~/.nuget/local-feed/` | ZL.PlcBase 等非公网包 |
 | iot-sdk CPM | `iot-sdk/Directory.Packages.props` | SDK 内部统一版本 |
 | iot-sdk pipeline | `iot-sdk/pipeline.json` | 定义项目列表和消费者 |
 | tmom CPM | `tmom/Directory.Packages.props` | tmom 统一版本 |
 | UseThink.Iot CPM | `UseThink.Iot/api/Directory.Packages.props` | UseThink 统一版本 |
-| 发布脚本 | `deploy/tools/ZL.Pipeline.Cli/zl-pipeline.py` | pack/publish/sync/align |
-| UseThink 对齐脚本 | `UseThink.Iot/api/align-zl-packages.py` | 双源版本对齐 |
+| 发布脚本 | `deploy/tools/ZL.Pipeline.Cli/zl-pipeline.py` | sync-consumers / align-versions |
+| UseThink 对齐脚本 | `UseThink.Iot/api/align-zl-packages.py` | 版本对齐 |
 
 ---
 
@@ -346,8 +316,8 @@ EOF
   </PropertyGroup>
   <ItemGroup>
     <!-- 在此添加需要的 ZL 包及版本号 -->
-    <PackageVersion Include="ZL.Collections" Version="1.1.0" />
-    <PackageVersion Include="ZL.Framing" Version="1.1.0" />
+    <PackageVersion Include="ZL.Collections" Version="2.2.1" />
+    <PackageVersion Include="ZL.Framing" Version="2.2.1" />
     <!-- ... -->
   </ItemGroup>
 </Project>
@@ -383,11 +353,13 @@ dotnet build      # 确认编译通过
 
 | zl-pipeline 命令 | 与全局 NuGet 方案的关系 |
 |-----------------|----------------------|
-| `zl-pipeline pack X.Y.Z` | 打包前更新 iot-sdk CPM 到 X.Y.Z |
-| `zl-pipeline publish X.Y.Z` | 推送 artifacts/*.nupkg 到 NuGet.org |
+| `zl-pipeline pack X.Y.Z` | 本地打包/验证，不负责 nuget.org 推送 |
+| `zl-pipeline publish X.Y.Z` | 本地 dry-run 验证用；实际 nuget.org 推送由 GitHub Actions 完成 |
 | `zl-pipeline sync-consumers X.Y.Z` | 更新 pipeline.json 中所有消费者的 CPM 到 X.Y.Z |
 | `zl-pipeline align-versions` | 查询 NuGet.org，将每个消费者 CPM 中各包拉到**各自最新** |
 | `zl-pipeline verify` | 验证所有消费者 restore + build |
+
+> **注意**：当前所有 NuGet.org 发布统一由 `.github/workflows/publish.yml` 处理。`zl-pipeline publish` 仅保留本地打包和验证能力，不再直接推送 nuget.org。
 
 ---
 
@@ -395,6 +367,7 @@ dotnet build      # 确认编译通过
 
 | 日期 | 变更 |
 |------|------|
+| 2026-06-29 | 废弃 local-feed，所有发布改为 GitHub Actions + nuget.org |
 | 2026-06-07 | 初始方案：统一全局 NuGet 配置，删除项目级本地 feed，ZL 包全部发布到 NuGet.org 1.1.0 |
 | 2026-06-07 | 发现并修复 NuGet.org 包名冲突（4 个包被第三方抢占），发布 1.1.0 绕过 |
 | 2026-06-07 | ProtocolGateway 从 UseThink.Iot 本地 feed 1.0.1 迁移到 NuGet.org 1.1.0 |
