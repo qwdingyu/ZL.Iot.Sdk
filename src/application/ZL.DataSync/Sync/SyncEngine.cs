@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using SqlSugar;
 using ZL.DataSync.Config;
 using ZL.DataSync.Infrastructure;
@@ -27,7 +26,7 @@ public sealed class SyncEngine : IDisposable
     private readonly Dictionary<string, (ISyncStrategy Strategy, Task Task)> _targetEntries = new();
 
     // 已发现的本地表（线程安全只读）
-    private ImmutableHashSet<string> _discoveredTables;
+    private HashSet<string> _discoveredTables;
 
     /// <summary>同步状态查询</summary>
     public SyncStatus Status => _status;
@@ -72,7 +71,7 @@ public sealed class SyncEngine : IDisposable
         _watermark.EnsureTable();
         _status.Reset();
         // 初始为空集合，Start() 中 DiscoverLocalTables() 会赋值
-        _discoveredTables = ImmutableHashSet<string>.Empty;
+        _discoveredTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -428,10 +427,11 @@ public sealed class SyncEngine : IDisposable
 
             if (tables != null)
             {
-                _discoveredTables = tables
+                _discoveredTables = new HashSet<string>(
+                    tables
                     .Select(t => t.Name ?? string.Empty)
-                    .Where(n => !string.IsNullOrWhiteSpace(n))
-                    .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+                    .Where(n => !string.IsNullOrWhiteSpace(n)),
+                    StringComparer.OrdinalIgnoreCase);
                 _logger.Info($"发现 {_discoveredTables.Count} 个本地业务表: {string.Join(", ", _discoveredTables)}");
             }
         }
