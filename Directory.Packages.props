@@ -6,9 +6,13 @@
 
   <ItemGroup>
     <!-- ZL 自有包 — 与 PlcBase / iot-sdk 统一版本 -->
-    <PackageVersion Include="ZL.PFLite" Version="2.2.1" />
-    <PackageVersion Include="ZL.IotHub" Version="2.2.1" />
-    <PackageVersion Include="ZL.IotHub.Bridges" Version="2.2.1" />
+    <PackageVersion Include="ZL.PFLite" Version="2.2.11" />
+    <PackageVersion Include="ZL.IotHub" Version="2.2.11" />
+    <!-- HSL 已于 2026-09-23 从 ZL.IotHub 剥离到独立包（docs/189）：
+         凡 Protocol 以 "hsl-" 开头的工程必须显式引用本包，
+         否则 DriverFactory 抛"未检测到 HSL 后端"。 -->
+    <PackageVersion Include="ZL.IotHub.X" Version="2.2.11" />
+    <PackageVersion Include="ZL.IotHub.Bridges" Version="2.2.11" />
 
     <!-- ZL IoT SDK 自有包 -->
     <PackageVersion Include="ZL.Collections" Version="2.2.1" />

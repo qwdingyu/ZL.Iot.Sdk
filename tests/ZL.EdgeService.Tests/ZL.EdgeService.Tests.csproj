@@ -19,6 +19,8 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\application\ZL.EdgeService\ZL.EdgeService.csproj" />
         <PackageReference Include="ZL.IotHub" />
+        <!-- HSL 已剥离到独立包（docs/189） -->
+        <PackageReference Include="ZL.IotHub.X" />
     </ItemGroup>
 
 </Project>

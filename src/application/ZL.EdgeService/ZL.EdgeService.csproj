@@ -35,6 +35,8 @@
         <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
         <ProjectReference Include="../../platform/ZL.DB.Acc/ZL.DB.Acc.csproj" />
         <PackageReference Include="ZL.IotHub" />
+        <!-- HSL 已剥离到独立包（docs/189）：不引用则 "hsl-" 驱动创建时抛"未检测到 HSL 后端" -->
+        <PackageReference Include="ZL.IotHub.X" />
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
 

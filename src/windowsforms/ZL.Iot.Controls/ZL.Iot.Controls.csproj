@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <PackageReference Include="ZL.IotHub" />
+    <!-- HSL 已剥离到独立包（docs/189）：本控件库会拼 "hsl-" 协议前缀 -->
+    <PackageReference Include="ZL.IotHub.X" />
     <PackageReference Include="OxyPlot.Core" />
     <PackageReference Include="OxyPlot.WindowsForms" />
   </ItemGroup>
