@@ -35,7 +35,7 @@ namespace ZL.ConnectionGuard.Adapters
         {
             CloseInternal();
             _client = new TcpClient();
-            await _client.ConnectAsync(_ip, _port);
+            await _client.ConnectAsync(_ip, _port).ConfigureAwait(false);
             _stream = _client.GetStream();
             _readCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             _readTask = Task.Run(() => ReadLoopAsync(_readCts.Token), _readCts.Token);
@@ -49,7 +49,7 @@ namespace ZL.ConnectionGuard.Adapters
         public async Task SendAsync(byte[] data, CancellationToken token)
         {
             if (_stream == null) throw new InvalidOperationException("TCP stream not open.");
-            await _stream.WriteAsync(data, 0, data.Length, token);
+            await _stream.WriteAsync(data, 0, data.Length, token).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -69,7 +69,7 @@ namespace ZL.ConnectionGuard.Adapters
                     int read;
                     try
                     {
-                        read = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+                        read = await _stream.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
                     }
                     catch
                     {

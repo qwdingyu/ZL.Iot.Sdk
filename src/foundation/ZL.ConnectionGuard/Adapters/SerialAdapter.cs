@@ -83,7 +83,7 @@ namespace ZL.ConnectionGuard.Adapters
                 {
                     try
                     {
-                        int read = await _port.BaseStream.ReadAsync(buffer, 0, buffer.Length, token);
+                        int read = await _port.BaseStream.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
                         if (read <= 0) continue;
                         byte[] data = new byte[read];
                         Buffer.BlockCopy(buffer, 0, data, 0, read);

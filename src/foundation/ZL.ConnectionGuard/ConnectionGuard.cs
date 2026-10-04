@@ -114,7 +114,7 @@ namespace ZL.ConnectionGuard
         /// </summary>
         public async Task<bool> SendAsync(byte[] data)
         {
-            return await SendAsync(data, SendPriority.Normal);
+            return await SendAsync(data, SendPriority.Normal).ConfigureAwait(false);
         }
 
         public async Task<bool> SendAsync(byte[] data, SendPriority priority)
@@ -123,7 +123,7 @@ namespace ZL.ConnectionGuard
             if (data == null || data.Length == 0) return false;
             // 当前实现不做中断式抢占，优先级只用于未来扩展。
             _ = priority;
-            return await TrySendInternalAsync(data);
+            return await TrySendInternalAsync(data).ConfigureAwait(false);
         }
 
         private async Task MaintenanceLoop()
@@ -149,7 +149,7 @@ namespace ZL.ConnectionGuard
 
                         try
                         {
-                            await _channel.OpenAsync(_lifecycleCts.Token);
+                            await _channel.OpenAsync(_lifecycleCts.Token).ConfigureAwait(false);
                             SetState(GuardState.Connected, "Connected.");
                             currentDelay = _options.ReconnectMinDelayMs;
                             _connectedAt = DateTime.Now;
@@ -169,7 +169,7 @@ namespace ZL.ConnectionGuard
                             int jitter = jitterFactor > 0
                                 ? (int)Math.Round(currentDelay * (Random.Shared.NextDouble() * jitterFactor))
                                 : 0;
-                            await Task.Delay(currentDelay + jitter, _lifecycleCts.Token);
+                            await Task.Delay(currentDelay + jitter, _lifecycleCts.Token).ConfigureAwait(false);
                             currentDelay = Math.Min(currentDelay * 2, _options.ReconnectMaxDelayMs);
                             continue;
                         }
@@ -189,19 +189,19 @@ namespace ZL.ConnectionGuard
                             // ⚠️ 必须 await：原实现用 continue 跳过循环末尾的 Task.Delay，
                             // 而关闭是 fire-and-forget ⇒ 下一轮 IsConnected 仍为 true ⇒ 看门狗立刻再触发，
                             // 形成**忙循环 + 关闭风暴**（实测并发峰值 75701）。await 后既确定又自然限速。
-                            await CloseChannelAsync();
+                            await CloseChannelAsync().ConfigureAwait(false);
                             continue;
                         }
 
                         // 心跳：超过发送间隔触发。
                         if (ShouldSendHeartbeat(now))
                         {
-                            await ExecuteHeartbeatAsync();
+                            await ExecuteHeartbeatAsync().ConfigureAwait(false);
                         }
                     }
 
                     // 维护循环节奏，可被取消。
-                    await Task.Delay(_options.MaintenanceLoopDelayMs, _lifecycleCts.Token);
+                    await Task.Delay(_options.MaintenanceLoopDelayMs, _lifecycleCts.Token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -210,7 +210,7 @@ namespace ZL.ConnectionGuard
                 catch (Exception ex)
                 {
                     _logger.Error("Unexpected error in MaintenanceLoop.", ex);
-                    await Task.Delay(1000, _lifecycleCts.Token);
+                    await Task.Delay(1000, _lifecycleCts.Token).ConfigureAwait(false);
                 }
             }
 
@@ -247,7 +247,7 @@ namespace ZL.ConnectionGuard
                 {
                     _logger.Debug("Sending heartbeat...");
                     // 心跳复用 SendAsync，确保串口/Socket 单通道安全。
-                    await SendAsync(payload, SendPriority.High);
+                    await SendAsync(payload, SendPriority.High).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -327,13 +327,13 @@ namespace ZL.ConnectionGuard
         {
             try
             {
-                await foreach (var item in _stateChannel.Reader.ReadAllAsync(_lifecycleCts.Token))
+                await foreach (var item in _stateChannel.Reader.ReadAllAsync(_lifecycleCts.Token).ConfigureAwait(false))
                 {
                     try
                     {
                         if (_options.StateCallbackMode == StateCallbackMode.Async)
                         {
-                            await Task.Run(() => OnStateChanged?.Invoke(item.state, item.message), _lifecycleCts.Token);
+                            await Task.Run(() => OnStateChanged?.Invoke(item.state, item.message), _lifecycleCts.Token).ConfigureAwait(false);
                         }
                         else
                         {
@@ -431,7 +431,7 @@ namespace ZL.ConnectionGuard
             try
             {
                 // 等待锁时带取消：Stop 时可立即退出。
-                if (!await _sendLock.WaitAsync(_options.SendLockTimeoutMs, _lifecycleCts.Token))
+                if (!await _sendLock.WaitAsync(_options.SendLockTimeoutMs, _lifecycleCts.Token).ConfigureAwait(false))
                 {
                     _logger.Warn("Send timeout: could not acquire send lock.");
                     return false;
@@ -452,7 +452,7 @@ namespace ZL.ConnectionGuard
                 if (CurrentState != GuardState.Connected) return false;
                 using var timeoutCts = new CancellationTokenSource(_options.SendTimeoutMs);
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_lifecycleCts.Token, timeoutCts.Token);
-                await _channel.SendAsync(data, linkedCts.Token);
+                await _channel.SendAsync(data, linkedCts.Token).ConfigureAwait(false);
                 _lastSendTime = DateTime.Now;
                 _hasSentSinceConnect = true;
                 return true;

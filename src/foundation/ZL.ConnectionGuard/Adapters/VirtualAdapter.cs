@@ -66,7 +66,7 @@ namespace ZL.ConnectionGuard.Adapters
             // 可选：模拟设备定期上报心跳或状态。
             while (!token.IsCancellationRequested && _connected)
             {
-                await Task.Delay(1000, token);
+                await Task.Delay(1000, token).ConfigureAwait(false);
             }
         }
     }

@@ -68,7 +68,7 @@ namespace ZL.ConnectionGuard.Adapters
             HttpMethod method = _sendMethod == "PUT" ? HttpMethod.Put : HttpMethod.Post;
             if (_sendMethod == "GET")
             {
-                await _client.GetAsync(_sendUri, token);
+                await _client.GetAsync(_sendUri, token).ConfigureAwait(false);
                 return;
             }
 
@@ -76,7 +76,7 @@ namespace ZL.ConnectionGuard.Adapters
             {
                 Content = content
             };
-            await _client.SendAsync(request, token);
+            await _client.SendAsync(request, token).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -92,12 +92,12 @@ namespace ZL.ConnectionGuard.Adapters
                 try
                 {
                     using HttpResponseMessage response = _pollMethod == "POST"
-                        ? await _client.PostAsync(_pollUri, new ByteArrayContent(Array.Empty<byte>()), token)
-                        : await _client.GetAsync(_pollUri, token);
+                        ? await _client.PostAsync(_pollUri, new ByteArrayContent(Array.Empty<byte>()), token).ConfigureAwait(false)
+                        : await _client.GetAsync(_pollUri, token).ConfigureAwait(false);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        byte[] payload = await ReadAllBytesAsync(response, token);
+                        byte[] payload = await ReadAllBytesAsync(response, token).ConfigureAwait(false);
                         if (payload.Length > 0)
                         {
                             OnDataReceived?.Invoke(payload);
@@ -111,7 +111,7 @@ namespace ZL.ConnectionGuard.Adapters
 
                 try
                 {
-                    await Task.Delay(_interval, token);
+                    await Task.Delay(_interval, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -122,7 +122,7 @@ namespace ZL.ConnectionGuard.Adapters
 
         private static async Task<byte[]> ReadAllBytesAsync(HttpResponseMessage response, CancellationToken token)
         {
-            var stream = await response.Content.ReadAsStreamAsync(token);
+            var stream = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
             long? contentLength = response.Content.Headers.ContentLength;
             if (contentLength.HasValue && contentLength.Value > 0 && contentLength.Value <= int.MaxValue)
             {
@@ -131,7 +131,7 @@ namespace ZL.ConnectionGuard.Adapters
                 int offset = 0;
                 while (offset < length)
                 {
-                    int read = await stream.ReadAsync(exact, offset, length - offset, token);
+                    int read = await stream.ReadAsync(exact, offset, length - offset, token).ConfigureAwait(false);
                     if (read <= 0) break;
                     offset += read;
                 }
@@ -149,7 +149,7 @@ namespace ZL.ConnectionGuard.Adapters
             {
                 while (true)
                 {
-                    int read = await stream.ReadAsync(buffer, 0, buffer.Length, token);
+                    int read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
                     if (read <= 0) break;
                     int required = total + read;
                     if (required > aggregate.Length)

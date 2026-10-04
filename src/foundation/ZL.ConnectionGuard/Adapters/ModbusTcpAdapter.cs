@@ -50,7 +50,7 @@ namespace ZL.ConnectionGuard.Adapters
             if (_isDisposed) throw new ObjectDisposedException(nameof(ModbusTcpAdapter));
             CloseInternal();
             _client = new TcpClient();
-            await _client.ConnectAsync(_ip, _port);
+            await _client.ConnectAsync(_ip, _port).ConfigureAwait(false);
             _stream = _client.GetStream();
             _readCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             _readTask = Task.Run(() => ReadLoopAsync(_readCts.Token), _readCts.Token);
@@ -65,7 +65,7 @@ namespace ZL.ConnectionGuard.Adapters
         {
             if (_stream == null) throw new InvalidOperationException("Modbus TCP stream not open.");
             byte[] payload = _sendRawFrame ? data : BuildRequest(data, UnitId, NextTransactionId());
-            await _stream.WriteAsync(payload, 0, payload.Length, token);
+            await _stream.WriteAsync(payload, 0, payload.Length, token).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -109,7 +109,7 @@ namespace ZL.ConnectionGuard.Adapters
                     int read;
                     try
                     {
-                        read = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+                        read = await _stream.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
                     }
                     catch
                     {

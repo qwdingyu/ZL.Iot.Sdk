@@ -67,12 +67,12 @@ namespace ZL.ConnectionGuard.Adapters
             while (!token.IsCancellationRequested)
             {
                 Task<UdpReceiveResult> receiveTask = _client.ReceiveAsync();
-                Task completed = await Task.WhenAny(receiveTask, Task.Delay(Timeout.Infinite, token));
+                Task completed = await Task.WhenAny(receiveTask, Task.Delay(Timeout.Infinite, token)).ConfigureAwait(false);
                 if (completed != receiveTask) break;
 
                 try
                 {
-                    var result = receiveTask.Result;
+                    var result = await receiveTask.ConfigureAwait(false);
                     if (result.Buffer.Length > 0)
                     {
                         byte[] data = ArrayPool<byte>.Shared.Rent(result.Buffer.Length);

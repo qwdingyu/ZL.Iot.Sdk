@@ -36,7 +36,7 @@ namespace ZL.ConnectionGuard.Adapters
             _listener = new TcpListener(IPAddress.Any, _port);
             _listener.Start();
 
-            _client = await _listener.AcceptTcpClientAsync(token);
+            _client = await _listener.AcceptTcpClientAsync(token).ConfigureAwait(false);
             _stream = _client.GetStream();
 
             _readCts = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -51,7 +51,7 @@ namespace ZL.ConnectionGuard.Adapters
         public async Task SendAsync(byte[] data, CancellationToken token)
         {
             if (_stream == null) throw new InvalidOperationException("TCP client not connected.");
-            await _stream.WriteAsync(data, 0, data.Length, token);
+            await _stream.WriteAsync(data, 0, data.Length, token).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -71,7 +71,7 @@ namespace ZL.ConnectionGuard.Adapters
                     int read;
                     try
                     {
-                        read = await _stream.ReadAsync(buffer, 0, buffer.Length, token);
+                        read = await _stream.ReadAsync(buffer.AsMemory(0, buffer.Length), token).ConfigureAwait(false);
                     }
                     catch
                     {
