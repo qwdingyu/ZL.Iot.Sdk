@@ -152,7 +152,19 @@ namespace ZL.Framing
             {
                 if (IsDisposed()) return;
                 if (_buffer.ReadableBytes == 0) return;
-                if ((DateTime.UtcNow - _lastReceivedUtc).TotalMilliseconds < _timeoutMs) return;
+                double idleMs = (DateTime.UtcNow - _lastReceivedUtc).TotalMilliseconds;
+                if (idleMs < _timeoutMs)
+                {
+                    // ⚠️ 定时器「早到」必须**重排剩余时间**，不能直接 return（2026-10-04 实测修复）：
+                    // Timer 的实际触发点可能比 dueTime 略早（计时器粒度/时钟），此时 idle 还差零点几
+                    // 毫秒不到阈值；直接 return 会让本次冲刷作废，而本类定时器周期是 Infinite——
+                    // 缓冲区里的帧**从此永远不会被冲刷**：客户端只看到「无响应」，服务端无任何日志。
+                    // 实测（对照实验，见消费方 ZL.Simulator 的 AGENTS.md「传输层与成帧」与 docs/12）：
+                    // 原样整块投喂 28/2000（1.40%）丢帧、分片投喂 271/2000（13.55%）；
+                    // 仅补「早到则重排剩余时间」后两种投喂均 0/2000。重排是唯一的正确形状。
+                    TryChangeTimer(Math.Max(1, (int)Math.Ceiling(_timeoutMs - idleMs)), Timeout.Infinite);
+                    return;
+                }
 
                 mode = _timeoutMode;
                 if (mode == TimeoutMode.Emit)

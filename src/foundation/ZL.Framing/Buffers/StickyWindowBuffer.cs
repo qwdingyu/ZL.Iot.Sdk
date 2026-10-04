@@ -99,8 +99,17 @@ namespace ZL.Framing
         public int IndexOf(byte[] pattern, int offset, int count)
         {
             if (pattern == null || pattern.Length == 0) return -1;
+
+            // ⚠️ 参数校验（2026-10-04 修复，见 ZL.Framing.Tests/StickyWindowBufferTests）：
+            // 原实现不做校验也不夹范围——负 offset 会从**已消费区域**开始扫（静默匹配到旧字节），
+            // 越界 offset 会扫到窗口之外。断帧逻辑依赖 IndexOf 找同步字，一旦静默匹配到旧字节，
+            // 表现是「偶发错帧」，极难归因。
+            if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset), offset, "offset 不能为负。");
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count), count, "count 不能为负。");
+
+            // 搜索范围夹在可读窗口内：越界部分没有可匹配数据（返回 -1），绝不越窗读取。
+            int start = Math.Min(_readIndex + offset, _writeIndex);
             int end = Math.Min(_readIndex + offset + count, _writeIndex);
-            int start = _readIndex + offset;
 
             for (int i = start; i <= end - pattern.Length; i++)
             {
@@ -179,7 +188,15 @@ namespace ZL.Framing
 
         private void CheckBounds(int index, int length)
         {
-            if (_readIndex + index + length > _writeIndex)
+            // ⚠️ 负值必须显式拒绝（2026-10-04 修复，见 ZL.Framing.Tests/StickyWindowBufferTests）：
+            // 原实现只比较「上界」，于是 index=-1 会读到**已消费的旧字节**（静默错值），
+            // 而 Skip(-1) 会让读指针**倒退**——后续读取全部错位，且 ReadableBytes 被虚增。
+            // 这类错误在断帧逻辑里表现为偶发错帧。此处用 ArgumentOutOfRangeException（参数非法），
+            // 与「数据不够」的 IndexOutOfRangeException 区分开。
+            if (index < 0) throw new ArgumentOutOfRangeException(nameof(index), index, "index 不能为负。");
+            if (length < 0) throw new ArgumentOutOfRangeException(nameof(length), length, "length 不能为负。");
+            // 用 long 比较，避免 index/length 取极大值时整数溢出绕过上界检查。
+            if ((long)_readIndex + index + length > _writeIndex)
             {
                 throw new IndexOutOfRangeException("Not enough bytes in buffer.");
             }
