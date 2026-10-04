@@ -24,6 +24,11 @@ name: Publish iot-sdk to NuGet
 
 env:
   DOTNET_NOLOGO: true
+  # ⚠️ Windows runner 的 Python 默认 cp1252，脚本里的 emoji/中文 print 会直接
+  # UnicodeEncodeError（v2.2.4 第二跑失败根因：崩在第一行 print("📦 ...")）。
+  # PYTHONUTF8=1 开启 Python UTF-8 模式；PYTHONIOENCODING 双保险。
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
 
 jobs:
   build-and-pack:
