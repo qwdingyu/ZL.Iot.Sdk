@@ -23,6 +23,12 @@ namespace ZL.ConnectionGuard
             new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         // 发送串行化锁：避免同一连接并发写导致帧交织。
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        // 关闭串行化锁 + 单飞标记（2026-10-04 修复，见 ZL.ConnectionGuard.Tests）：
+        // 适配器接口**没有可重入约定**，而看门狗/发送失败都会请求关闭——
+        // 原实现每次请求都 `Task.Run(CloseAsync)`，且看门狗分支用 continue 跳过循环延迟，
+        // 实测 1.2s 内并发关闭峰值 75701、总调用 115839（忙循环 + 关闭风暴）。
+        private readonly SemaphoreSlim _closeLock = new SemaphoreSlim(1, 1);
+        private int _reconnectCloseInFlight;
         // 状态事件队列：保证状态事件触发的顺序与状态变更顺序一致。
         private readonly Channel<(GuardState state, string message)> _stateChannel =
             Channel.CreateUnbounded<(GuardState, string)>(new UnboundedChannelOptions
@@ -180,7 +186,10 @@ namespace ZL.ConnectionGuard
                             && (now - _lastReceiveTime).TotalMilliseconds > _options.DeviceDeadTimeoutMs)
                         {
                             _logger.Warn($"Watchdog timeout ({(now - _lastReceiveTime).TotalSeconds:F1}s). Reconnecting...");
-                            TriggerReconnect();
+                            // ⚠️ 必须 await：原实现用 continue 跳过循环末尾的 Task.Delay，
+                            // 而关闭是 fire-and-forget ⇒ 下一轮 IsConnected 仍为 true ⇒ 看门狗立刻再触发，
+                            // 形成**忙循环 + 关闭风暴**（实测并发峰值 75701）。await 后既确定又自然限速。
+                            await CloseChannelAsync();
                             continue;
                         }
 
@@ -206,8 +215,10 @@ namespace ZL.ConnectionGuard
             }
 
             // 退出时归位状态并关闭连接。
+            // ⚠️ 必须 await（2026-10-04 修复）：原实现 fire-and-forget，于是 StopAsync 返回时
+            // 通道可能仍处于已连接（实测 CloseCount=0、IsConnected=True）——违背「确定性停机」。
             SetState(GuardState.Disconnected, "Maintenance loop stopped.");
-            _ = SafeCloseChannelAsync();
+            await CloseChannelAsync().ConfigureAwait(false);
         }
 
         private bool ShouldSendHeartbeat(DateTime now)
@@ -266,19 +277,40 @@ namespace ZL.ConnectionGuard
 
         private void TriggerReconnect()
         {
-            // 异步关闭，避免阻塞维护线程。
-            Task.Run(SafeCloseChannelAsync);
+            // 发送路径持有发送锁，不能在此 await 关闭（会阻塞发送）。
+            // 但必须**单飞**：原实现每次调用都 Task.Run(CloseAsync)，多次触发即并发关闭。
+            if (Interlocked.Exchange(ref _reconnectCloseInFlight, 1) == 1) return;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await CloseChannelAsync().ConfigureAwait(false);
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _reconnectCloseInFlight, 0);
+                }
+            });
         }
 
-        private async Task SafeCloseChannelAsync()
+        /// <summary>
+        /// 关闭通道（串行化）：适配器接口没有可重入约定，所有关闭路径都经这里。
+        /// 关闭异常按原语义忽略（连接已经不可用，再抛只会掩盖真实原因）。
+        /// </summary>
+        private async Task CloseChannelAsync()
         {
+            await _closeLock.WaitAsync().ConfigureAwait(false);
             try
             {
-                await _channel.CloseAsync();
+                await _channel.CloseAsync().ConfigureAwait(false);
             }
             catch
             {
                 // Ignore close errors.
+            }
+            finally
+            {
+                _closeLock.Release();
             }
         }
 
@@ -340,6 +372,15 @@ namespace ZL.ConnectionGuard
             catch
             {
                 // Ignore cancel errors.
+            }
+
+            try
+            {
+                _closeLock.Dispose();
+            }
+            catch
+            {
+                // Ignore lock dispose errors.
             }
 
             try
