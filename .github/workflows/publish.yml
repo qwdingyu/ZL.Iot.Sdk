@@ -10,9 +10,12 @@ name: Publish iot-sdk to NuGet
   workflow_dispatch:
     inputs:
       version:
-        description: 'Package version (e.g. 2.2.1)'
+        description: 'Package version (e.g. 2.2.4) —— 必填（曾默认 2.2.1，陈旧默认值会诱导误发旧版本）'
         required: true
-        default: '2.2.1'
+      require-all-packages:
+        description: '严格模式：任一 pipeline 项目未打包则失败（默认关闭，仅提示）'
+        type: boolean
+        default: false
       skip-obfuscate:
         description: 'Skip Obfuscar obfuscation'
         type: boolean
@@ -36,10 +39,10 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
@@ -58,6 +61,7 @@ jobs:
 
       # 核心：共享脚本处理 restore → build → pack → obfuscate
       - name: Build, pack & obfuscate
+        id: pack
         shell: bash
         run: |
           OBF_FLAG=""
@@ -68,8 +72,61 @@ jobs:
             --version ${{ steps.version.outputs.version }} \
             $OBF_FLAG
 
+      # ⚠️ 发布完整性检查（2026-10-06 补）：publish_all.py 对单个项目失败是「警告后跳过」，
+      # 只有全失败才退非零——曾出现 21/25 打包仍绿灯（v2.2.4 缺 4 包被静默）。
+      # 这里把 N/M 与缺失名单写进 job summary 使其显眼；require-all-packages=true
+      # （手动触发可勾）时缺失即失败。tag 触发时 inputs 为空 ⇒ 与旧行为兼容。
+      - name: Package completeness check
+        shell: bash
+        env:
+          REQUIRE_ALL: ${{ inputs.require-all-packages }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path.cwd()
+          version = "${{ steps.version.outputs.version }}"
+          pipeline = json.loads((root / "pipeline.json").read_text(encoding="utf-8"))
+          expected = [p["name"] for p in pipeline["projects"]]
+
+          list_file = root / "artifacts" / "packages" / "packages-list.txt"
+          packed = set()
+          if list_file.exists():
+              for line in list_file.read_text(encoding="utf-8").splitlines():
+                  line = line.strip()
+                  if not line:
+                      continue
+                  base = Path(line).name
+                  if base.endswith(".nupkg"):
+                      base = base[: -len(".nupkg")]
+                  if version and base.endswith("." + version):
+                      base = base[: -(len(version) + 1)]
+                  packed.add(base)
+
+          missing = [n for n in expected if n not in packed]
+          lines = ["### 📦 发布完整性：" + f"{len(packed)}/{len(expected)}", ""]
+          if missing:
+              lines += ["| 缺失包 | 说明 |", "| --- | --- |"]
+              lines += [f"| {m} | 见上方 ⚠️ 日志（逐项目回退也失败） |" for m in missing]
+          else:
+              lines.append("全部 pipeline 项目打包成功 ✅")
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as f:
+                  f.write("\n".join(lines) + "\n")
+
+          for m in missing:
+              print(f"::warning::打包缺失: {m}")
+          if missing and os.environ.get("REQUIRE_ALL") == "true":
+              for m in missing:
+                  print(f"::error::require-all 模式：缺失 {m}")
+              raise SystemExit(1)
+          print(f"打包完成 {len(packed)}/{len(expected)}；缺失 {len(missing)}")
+          PY
+
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nuget-packages-${{ steps.version.outputs.version }}
           path: artifacts/packages/*.nupkg
@@ -82,13 +139,13 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: nuget-packages-${{ needs.build-and-pack.outputs.version }}
           path: artifacts/packages
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 

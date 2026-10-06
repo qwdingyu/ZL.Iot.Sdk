@@ -33,3 +33,6 @@ inspect_zliothub.cs
 Thumbs.db
 
 docs/参考/
+
+# 本地备份杂物
+*.sln.bak
