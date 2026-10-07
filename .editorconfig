@@ -3,6 +3,10 @@
 #
 # ⚠️ charset 必须是 utf-8（**不带 BOM**）：带 BOM 的 pipeline.json 会让发布脚本
 #    publish_all.py 的 json.loads 抛 `Unexpected UTF-8 BOM`（2026-10-07 实际踩过）。
+#
+# 说明：本仓存量约 37 个 .cs 带 BOM（历史遗留，编译无影响）。IDE 保存时会按本配置
+# 自动去 BOM —— 属**渐进归一化**，预期行为；不要为此加 charset=utf-8-bom（会把
+# BOM 传染给新文件）。
 root = true
 
 [*]
