@@ -1,0 +1,23 @@
+# 统一编码与行尾（2026-10-07 补）：UTF-8 无 BOM / LF / .cs 4 空格。
+# 由 IDE 保存时强制执行，从源头避免 BOM 与 CRLF 混入。
+#
+# ⚠️ charset 必须是 utf-8（**不带 BOM**）：带 BOM 的 pipeline.json 会让发布脚本
+#    publish_all.py 的 json.loads 抛 `Unexpected UTF-8 BOM`（2026-10-07 实际踩过）。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{csproj,props,targets,json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{sh,bash}]
+indent_size = 2

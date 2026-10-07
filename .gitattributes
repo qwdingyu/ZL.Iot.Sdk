@@ -1,0 +1,25 @@
+# 行尾与二进制保护（2026-10-07 补）。
+#
+# ⚠️ 本仓文本文件**行尾混用**：.cs 109 个 CRLF / 444 个 LF、.csproj 2 CRLF / 47 LF
+#    （其余类型已统一 LF）。因此这里**故意不声明任何文本归一化规则**
+#    （无论 `* text=auto` 还是 `*.cs text eol=lf`，都会让这 111 个存量 CRLF 文件
+#    在下次被触碰时产生整文件 diff，淹没真实改动）。
+#
+#    统一行尾应作为一次**独立、刻意的动作**执行：
+#        git add --renormalize .   →  全量构建 + 测试验证  →  单独提交
+#    且必须在**所有人工作区干净**时进行，否则会把他人未提交的改动一并暂存。
+#    在此之前，新增文件的编码/行尾由 `.editorconfig` 约束（IDE 保存时生效）。
+#
+# 现状：本仓不跟踪任何二进制文件（已核对），以下为预防性声明。
+*.dll    binary
+*.exe    binary
+*.nupkg  binary
+*.snupkg binary
+*.zip    binary
+*.db     binary
+*.bin    binary
+*.png    binary
+*.jpg    binary
+*.ico    binary
+*.pfx    binary
+*.snk    binary
