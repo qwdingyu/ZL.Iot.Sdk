@@ -143,6 +143,7 @@ namespace ZL.ProtocolGateway.Plugins
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _lastHeartbeat = DateTime.UtcNow;
+            MarkConnectionEstablished();
 
             // 等待连接断开或取消请求，期间定期发送心跳
             while (!ct.IsCancellationRequested && HasLiveConnection())

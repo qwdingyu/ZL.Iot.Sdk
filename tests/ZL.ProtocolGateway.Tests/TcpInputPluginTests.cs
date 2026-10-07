@@ -179,12 +179,14 @@ namespace ZL.ProtocolGateway.Tests
         }
 
         [Fact]
-        public async Task Dispose_CallsStopAsync()
+        public async Task DisposeAsync_TransitionsToStopped()
         {
             var testPort = FindAvailableTcpPort();
             var plugin = new TcpInputPlugin(new TcpInputConfig { LocalIp = "127.0.0.1", Port = testPort });
             await plugin.StartAsync(_ => Task.CompletedTask);
-            plugin.Dispose();
+            // 基类 P0-3 契约：同步 Dispose 只取消/释放 CTS、不等待停机（避免 ThreadPool 耗尽死锁），
+            // 停机应走 DisposeAsync（见 InputPluginBase.Dispose 注释）。此处按契约改用异步释放。
+            await plugin.DisposeAsync();
             Assert.Equal(PluginStatus.Stopped, plugin.Status);
         }
 

@@ -242,6 +242,11 @@ namespace ZL.ProtocolGateway
         /// </summary>
         public IReadOnlyCollection<IOutputPlugin> RegisteredOutputs => new List<IOutputPlugin>(_outputs.Values);
 
+        /// <summary>
+        /// 已注册的路由规则快照（只读）。供 GatewayService 兼容构造迁移用（2026-10-06 补）。
+        /// </summary>
+        public IReadOnlyList<RouteRule> RegisteredRouterRules => _router.Rules;
+
         public ResilientMessagePipeline()
         {
             InitializeQueue();

@@ -144,6 +144,7 @@ namespace ZL.ProtocolGateway.Plugins
             {
                 throw new InvalidOperationException("Allen-Bradley Register Session failed");
             }
+            MarkConnectionEstablished();
 
             // 保持连接直到断开或取消（NOP 保活 + 读取检测断开）
             var buffer = new byte[1];

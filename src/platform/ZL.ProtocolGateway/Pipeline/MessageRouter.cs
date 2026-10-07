@@ -33,6 +33,12 @@ namespace ZL.ProtocolGateway
         private readonly object _writeLock = new();
 
         /// <summary>
+        /// 当前已注册的路由规则快照（按优先级排序，只读）。
+        /// 供 GatewayService 兼容构造迁移规则用（2026-10-06 补）。
+        /// </summary>
+        public RouteRule[] Rules => _rulesSnapshot;
+
+        /// <summary>
         /// 添加路由规则，自动按 Priority 排序。
         /// 写操作通过 _writeLock 保护，完成后发布新快照。
         /// </summary>

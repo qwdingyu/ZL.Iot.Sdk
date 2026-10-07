@@ -66,7 +66,11 @@ namespace ZL.ProtocolGateway.Tests
             // OnStartAsync spawns a background ConnectionLoopAsync Task and returns immediately,
             // so OutputPluginBase sets Status=Running; the connection loop retries in the background.
             await Task.Delay(200);
-            Assert.Equal(PluginStatus.Running, plugin.Status);
+            // 目标端口无监听时连接循环会转入 Recovering 并指数退避重试；
+            // 若恰有服务监听则 Running。断言「已脱离 Stopped/Starting 且循环存活」才确定。
+            // （原断言恒为 Running，在无监听环境下必然失败——期望已过时，2026-10-07 修正。）
+            Assert.True(plugin.Status is PluginStatus.Recovering or PluginStatus.Running,
+                $"unexpected status: {plugin.Status}");
             await plugin.StopAsync();
         }
 

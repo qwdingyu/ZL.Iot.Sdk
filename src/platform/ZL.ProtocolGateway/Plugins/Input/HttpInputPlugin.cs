@@ -57,7 +57,15 @@ namespace ZL.ProtocolGateway.Plugins
             try
             {
                 _httpListener = new HttpListener();
-                _httpListener.Prefixes.Add($"http://{_config.LocalIp}:{_config.Port}{_config.PathPrefix}");
+                // HttpListener 要求前缀以 '/' 结尾。用户配置 "/api" 这类前缀时必须补全，
+                // 否则 Start() 抛 ArgumentException("Only Uri prefixes ending in '/' are allowed")，
+                // 插件对任何自定义 PathPrefix 都无法启动（2026-10-07 修复）。
+                string listenPrefix = string.IsNullOrWhiteSpace(_config.PathPrefix) ? "/" : _config.PathPrefix;
+                if (!listenPrefix.EndsWith('/'))
+                {
+                    listenPrefix += "/";
+                }
+                _httpListener.Prefixes.Add($"http://{_config.LocalIp}:{_config.Port}{listenPrefix}");
                 _httpListener.Start();
                 _ = Task.Run(() => AcceptLoopAsync(ct), ct).ContinueWith(t =>
                 {

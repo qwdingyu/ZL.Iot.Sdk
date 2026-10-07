@@ -288,12 +288,15 @@ public class PollingInputTests
     public void ParseReadHoldingRegistersResponse_ValidResponse_ReturnsValues()
     {
         // MBAP(7) + Function(1) + ByteCount(1) + 3 registers (6 bytes) = 15 bytes
-        byte[] frame = new byte[16];
-        frame[8] = ModbusTcpProtocolEngine.FunctionReadHoldingRegisters;
-        frame[9] = 0x06;
-        frame[10] = 0x00; frame[11] = 0x01;
-        frame[12] = 0x00; frame[13] = 0x64;
-        frame[14] = 0x03; frame[15] = 0xE8;
+        // ⚠️ 布局修正（2026-10-07）：MBAP 为 7 字节 → function 在 [7]、byteCount 在 [8]、
+        // 寄存器数据从 [9] 起。原实现整体偏移了 1 字节（function 写在 [8]），解析器读 [7] 得 0
+        // 而返回失败——是测试样本错误，不是解析器缺陷。
+        byte[] frame = new byte[15];
+        frame[7] = ModbusTcpProtocolEngine.FunctionReadHoldingRegisters;
+        frame[8] = 0x06;
+        frame[9] = 0x00; frame[10] = 0x01;
+        frame[11] = 0x00; frame[12] = 0x64;
+        frame[13] = 0x03; frame[14] = 0xE8;
 
         var (success, values) = ModbusTcpProtocolEngine.ParseReadHoldingRegistersResponse(frame);
 

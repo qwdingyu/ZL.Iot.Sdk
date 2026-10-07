@@ -155,15 +155,10 @@ public abstract class IndustrialOutputPluginBase : OutputPluginBase
                     break;
                 }
 
-                Status = PluginStatus.Running;
-                ResetConnectFailureStreak();
-                _lastFailureKind = string.Empty;
-                _firstConnectionRefusedAt = null;
-                SetLastException(null);
-
-                var connectedMessage = OnConnected();
-                RaiseDetailedStatusChanged(OutputPluginHealthLevel.Healthy, connectedMessage);
-                SetConnectionState(true, OutputPluginHealthLevel.Healthy);
+                // 短生命周期实现（TryConnectAsync 建连后即返回）在此标记连接已建立；
+                // 长持有实现（建连后持有连接直到断开）必须在 TryConnectAsync 内部自行调用
+                // MarkConnectionEstablished()——见其 XML 注释里的缺陷说明。
+                MarkConnectionEstablished();
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -225,6 +220,32 @@ public abstract class IndustrialOutputPluginBase : OutputPluginBase
     /// 子类覆盖：连接成功时返回连接消息。
     /// </summary>
     protected virtual string OnConnected() => $"Connected to {ProtocolType}";
+
+    /// <summary>
+    /// 标记连接已建立：置 Status=Running 并发布 Healthy 状态事件。
+    /// <para>
+    /// ⚠️ 长持有型 TryConnectAsync 必须自行调用（2026-10-06 修复的真实缺陷）：
+    /// 本基类的 TryConnectAsync 契约有两种写法——短生命周期（建连后返回，由外层循环
+    /// 统一标记）与长持有（建连后在内部循环持有连接直到断开才返回，如 ModbusTcp /
+    /// AllenBradley / IEC61850Mms / MitsubishiMc / OpcUa）。后者的外层
+    /// <c>Status = PluginStatus.Running</c> 要等 TryConnectAsync 返回（=连接已断开）才执行，
+    /// 于是**连接活着期间状态一直停在 Starting**，而 <c>OutputPluginBase.SendAsync</c> 的
+    /// <c>Status != Running</c> 守卫会拒绝一切发送：发送要求 Running、Running 要求连接断开，
+    /// 互锁成死局。实测（ModbusTcpOutputPlugin + 本地 mock 服务器）：连接建立后 Status 停在
+    /// Starting，SendAsync 连续 12 秒全部被拒、对端一帧未收。
+    /// 长持有实现请在「建连成功（含会话/握手完成）之后、进入持有循环之前」调用本方法。
+    /// </para>
+    /// </summary>
+    protected void MarkConnectionEstablished()
+    {
+        Status = PluginStatus.Running;
+        ResetConnectFailureStreak();
+        _lastFailureKind = string.Empty;
+        _firstConnectionRefusedAt = null;
+        SetLastException(null);
+        RaiseDetailedStatusChanged(OutputPluginHealthLevel.Healthy, OnConnected());
+        SetConnectionState(true, OutputPluginHealthLevel.Healthy);
+    }
 
     /// <summary>
     /// 子类覆盖：在失败处理中执行额外操作（如记录 ConnectionRefused 时间戳）。

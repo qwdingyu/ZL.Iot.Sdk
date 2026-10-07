@@ -68,11 +68,19 @@ public abstract class InputPluginBase : IInputPlugin, IAsyncDisposable
 
         try
         {
+            // ⚠️ 必须先取消令牌再停插件（2026-10-06 修复）：
+            // 子类 OnStopAsync 普遍要 await 由 ct 驱动的接收/轮询循环任务；若按旧顺序
+            // 「先等 OnStopAsync、finally 里才 Cancel」，循环在等令牌、OnStopAsync 在等循环
+            // → 三方互等死锁，StopAsync 永不返回（UdpInputPlugin 场景测试曾因此挂死，
+            // 接收循环同时因 _udpClient 被置 null 而陷入 NRE 空转刷日志）。
+            // manager 路径此前「碰巧」不死，是因为 GatewayManager 先取消了自己在
+            // StartAsync 时链入的令牌；直接调用 plugin.StopAsync() 的路径（如测试、
+            // 嵌入式用法）必死。先取消后停止对两类路径语义一致。
+            try { _cts?.Cancel(); } catch { }
             await OnStopAsync();
         }
         finally
         {
-            _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
             Status = PluginStatus.Stopped;

@@ -44,8 +44,17 @@ namespace ZL.ProtocolGateway.Plugins
 
         protected override async Task OnStartAsync(CancellationToken ct)
         {
-            var bindIp = IPAddress.Parse(_config.LocalIp);
-            _udpClient = new UdpClient(new IPEndPoint(bindIp, _config.Port));
+            try
+            {
+                var bindIp = IPAddress.Parse(_config.LocalIp);
+                _udpClient = new UdpClient(new IPEndPoint(bindIp, _config.Port));
+            }
+            catch (Exception ex)
+            {
+                // 与 TcpInputPlugin 的错误契约一致：配置/绑定类失败统一为
+                // InvalidOperationException，不让 FormatException 等底层类型泄漏（2026-10-07 修复）。
+                throw new InvalidOperationException($"Failed to start UDP input: {ex.Message}", ex);
+            }
 
             var receiveTask = Task.Run(() => ReceiveLoopAsync(ct), ct);
             _receiveTask = receiveTask;
@@ -59,13 +68,17 @@ namespace ZL.ProtocolGateway.Plugins
             }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private async Task ReceiveLoopAsync(CancellationToken ct)
+    private async Task ReceiveLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
         {
-            while (!ct.IsCancellationRequested)
+            try
             {
-                try
-                {
-                    var result = await _udpClient.ReceiveAsync();
+                // 本地快照：OnStopAsync 会在 await 期间把 _udpClient 置 null，
+                // 直接解引用字段会 NRE 并在「令牌未取消」的旧实现下陷入无限空转。
+                var client = _udpClient;
+                if (client == null) break;
+                var result = await client.ReceiveAsync();
                     var msg = new Message
                     {
                         Topic = _config.Port.ToString(),

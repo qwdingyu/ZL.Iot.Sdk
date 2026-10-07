@@ -34,10 +34,24 @@ namespace ZL.ProtocolGateway
                 SendTimeoutMs = pipeline is ResilientMessagePipeline rmp2 ? rmp2.SendTimeoutMs : 30000
             }))
         {
-            // 将传入的 pipeline 的输出插件迁移到 manager
-            if (pipeline is ResilientMessagePipeline rmp3)
+            // ⚠️ 兼容构造必须把传入 pipeline 上已注册的输出与路由迁移到 manager（2026-10-06 修复）：
+            // 此处曾长期是空实现（只剩一行「仅保留兼容构造」注释）——传入 pipeline 成了孤岛：
+            // 输出永远不会被启动（连连接循环都不跑），输入消息进入 manager 内部 pipeline 后
+            // 无路由可匹配而被静默丢弃。所有经由本构造 + pipeline.RegisterOutput/AddRouter 的
+            // 调用方（含 6 个场景测试与 NuGet 包消费者）的转发全部静默失效。
+            // 迁移语义：输出走 GatewayManager.RegisterOutput（GatewayOutputManager 会同步注册进
+            // manager 内部 pipeline，随 StartAsync 启动）；路由规则直接加到 manager 的 pipeline。
+            if (pipeline is ResilientMessagePipeline legacy)
             {
-                // 内部 pipeline 已被 GatewayManager 替换，此处仅保留兼容构造
+                foreach (var output in legacy.RegisteredOutputs)
+                {
+                    _manager.RegisterOutput(output.Name, output);
+                }
+
+                foreach (var rule in legacy.RegisteredRouterRules)
+                {
+                    _manager.Pipeline.AddRouter(rule);
+                }
             }
         }
 

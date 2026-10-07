@@ -68,11 +68,15 @@ namespace ZL.ProtocolGateway.Tests
         }
 
         [Fact]
-        public async Task StartAsync_TransitionsToStarting()
+        public async Task StartAsync_TransitionsToStartingOrRunning()
         {
             var plugin = new WebSocketInputPlugin(new WebSocketInputConfig { Url = "ws://127.0.0.1:19999" });
             await plugin.StartAsync(_ => Task.CompletedTask);
-            Assert.Equal(PluginStatus.Starting, plugin.Status);
+            // StartAsync 返回时基类已置 Running，但后台连接循环对不可达地址会很快改回
+            // Starting/Recovering——断言精确的中间态是竞态（旧写法恒断言 Starting 会随机挂）。
+            // 确定性判据：启动有实际效果（既非 Stopped 也非 Error）。
+            Assert.True(plugin.Status is PluginStatus.Starting or PluginStatus.Running or PluginStatus.Recovering,
+                $"unexpected status after start: {plugin.Status}");
             await plugin.StopAsync();
         }
 
@@ -86,11 +90,13 @@ namespace ZL.ProtocolGateway.Tests
         }
 
         [Fact]
-        public async Task Dispose_CallsStopAsync()
+        public async Task DisposeAsync_TransitionsToStopped()
         {
             var plugin = new WebSocketInputPlugin(new WebSocketInputConfig { Url = "ws://127.0.0.1:19999" });
             await plugin.StartAsync(_ => Task.CompletedTask);
-            plugin.Dispose();
+            // 基类 P0-3 契约：同步 Dispose 只取消/释放 CTS、不等待停机（避免 ThreadPool 耗尽死锁），
+            // 停机应走 DisposeAsync（见 InputPluginBase.Dispose 注释）。此处按契约改用异步释放。
+            await plugin.DisposeAsync();
             Assert.Equal(PluginStatus.Stopped, plugin.Status);
         }
     }

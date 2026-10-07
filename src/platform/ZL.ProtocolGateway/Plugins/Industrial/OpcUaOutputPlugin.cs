@@ -155,6 +155,9 @@ namespace ZL.ProtocolGateway.Plugins
 
             if (_session != null && _session.Connected)
             {
+                // 建连成功：必须先标记 Running，否则持有循环期间 SendAsync 恒被拒
+                MarkConnectionEstablished();
+
                 // 保持连接直到断开或取消
                 while (!ct.IsCancellationRequested && HasLiveConnection())
                 {

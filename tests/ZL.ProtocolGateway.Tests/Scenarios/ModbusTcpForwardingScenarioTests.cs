@@ -37,7 +37,7 @@ namespace ZL.ProtocolGateway.Tests.Scenarios
             await plugin.StartAsync();
             var msg = new Message();
             msg.SetJsonContent(@"{""operation"":""write"",""registers"":[{""address"":""40001"",""value"":""123""}]}");
-            await plugin.SendAsync(msg);
+            await SendWhenConnectedAsync(plugin, msg);
             await plugin.StopAsync();
 
             var request = await captured.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -63,7 +63,7 @@ namespace ZL.ProtocolGateway.Tests.Scenarios
             await plugin.StartAsync();
             var msg = new Message();
             msg.SetJsonContent(@"{""operation"":""write"",""registers"":[{""address"":""M10"",""value"":""true""}]}");
-            await plugin.SendAsync(msg);
+            await SendWhenConnectedAsync(plugin, msg);
             await plugin.StopAsync();
 
             var request = await captured.Task.WaitAsync(TimeSpan.FromSeconds(2));
@@ -87,6 +87,31 @@ namespace ZL.ProtocolGateway.Tests.Scenarios
                 await stream.WriteAsync(request, 0, request.Length, _cts.Token);
                 await stream.FlushAsync(_cts.Token);
             }, _cts.Token);
+        }
+
+        /// <summary>
+        /// 发送消息；若连接尚未建立（后台连接循环异步建连），短暂重试直至超时。
+        /// 不能用 ConnectionChanged 事件等就绪：OutputPluginBase.StartAsync 在 OnStartAsync
+        /// 返回后立即 SetConnectionState(true)，真实建连后的第二次 true 会被去重吞掉——
+        /// 「等第二次事件」永远等不到。直接重试 SendAsync 测的正是需求本身：连接建立后必能发送。
+        /// </summary>
+        private static async Task SendWhenConnectedAsync(OutputPluginBase plugin, Message message, int timeoutMs = 10000)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            while (true)
+            {
+                try
+                {
+                    await plugin.SendAsync(message);
+                    return;
+                }
+                catch (Exception ex) when (DateTime.UtcNow < deadline)
+                {
+                    // 仅容忍「未连上」类失败；协议层校验错误必须原样抛出
+                    if (!(ex.Message.Contains("not alive") || ex.Message.Contains("not running"))) throw;
+                    await Task.Delay(50);
+                }
+            }
         }
 
         private static async Task<byte[]> ReadModbusFrameAsync(NetworkStream stream, CancellationToken cancellationToken)

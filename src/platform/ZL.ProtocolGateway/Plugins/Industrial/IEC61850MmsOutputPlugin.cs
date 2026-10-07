@@ -160,6 +160,7 @@ namespace ZL.ProtocolGateway.Plugins
             {
                 throw new InvalidOperationException("IEC 61850 MMS Initiate failed");
             }
+            MarkConnectionEstablished();
 
             // 保持连接直到断开或取消
             var buffer = new byte[1];

@@ -92,6 +92,9 @@ namespace ZL.ProtocolGateway.Plugins
                 throw;
             }
 
+            // 建连成功（含 try 内全部初始化）后才标记：失败路径不应置 Running
+            MarkConnectionEstablished();
+
             // 等待连接断开或取消请求
             while (!ct.IsCancellationRequested && HasLiveConnection())
             {

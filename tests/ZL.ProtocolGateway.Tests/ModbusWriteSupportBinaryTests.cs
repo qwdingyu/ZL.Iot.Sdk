@@ -39,7 +39,9 @@ namespace ZL.ProtocolGateway.Tests
             var write = new ModbusWriteOperation(address: 100, value: 0x0064, isCoil: false, unitId: 3);
             var frame = ModbusWriteSupport.BuildTcpWriteRequest(write, transactionId: 1);
 
-            Assert.Equal(13, frame.Length);
+            // FC06 单寄存器写：MBAP(7) + PDU(func1+addr2+value2=5) = 12 字节。
+            // 原期望 13 与下方 frame[7..11] 的布局断言及 Modbus 规范矛盾（2026-10-07 修正）。
+            Assert.Equal(12, frame.Length);
             Assert.Equal((byte)0x00, frame[0]); // txn hi
             Assert.Equal((byte)0x01, frame[1]); // txn lo
             Assert.Equal((byte)0x03, frame[6]); // unit id

@@ -149,13 +149,15 @@ namespace ZL.ProtocolGateway.Tests
         {
             // [len_hi, len_lo, data...] — 长度字段表示整个帧长度
             var splitter = new LengthFieldSplitter(lengthFieldOffset: 0, lengthFieldSize: 2);
-            // Frame: length=5, data="Hello" → [0, 5, 'H','e','l','l','o']
-            splitter.Append(new byte[] { 0, 5, 72, 101, 108, 108, 111 }, 0, 7);
+            // Frame: 长度字段=整帧长 7，data="Hello" → [0, 7, 'H','e','l','l','o']
+            // （原写 5 与「长度字段表示整个帧长度」的语义及下方断言自相矛盾：会切出 5 字节帧，
+            //   随后 GetString(frame, 2, 5) 越界——测试自身数据错误，2026-10-07 修正。）
+            splitter.Append(new byte[] { 0, 7, 72, 101, 108, 108, 111 }, 0, 7);
 
             var frames = ToArrays(splitter.ExtractFrames());
 
             Assert.Single(frames);
-            Assert.Equal(new byte[] { 0, 5 }, frames[0].Take(2).ToArray());
+            Assert.Equal(new byte[] { 0, 7 }, frames[0].Take(2).ToArray());
             Assert.Equal("Hello", System.Text.Encoding.ASCII.GetString(frames[0], 2, 5));
         }
 
