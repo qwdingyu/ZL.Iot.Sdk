@@ -28,9 +28,12 @@ public class DatabaseSyncIntegrationTests : IDisposable
     {
         _output = output;
         _sqlitePath = Path.Combine(Path.GetTempPath(), $"e2e_{GetType().Name}_{Guid.NewGuid():N}.db");
-        // MySQL 数据库名限制 64 字符（63 安全），用 hash 截短
+        // MySQL 数据库名限制 64 字符（63 安全），超长时截断。
+        // ⚠️ 原写法 `$"zldatasync_{hash}_{guid}"[..63]` 恒抛 ArgumentOutOfRangeException：
+        // 该插值串仅 52 字符，[..63] 越界（编译为 Substring(0,63)），构造函数即崩，
+        // 使本类 5 个用例从未通过过（2026-10-07 修正为对实际名称截断）。
         var rawName = $"zldatasync_{GetType().Name}_{Guid.NewGuid():N}";
-        _mySqlDb = rawName.Length > 63 ? $"zldatasync_{Math.Abs(GetType().Name.GetHashCode()):X8}_{Guid.NewGuid():N}"[..63] : rawName;
+        _mySqlDb = rawName.Length > 63 ? rawName[..63] : rawName;
         var pwd = Environment.GetEnvironmentVariable("DATASYNC_MYSQL_PWD") ?? "mes";
         _mySqlConnectionString = $"server=127.0.0.1;database={_mySqlDb};uid=root;password={pwd};charset=utf8mb4;Allow User Variables=True;";
     }
