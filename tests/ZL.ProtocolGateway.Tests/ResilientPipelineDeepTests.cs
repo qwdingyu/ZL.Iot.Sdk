@@ -319,12 +319,14 @@ namespace ZL.ProtocolGateway.Tests
             public string ProtocolType => "Mock";
             public string Version => "1.0.0";
             public PluginStatus Status { get; private set; }
-            public int SendCount { get; private set; }
+            // 原子计数（2026-10-07 修）：管道并发派发下 SendCount++ 会丢更新
+            private int _sendCount;
+            public int SendCount => Volatile.Read(ref _sendCount);
             public event Action<string, bool> ConnectionChanged { add { } remove { } }
             public event Action<OutputPluginStatusArgs>? DetailedStatusChanged { add { } remove { } }
 
             public Task StartAsync(CancellationToken ct = default) { Status = PluginStatus.Running; return Task.CompletedTask; }
-            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { SendCount++; return Task.CompletedTask; }
+            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { Interlocked.Increment(ref _sendCount); return Task.CompletedTask; }
             public Task StopAsync() { Status = PluginStatus.Stopped; return Task.CompletedTask; }
             public void Dispose() { }
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -357,12 +359,13 @@ namespace ZL.ProtocolGateway.Tests
             public string ProtocolType => "Mock";
             public string Version => "1.0.0";
             public PluginStatus Status { get; private set; }
-            public int SendCount { get; private set; }
+            private int _sendCount;
+            public int SendCount => Volatile.Read(ref _sendCount);
             public event Action<string, bool> ConnectionChanged { add { } remove { } }
             public event Action<OutputPluginStatusArgs>? DetailedStatusChanged { add { } remove { } }
 
             public Task StartAsync(CancellationToken ct = default) { Status = PluginStatus.Running; return Task.CompletedTask; }
-            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { SendCount++; throw new InvalidOperationException("always fails"); }
+            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { Interlocked.Increment(ref _sendCount); throw new InvalidOperationException("always fails"); }
             public Task StopAsync() { Status = PluginStatus.Stopped; return Task.CompletedTask; }
             public void Dispose() { }
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -374,14 +377,19 @@ namespace ZL.ProtocolGateway.Tests
             public string ProtocolType => "Mock";
             public string Version => "1.0.0";
             public PluginStatus Status { get; private set; }
-            public List<Message> ReceivedMessages { get; } = new();
+            // ⚠️ 线程安全（2026-10-07 修）：管道按消息并发派发（每条 Task.Run），
+            // 非线程安全的 List.Add 与测试线程的无屏障读取曾导致 ~40% 抖动
+            // （断言偶发 Collection was empty）。锁保护 + 快照属性。
+            private readonly List<Message> _received = new();
+            private readonly object _receivedGate = new();
+            public IReadOnlyList<Message> ReceivedMessages { get { lock (_receivedGate) return _received.ToArray(); } }
             public event Action<string, bool> ConnectionChanged { add { } remove { } }
             public event Action<OutputPluginStatusArgs>? DetailedStatusChanged { add { } remove { } }
 
             public RecordingMockOutput(string name) { Name = name; }
 
             public Task StartAsync(CancellationToken ct = default) { Status = PluginStatus.Running; return Task.CompletedTask; }
-            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { ReceivedMessages.Add(message); return Task.CompletedTask; }
+            public Task SendAsync(Message message, CancellationToken cancellationToken = default) { lock (_receivedGate) _received.Add(message); return Task.CompletedTask; }
             public Task StopAsync() { Status = PluginStatus.Stopped; return Task.CompletedTask; }
             public void Dispose() { }
             public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -394,7 +402,10 @@ namespace ZL.ProtocolGateway.Tests
             public string ProtocolType => "Mock";
             public string Version => "1.0.0";
             public PluginStatus Status { get; private set; }
-            public int SendCount { get; private set; }
+            // ⚠️ 原子计数（2026-10-07 修）：并发派发下 SendCount++ 会丢更新
+            // （实测断言 4 偶发只得 2）。改用 Interlocked，并以原子返回值为判据。
+            private int _sendCount;
+            public int SendCount => Volatile.Read(ref _sendCount);
             public event Action<string, bool> ConnectionChanged { add { } remove { } }
             public event Action<OutputPluginStatusArgs>? DetailedStatusChanged { add { } remove { } }
 
@@ -403,9 +414,9 @@ namespace ZL.ProtocolGateway.Tests
             public Task StartAsync(CancellationToken ct = default) { Status = PluginStatus.Running; return Task.CompletedTask; }
             public Task SendAsync(Message message, CancellationToken cancellationToken = default)
             {
-                SendCount++;
-                if (SendCount <= _failFirst)
-                    throw new InvalidOperationException($"Failing send #{SendCount}");
+                int n = Interlocked.Increment(ref _sendCount);
+                if (n <= _failFirst)
+                    throw new InvalidOperationException($"Failing send #{n}");
                 return Task.CompletedTask;
             }
             public Task StopAsync() { Status = PluginStatus.Stopped; return Task.CompletedTask; }
