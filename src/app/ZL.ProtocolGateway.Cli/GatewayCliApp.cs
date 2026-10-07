@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using ZL.ProtocolGateway.Plugins;
 
@@ -1453,6 +1453,15 @@ public static class GatewaySimulationRunner
         try
         {
             await gateway.StartAsync(cancellationToken);
+
+            // ⚠️ 必须等管道排空再停机（2026-10-07 修复）：
+            // SyntheticInputPlugin 在 StartAsync 内把消息交给管道后即返回，而管道是**异步**
+            // 处理的。若紧接着 StopAsync，停机流程会先清空输出，随后消息才被派发 →
+            // "Skipped send because output 'X' is not registered" —— 模拟结果被静默丢弃
+            // （实测：CLI 预览永远打不出，且日志里只留一条 WARN）。
+            // 注意：必须等 **manager 内部**的管道（消息走的是它，传入的 pipeline 在
+            // 兼容构造里已被替换为 manager 自己的实例），等错对象会立刻返回、消息仍被丢弃。
+            await gateway.Manager.WaitForIdleAsync();
         }
         finally
         {

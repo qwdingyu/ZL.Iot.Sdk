@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -51,6 +51,19 @@ namespace ZL.ProtocolGateway
                 foreach (var rule in legacy.RegisteredRouterRules)
                 {
                     _manager.Pipeline.AddRouter(rule);
+                }
+
+                // ⚠️ 转换器/过滤器同样必须迁移（2026-10-07 补，前次只迁了输出与路由）：
+                // GatewaySimulationRunner 等调用方会在构造前 pipeline.AddTransformer(...)，
+                // 漏迁会让转换器静默失效（CLI 模拟场景的 CSV→JSON 转换即因此不生效）。
+                foreach (var transformer in legacy.RegisteredTransformers)
+                {
+                    _manager.Pipeline.AddTransformer(transformer);
+                }
+
+                foreach (var filter in legacy.RegisteredFilters)
+                {
+                    _manager.Pipeline.AddFilter(filter);
                 }
             }
         }

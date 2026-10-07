@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -246,6 +246,16 @@ namespace ZL.ProtocolGateway
         /// 已注册的路由规则快照（只读）。供 GatewayService 兼容构造迁移用（2026-10-06 补）。
         /// </summary>
         public IReadOnlyList<RouteRule> RegisteredRouterRules => _router.Rules;
+
+        /// <summary>
+        /// 已注册的转换器快照（只读）。供 GatewayService 兼容构造迁移用（2026-10-07 补）。
+        /// </summary>
+        public IReadOnlyList<Func<Message, Task<Message>>> RegisteredTransformers => _transformers.ToArray();
+
+        /// <summary>
+        /// 已注册的过滤器快照（只读）。同上。
+        /// </summary>
+        public IReadOnlyList<Func<Message, Task<bool>>> RegisteredFilters => _filters.ToArray();
 
         public ResilientMessagePipeline()
         {

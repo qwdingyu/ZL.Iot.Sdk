@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // 文件：GatewayManager.cs
 // 描述：网关管理器 — ProtocolGateway 的统一门面（Facade）
 // 功能：协调各子管理器，提供网关唯一公共入口。
@@ -52,6 +52,16 @@ namespace ZL.ProtocolGateway
         /// 获取内部的流水线实例（用于访问高级功能）
         /// </summary>
         public ResilientMessagePipeline Pipeline => _pipeline;
+
+        /// <summary>
+        /// 等待内部管道把已入队的消息全部处理完（含在途派发），最长等 <paramref name="timeoutMs"/>。
+        /// <para>
+        /// 用途：StopAsync 会**立即**清空输出，若此时队列里还有消息，它们会被丢弃
+        /// （日志仅留 "Skipped send because output 'X' is not registered"）。
+        /// 需要"跑完这一批再停"的场景（如 CLI 模拟、批处理收尾）应先调用本方法。
+        /// </para>
+        /// </summary>
+        public Task WaitForIdleAsync(int timeoutMs = 5000) => _pipeline.WaitForIdleAsync(timeoutMs);
 
         /// <summary>
         /// 健康检查服务 — 聚合所有输出插件的健康状态为网关整体健康状态
