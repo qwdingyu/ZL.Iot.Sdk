@@ -196,6 +196,12 @@ python3 scripts/verify-reference-boundaries.py --root /Users/dingyuwang/0-X/UseT
 ✅ 优先：在现有机制上扩展
 ```
 
+**命名约定（ORM 对应）**：`ZL.DB.Core` ↔ **SqlSugarCore**（当前唯一实现）；
+`ZL.DB.Acc` 是旧 SqlSugar 线的旧名，**已弃用，不要再新建引用**。因 SqlSugar 的问题
+项目更名为 ZL.DB.Core。改名时除项目目录/csproj/命名空间外，别忘了 `obfuscar.xml`
+的 `<Module>`、`pipeline.json` 的发布清单、消费方 `ProjectReference`/`using`。
+详见 `docs/27_ZL.DB.Core命名与SqlSugarCore对应关系_20261007.md`。
+
 ### 代码质量
 
 ```

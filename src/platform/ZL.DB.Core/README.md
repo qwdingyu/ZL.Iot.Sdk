@@ -1,4 +1,20 @@
-# ZL.DB.Core 快速上手与目录说明
+﻿# ZL.DB.Core 快速上手与目录说明
+
+## 0. 命名与 ORM 的对应关系（重要）
+
+| 项目名 | 对应 ORM | 状态 |
+| --- | --- | --- |
+| **`ZL.DB.Core`** | **SqlSugarCore**（版本在 `Directory.Packages.props` 统一管理） | ✅ 当前唯一实现 |
+| `ZL.DB.Acc` | 旧 SqlSugar 线 | ❌ 已弃用的旧名，**不要再新建引用** |
+
+**为什么叫 Core**：因 SqlSugar（旧线）的问题需要调整，本项目更名为 `ZL.DB.Core`，
+与它实际使用的 **SqlSugarCore** 对应。改名只动名称、未换 ORM 包
+（改名前后 csproj 的包引用逐项一致，已核对）。
+
+> 仓库中带日期的历史文档可能仍沿用旧名（那是当时的记录）。
+> 决策依据与影响面详见 `docs/27_ZL.DB.Core命名与SqlSugarCore对应关系_20261007.md`。
+
+---
 
 ## 1. 推荐使用方式
 
