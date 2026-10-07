@@ -2,7 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     public static class TraceKit
     {

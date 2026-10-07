@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite;
 using ZL.PFLite.Common;
 

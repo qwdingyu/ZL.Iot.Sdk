@@ -2,8 +2,8 @@
 
     <PropertyGroup>
         <TargetFrameworks>netstandard2.1</TargetFrameworks>
-        <AssemblyName>ZL.DB.Acc</AssemblyName>
-        <RootNamespace>ZL.DB.Acc</RootNamespace>
+        <AssemblyName>ZL.DB.Core</AssemblyName>
+        <RootNamespace>ZL.DB.Core</RootNamespace>
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <LangVersion>latest</LangVersion>
         <Nullable>disable</Nullable>

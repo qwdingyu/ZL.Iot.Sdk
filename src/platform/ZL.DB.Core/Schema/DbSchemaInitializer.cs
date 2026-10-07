@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using SqlSugar;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// 数据库表结构初始化器（SqlSugar CodeFirst 最佳实践）

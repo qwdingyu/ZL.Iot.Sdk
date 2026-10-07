@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Reflection;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     /// <summary>
     /// 将DataTable数据源转换成实体类

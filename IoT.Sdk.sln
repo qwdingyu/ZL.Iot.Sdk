@@ -27,7 +27,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.DataConvert", "src\platf
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.Iot.Interface", "src\platform\ZL.Iot.Interface\ZL.Iot.Interface.csproj", "{37D24C4E-E7DB-4946-A2B3-D264E07E71F5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.DB.Acc", "src\platform\ZL.DB.Acc\ZL.DB.Acc.csproj", "{9247FED5-D976-4442-A240-75489C832CA0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZL.DB.Core", "src\platform\ZL.DB.Core\ZL.DB.Core.csproj", "{9247FED5-D976-4442-A240-75489C832CA0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "domain", "domain", "{8B290487-4C16-E85E-E807-F579CBE9FC4D}"
 EndProject

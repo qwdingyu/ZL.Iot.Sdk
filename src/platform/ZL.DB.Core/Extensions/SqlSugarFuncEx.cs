@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using SqlSugar;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// SqlSugar扩展函数

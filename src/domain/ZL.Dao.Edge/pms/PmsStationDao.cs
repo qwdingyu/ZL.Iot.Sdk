@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Data;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 
 namespace ZL.Dao.Edge
 {

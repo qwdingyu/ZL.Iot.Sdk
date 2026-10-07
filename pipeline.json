@@ -1,4 +1,4 @@
-{
+﻿{
     "$schema": "https://raw.githubusercontent.com/usethink/ZL.Pipeline/main/schemas/pipeline-schema.json",
     "version": "1.0",
     "projects": [
@@ -78,8 +78,8 @@
             "obfuscate": false
         },
         {
-            "name": "ZL.DB.Acc",
-            "csproj": "src/platform/ZL.DB.Acc/ZL.DB.Acc.csproj",
+            "name": "ZL.DB.Core",
+            "csproj": "src/platform/ZL.DB.Core/ZL.DB.Core.csproj",
             "obfuscate": true
         },
         {

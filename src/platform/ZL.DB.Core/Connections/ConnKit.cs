@@ -1,11 +1,11 @@
 ﻿using System;
 using System.ComponentModel;
 using SqlSugar;
-using ZL.DB.Acc.Utils;
+using ZL.DB.Core.Utils;
 using ZL.PFLite.Common;
 // 注意：不再全局引入 ZL.PFLite.Net 以避免 TraceKit 命名空间冲突
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// SQL 执行日志辅助工具：将参数化 SQL 展开为可读形式输出到 TraceKit
@@ -61,7 +61,7 @@ namespace ZL.DB.Acc
                         sql = sql.Replace(p.ParameterName, val);
                     }
                 }
-                // 使用完全限定名解决命名空间冲突：ZL.DB.Acc.Utils.TraceKit vs ZL.PFLite.Net.TraceKit
+                // 使用完全限定名解决命名空间冲突：ZL.DB.Core.Utils.TraceKit vs ZL.PFLite.Net.TraceKit
                 Utils.TraceKit.SendText($"dbtype={dbType} {sql}");
             }
             catch (Exception ex)

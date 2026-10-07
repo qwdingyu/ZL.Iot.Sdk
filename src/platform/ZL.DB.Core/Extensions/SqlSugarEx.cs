@@ -6,7 +6,7 @@ using System.Linq;
 using System.Xml;
 using SqlSugar;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     public static class SqlSugarEx
     {

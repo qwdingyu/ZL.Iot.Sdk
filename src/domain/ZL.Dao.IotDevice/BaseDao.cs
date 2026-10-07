@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using SqlSugar;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 
 namespace ZL.Dao.IotDevice
 {

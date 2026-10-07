@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data;
 using SqlSugar;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite;
 //using ZLApi.Reflection;
 

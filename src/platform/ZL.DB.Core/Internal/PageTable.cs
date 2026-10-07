@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Data;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     public static class PageTable
     {

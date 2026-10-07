@@ -1,9 +1,9 @@
-using SqlSugar;
+﻿using SqlSugar;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite.Common;
 
 namespace ZL.EdgeService

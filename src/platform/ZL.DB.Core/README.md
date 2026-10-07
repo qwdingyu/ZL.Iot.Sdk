@@ -1,8 +1,8 @@
-# ZL.DB.Acc 快速上手与目录说明
+# ZL.DB.Core 快速上手与目录说明
 
 ## 1. 推荐使用方式
 
-`ZL.DB.Acc` 当前建议采用三层调用模型：
+`ZL.DB.Core` 当前建议采用三层调用模型：
 
 ### 1.1 新项目默认入口：`Repository<T>`
 
@@ -97,7 +97,7 @@ public class ReportDao : DaoBase
 ## 3. 目录结构说明
 
 ```text
-ZL.DB.Acc/
+ZL.DB.Core/
 ├── Aop/          SqlSugar AOP 配置
 ├── Connections/  连接入口、连接配置、连接串解析
 ├── Extensions/   SqlSugar 扩展方法
@@ -106,7 +106,7 @@ ZL.DB.Acc/
 ├── Schema/       表结构初始化、结构维护
 ├── DaoBase.cs    原生 SQL / 报表 DAO 基类
 ├── Repository.cs 泛型主仓储入口（推荐）
-└── ZL.DB.Acc.csproj
+└── ZL.DB.Core.csproj
 ```
 
 ### 3.1 `Connections/`
@@ -210,4 +210,4 @@ ExecuteInTransaction(db =>
 - **需要原生 SQL 报表时再用 `DaoBase`**
 - **不要再新增依赖 `Legacy/BaseRepository<T>`**
 
-这就是当前 `ZL.DB.Acc` 最推荐、最稳定、最容易快速上手的使用姿势。
+这就是当前 `ZL.DB.Core` 最推荐、最稳定、最容易快速上手的使用姿势。

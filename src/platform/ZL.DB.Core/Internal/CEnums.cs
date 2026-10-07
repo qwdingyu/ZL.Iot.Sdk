@@ -1,4 +1,4 @@
-﻿namespace ZL.DB.Acc.Utils
+﻿namespace ZL.DB.Core.Utils
 {
     public class AccessClientInfo
     {

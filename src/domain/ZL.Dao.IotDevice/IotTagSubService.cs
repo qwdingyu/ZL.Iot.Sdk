@@ -1,4 +1,4 @@
-﻿using ZL.DB.Acc;
+﻿using ZL.DB.Core;
 
 
 namespace ZL.Dao.IotDevice

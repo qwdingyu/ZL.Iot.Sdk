@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ZL.Dao.IotDevice.Interfaces;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 
 namespace ZL.Dao.IotDevice
 {

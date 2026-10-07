@@ -4,7 +4,7 @@ using System.Data;
 using SqlSugar;
 using ZL.PFLite.Common;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// 非泛型 DAO 基类（原生 SQL / 报表 DAO）。

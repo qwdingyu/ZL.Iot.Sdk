@@ -3,7 +3,7 @@ using System;
 using System.Data;
 using ZL.PFLite.Common;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     public class DbMaintenanceKit
     {

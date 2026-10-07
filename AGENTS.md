@@ -1,4 +1,4 @@
-# AGENTS.md — iot-sdk 项目开发铁律
+﻿# AGENTS.md — iot-sdk 项目开发铁律
 
 > **版本**: 1.1
 > **日期**: 2026-06-17
@@ -34,7 +34,7 @@
 
 ❌ 禁止（仓库内部）：
   <PackageReference Include="ZL.Iot.Interface" />
-  <PackageReference Include="ZL.DB.Acc" />
+  <PackageReference Include="ZL.DB.Core" />
   <PackageReference Include="ZL.Dao.IotDevice" />
 ```
 
@@ -90,7 +90,7 @@
 <!-- iot-sdk 内部的 csproj -->
 <ItemGroup>
   <!-- 内部项目 → ProjectReference -->
-  <ProjectReference Include="..\..\platform\ZL.DB.Acc\ZL.DB.Acc.csproj" />
+  <ProjectReference Include="..\..\platform\ZL.DB.Core\ZL.DB.Core.csproj" />
   <ProjectReference Include="..\..\platform\ZL.Iot.Interface\ZL.Iot.Interface.csproj" />
   <!-- ZL.PlcBase → PackageReference（跨仓库） -->
   <PackageReference Include="ZL.IotHub" />

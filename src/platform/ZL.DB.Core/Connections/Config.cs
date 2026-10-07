@@ -1,9 +1,9 @@
 ﻿using SqlSugar;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
-    /// ZL.DB.Acc 内部常量配置
+    /// ZL.DB.Core 内部常量配置
     ///
     /// 历史遗留说明：
     ///   原先此类包含 GetInstance() 单例 + ConnInfo 连接信息，

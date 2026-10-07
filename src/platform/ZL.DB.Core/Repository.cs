@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 using System.Threading.Tasks;
 using ZL.PFLite.Common;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// 统一分页请求。

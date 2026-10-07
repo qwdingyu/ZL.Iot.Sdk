@@ -2,11 +2,11 @@
 using System.Configuration;
 using System.Linq;
 using SqlSugar;
-using ZL.DB.Acc.Aop;
+using ZL.DB.Core.Aop;
 using ZL.PFLite.Common;
 using ZL.PFLite.Net;
 
-namespace ZL.DB.Acc
+namespace ZL.DB.Core
 {
     /// <summary>
     /// SqlSugar 连接工厂

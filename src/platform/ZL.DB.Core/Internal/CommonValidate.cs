@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     /// <summary>
     /// Validate 的摘要说明。

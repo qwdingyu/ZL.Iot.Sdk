@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SqlSugar;
 
-namespace ZL.DB.Acc.Ex
+namespace ZL.DB.Core.Ex
 {
     public static class ReportEx
     {

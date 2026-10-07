@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using SqlSugar;
 using ZL.Dao.IotDevice;
 using ZL.Dao.IotDevice.Interfaces;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite;
 using ZL.PFLite.Common;
 

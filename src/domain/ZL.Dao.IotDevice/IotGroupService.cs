@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite.Common;
 
 namespace ZL.Dao.IotDevice

@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
@@ -28,7 +28,7 @@
     <PackageVersion Include="ZL.Watchdog" Version="2.2.1" />
     <PackageVersion Include="ZL.DataConvert" Version="2.2.1" />
     <PackageVersion Include="ZL.Iot.Interface" Version="2.2.1" />
-    <PackageVersion Include="ZL.DB.Acc" Version="2.2.1" />
+    <PackageVersion Include="ZL.DB.Core" Version="2.2.1" />
     <PackageVersion Include="ZL.Dao.IotDevice" Version="2.2.1" />
     <PackageVersion Include="ZL.Dao.Edge" Version="2.2.1" />
     <PackageVersion Include="ZL.Biz.Execute" Version="2.2.1" />

@@ -5,7 +5,7 @@ using System.Linq;
 using ZL.PFLite.Common;
 using ZL.PFLite.Net;
 
-namespace ZL.DB.Acc.Aop
+namespace ZL.DB.Core.Aop
 {
     /// <summary>
     /// SqlSugar AOP 配置器

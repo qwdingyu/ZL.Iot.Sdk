@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.PFLite;
 
 namespace ZL.Dao.Edge

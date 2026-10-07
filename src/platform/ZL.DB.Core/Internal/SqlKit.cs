@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ZL.PFLite.Common;
 
-namespace ZL.DB.Acc.Utils
+namespace ZL.DB.Core.Utils
 {
     public class SqlKit
     {

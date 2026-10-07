@@ -1,7 +1,7 @@
-using SqlSugar;
+﻿using SqlSugar;
 using System;
 using System.Collections.Generic;
-using ZL.DB.Acc;
+using ZL.DB.Core;
 using ZL.Model;
 
 namespace ZL.Dao.IotDevice

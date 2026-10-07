@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFrameworks>netstandard2.1</TargetFrameworks>
@@ -27,7 +27,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../ZL.Dao.IotDevice/ZL.Dao.IotDevice.csproj" />
-        <ProjectReference Include="../../platform/ZL.DB.Acc/ZL.DB.Acc.csproj" />
+        <ProjectReference Include="../../platform/ZL.DB.Core/ZL.DB.Core.csproj" />
         <ProjectReference Include="../../platform/ZL.Iot.Interface/ZL.Iot.Interface.csproj" />
         <PackageReference Include="ZL.PFLite" />
     </ItemGroup>
