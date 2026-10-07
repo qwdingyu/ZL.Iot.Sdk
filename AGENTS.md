@@ -1,4 +1,4 @@
-﻿# AGENTS.md — iot-sdk 项目开发铁律
+# AGENTS.md — iot-sdk 项目开发铁律
 
 > **版本**: 1.1
 > **日期**: 2026-06-17

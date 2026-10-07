@@ -1,4 +1,4 @@
-﻿{
+{
     "$schema": "https://raw.githubusercontent.com/usethink/ZL.Pipeline/main/schemas/pipeline-schema.json",
     "version": "1.0",
     "projects": [

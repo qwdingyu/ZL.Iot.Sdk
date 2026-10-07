@@ -1,4 +1,4 @@
-﻿using SqlSugar;
+using SqlSugar;
 using System;
 using System.IO;
 using System.Linq;
