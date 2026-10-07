@@ -358,12 +358,14 @@ namespace ZL.EdgeService
         {
             try
             {
-                var descriptor = ZL.IotHub.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
+                var descriptor = ZL.IotHub.X.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
                 var client = descriptor.ClientFactory(this.deviceConfig);
                 
                 if (client is HslCommunication.Core.IReadWriteNet rw)
                 {
-                    this.Device = new ZL.IotHub.Hsl.HslToDeviceAdapter(rw);
+                    // HSL 剥离迁移收尾（2026-10-07）：新构造要求 protocolKey，
+                    // 取 HslProtocolRegistry.Resolve 返回的 descriptor.Key（即解析出的协议键）。
+                    this.Device = new ZL.IotHub.X.Hsl.HslToDeviceAdapter(rw, descriptor.Key);
                     // 使用反射尝试连接，因为 NetworkBase 类型可能不存在
                     try
                     {

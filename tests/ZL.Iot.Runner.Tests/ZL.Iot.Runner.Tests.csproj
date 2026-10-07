@@ -16,6 +16,9 @@
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio" />
+        <!-- HSL 已从 ZL.IotHub 剥离到 ZL.IotHub.X（见 Directory.Packages.props 注释与 docs/189）；
+             SingleDeviceRunnerTests 继承 HslUnifiedDriver，需显式引用新包。 -->
+        <PackageReference Include="ZL.IotHub.X" />
     </ItemGroup>
 
     <ItemGroup>

@@ -202,7 +202,7 @@ namespace ZL.EdgeService
         /// </remarks>
         public override bool Connect()
         {
-            var descriptor = ZL.IotHub.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
+            var descriptor = ZL.IotHub.X.Hsl.HslProtocolRegistry.Resolve(this.deviceConfig);
             var client = descriptor.ClientFactory(this.deviceConfig);
             if (client is HslCommunication.Core.IReadWriteNet rw)
             {

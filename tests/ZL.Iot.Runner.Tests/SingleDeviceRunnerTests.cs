@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ZL.Iot.Runner.Configuration;
 using ZL.Iot.Runner.Runtime;
 using ZL.IotHub.Core;
-using ZL.IotHub.Hsl;
+using ZL.IotHub.X.Hsl;
 using ZL.IotHub.Native;
 using ZL.Tag;
 

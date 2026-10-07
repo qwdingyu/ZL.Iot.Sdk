@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ZL.IotHub.Hsl;
+using ZL.IotHub.X.Hsl;
 using ZL.IotHub.Native;
 
 namespace ZL.Iot.Runner.Configuration
