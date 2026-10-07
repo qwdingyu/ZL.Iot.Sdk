@@ -96,7 +96,13 @@ namespace ZL.Iot.Controls.Controls
             set
             {
                 stringHasLeader = value;
-                if (_batchMonitor != null) _batchMonitor.StringHasLeader = value;
+                // ZL.IotHub 2.2.11 起 BatchMonitor 的 StringHasLeader(bool) 已被
+                // DefaultStringKind(StringKind) 取代（见其 ProcessStringWithLeader 的
+                // 同一映射：hasLeader ? S7String : Raw）——此处按库自身语义等价迁移。
+                if (_batchMonitor != null)
+                {
+                    _batchMonitor.DefaultStringKind = value ? StringKind.S7String : StringKind.Raw;
+                }
             }
         }
 
@@ -325,7 +331,8 @@ namespace ZL.Iot.Controls.Controls
                     // BatchMonitor 的内部日志通过委托透传到 UI 层显示
                     OnLog = msg => OnLogs?.Invoke(msg),
                     EnablePlanLogs = EnableReadPlanLogs,
-                    StringHasLeader = StringHasLeader,
+                    // 与 StringHasLeader 属性同一映射（库 2.2.11 起用 StringKind 取代 bool）
+                    DefaultStringKind = StringHasLeader ? StringKind.S7String : StringKind.Raw,
                 };
                 // 批量读取合并参数：
                 // maxGap=200：地址间隔小于 200 字节的相邻地址合并为同一个读取请求
