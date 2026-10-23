@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  SingleDeviceRunner 单元测试
 //  覆盖：事件订阅/取消、驱动类型路由、DriverFactory.Create 集成
 // ============================================================
@@ -83,6 +83,18 @@ namespace ZL.Iot.Runner.Tests
     /// </summary>
     public class SingleDeviceRunnerTests
     {
+        // ⚠️ 试用许可证的设备计数是**进程内静态计数**（ZL.License.LicenseManager._activatedDevices），
+        // 且 DriverFactory.Create 在**创建时**即 +1（上限走产品级映射，本产品为 1）。
+        // 实测：Create→Dispose→Create 会抛「试用态设备数已达上限 1」——Dispose 并未归还名额
+        // （ZL.IotHub 2.2.11 的 SimpleDeviceBase.Dispose 递减被 LicenseCountEligible 门控，
+        //  ManagedDeviceBase 显式 false 由 LicenseGate 作用域管理；UnifiedDriver 路径的归还
+        //  行为见探针记录与交接文档）。
+        // 本类每个用例开始前 Reset（库文档明示「用于测试」），保证用例间互不污染。
+        public SingleDeviceRunnerTests()
+        {
+            ZL.License.LicenseManager.Reset();
+        }
+
         private static readonly TagItem SampleTag = new()
         {
             Id = "TEST_TAG",
